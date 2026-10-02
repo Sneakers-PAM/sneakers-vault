@@ -249,7 +249,7 @@ func TestImportCertificate_CertOnlyHasPrivateKeyFalse(t *testing.T) {
 		t.Fatal("secret = nil, want a created secret")
 	}
 
-	fieldsResp, err := s.GetSecretFields(ctx, &vaultv1.GetSecretFieldsRequest{Id: sec.GetId()})
+	fieldsResp, err := s.GetSecretFields(ctx, &vaultv1.GetSecretFieldsRequest{Actor: carol, Id: sec.GetId()})
 	if err != nil {
 		t.Fatalf("GetSecretFields: %v", err)
 	}

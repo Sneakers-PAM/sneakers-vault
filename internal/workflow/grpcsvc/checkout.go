@@ -73,7 +73,7 @@ func (s *Server) checkCheckout(ctx context.Context, actor *workflowv1.ActorConte
 // secretType reads the secret's type from the vault; an unknown type reads
 // as one with nothing allowed.
 func (s *Server) secretType(ctx context.Context, secretID string) (*vaultv1.SecretType, error) {
-	sec, err := s.vault.GetSecret(ctx, &vaultv1.GetSecretRequest{Id: secretID})
+	sec, err := s.vault.GetSecret(ctx, &vaultv1.GetSecretRequest{Actor: systemAdminActor(), Id: secretID})
 	if err != nil {
 		return nil, fmt.Errorf("read secret: %w", err)
 	}

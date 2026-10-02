@@ -188,14 +188,14 @@ func TestRunUpgradesADWithNetbiosAndKeepsExistingSecrets(t *testing.T) {
 	if after := secretRows(t, pool, id); after != before {
 		t.Fatalf("upgrade changed the stored secret:\nbefore %+v\nafter  %+v", before, after)
 	}
-	got, err := up.GetSecret(ctx, &vaultv1.GetSecretRequest{Id: id})
+	got, err := up.GetSecret(ctx, &vaultv1.GetSecretRequest{Actor: carol, Id: id})
 	if err != nil {
 		t.Fatalf("GetSecret: %v", err)
 	}
 	if got.GetSecret().GetTypeId() != adTypeID || got.GetSecret().GetName() != "admin_ea" {
 		t.Fatalf("secret metadata changed: %+v", got.GetSecret())
 	}
-	fields, err := up.GetSecretFields(ctx, &vaultv1.GetSecretFieldsRequest{Id: id})
+	fields, err := up.GetSecretFields(ctx, &vaultv1.GetSecretFieldsRequest{Actor: carol, Id: id})
 	if err != nil {
 		t.Fatalf("GetSecretFields: %v", err)
 	}

@@ -2216,8 +2216,12 @@ type Secret struct {
 	// and allow_api_for_sensitive instead. Set by a person only.
 	RequireTokenApproval bool   `protobuf:"varint,22,opt,name=require_token_approval,json=requireTokenApproval,proto3" json:"require_token_approval,omitempty"`
 	LastHeartbeatDetail  string `protobuf:"bytes,23,opt,name=last_heartbeat_detail,json=lastHeartbeatDetail,proto3" json:"last_heartbeat_detail,omitempty"` // the connector's reason for the last heartbeat result (never a value), truncated
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Output only, from ListSecretsInFolder and GetSecret: whether the caller
+	// may read this secret. A secret the caller can see but not read is shown
+	// locked, so they can request access.
+	CanRead       bool `protobuf:"varint,31,opt,name=can_read,json=canRead,proto3" json:"can_read,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Secret) Reset() {
@@ -2423,6 +2427,13 @@ func (x *Secret) GetLastHeartbeatDetail() string {
 		return x.LastHeartbeatDetail
 	}
 	return ""
+}
+
+func (x *Secret) GetCanRead() bool {
+	if x != nil {
+		return x.CanRead
+	}
+	return false
 }
 
 type ActorContext struct {
@@ -13964,7 +13975,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"draftRules\x12\"\n" +
 	"\rsim_group_ids\x18\b \x03(\tR\vsimGroupIds\"U\n" +
 	"\x16SimulateSecretResponse\x12;\n" +
-	"\bdecision\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.RaciDecisionR\bdecision\"\xa3\b\n" +
+	"\bdecision\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.RaciDecisionR\bdecision\"\xbe\b\n" +
 	"\x06Secret\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
@@ -13997,7 +14008,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"adminCount\x12*\n" +
 	"\x11heartbeat_opt_out\x18\x15 \x01(\bR\x0fheartbeatOptOut\x124\n" +
 	"\x16require_token_approval\x18\x16 \x01(\bR\x14requireTokenApproval\x122\n" +
-	"\x15last_heartbeat_detail\x18\x17 \x01(\tR\x13lastHeartbeatDetail\"\xfb\x02\n" +
+	"\x15last_heartbeat_detail\x18\x17 \x01(\tR\x13lastHeartbeatDetail\x12\x19\n" +
+	"\bcan_read\x18\x1f \x01(\bR\acanRead\"\xfb\x02\n" +
 	"\fActorContext\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\"\n" +
 	"\ris_site_admin\x18\x02 \x01(\bR\visSiteAdmin\x12\x17\n" +

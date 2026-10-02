@@ -35,6 +35,12 @@ audit and notify are covered in [Calling other services](#calling-other-services
   I informed) on folders, secrets and targets, evaluated target first and then up the folder
   chain. Folder owners get read, approve and author. Site admins and root read everything but are
   never automatic approvers or authors.
+- **Seeing secrets:** `ListSecretsInFolder` and `GetSecret` show a secret's metadata to anyone who
+  can see its folder, even without read, so people can find a secret and request access. Each
+  secret carries `can_read`, false when the caller can't read it. A secret an explicit deny
+  covers, or one in someone else's personal tree, is hidden: left out of the list, and `NotFound`
+  from `GetSecret`, audited as `secret.read.denied`. `GetSecretFields` returns field values, so it
+  needs read (`PermissionDenied` otherwise, audited the same way).
 - **Group rules:** a GROUP rule saved with a `subject_id` (the directory group id) matches the
   caller's `group_ids` exactly, for people, personal tokens and service accounts alike;
   `subject_name` is then only the display name, so renaming a group changes nothing and another
