@@ -40,7 +40,7 @@ func TestPGCheckoutSagaPersists(t *testing.T) {
 	}
 	defer db.Close()
 	pool := db.Pool()
-	if _, err := pool.Exec(ctx, `TRUNCATE leases, approval_requests`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE leases, approval_comments, approval_requests`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 
@@ -130,5 +130,5 @@ func TestPGCheckoutSagaPersists(t *testing.T) {
 		t.Fatalf("after restart: approved requests = %d, want 1", approved)
 	}
 
-	_, _ = pool.Exec(ctx, `TRUNCATE leases, approval_requests`)
+	_, _ = pool.Exec(ctx, `TRUNCATE leases, approval_comments, approval_requests`)
 }
