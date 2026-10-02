@@ -72,11 +72,11 @@ func (s *Server) RevealSecretVersionField(ctx context.Context, req *vaultv1.Reve
 	subject := fmt.Sprintf("%s#%s@v%d", sec.GetId(), req.GetFieldKey(), req.GetVersionNo())
 	if sec.GetRetired() {
 		s.auditRevealDenied(ctx, req.GetActor(), subject, "version.reveal", ReasonRetired)
-		return nil, status.Error(codes.FailedPrecondition, "secret is retired")
+		return nil, refuseCode(codes.FailedPrecondition, ReasonRetired, "secret is retired")
 	}
 	if !s.canRead(req.GetActor(), sec) {
 		s.auditRevealDenied(ctx, req.GetActor(), subject, "version.reveal", ReasonNoAccess)
-		return nil, status.Error(codes.PermissionDenied, "not permitted to reveal this secret")
+		return nil, refuseCode(codes.PermissionDenied, ReasonNoAccess, "not permitted to reveal this secret")
 	}
 	if s.vers == nil {
 		return nil, errNotFound("secret version")

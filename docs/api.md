@@ -41,7 +41,8 @@ audit and notify are covered in [Calling other services](#calling-other-services
   secret carries `can_read`, false when the caller can't read it. A secret an explicit deny
   covers, or one in someone else's personal tree, is hidden: left out of the list, and `NotFound`
   from `GetSecret`, audited as `secret.read.denied`. `GetSecretFields` returns field values, so it
-  needs read (`PermissionDenied` otherwise, audited the same way).
+  needs read (`PermissionDenied` with reason `NO_ACCESS` otherwise, audited the same way). A
+  hidden secret's `NotFound` carries no reason, so it doesn't confirm the secret exists.
 - **Group rules:** a GROUP rule saved with a `subject_id` (the directory group id) matches the
   caller's `group_ids` exactly, for people, personal tokens and service accounts alike;
   `subject_name` is then only the display name, so renaming a group changes nothing and another
@@ -130,7 +131,9 @@ audit and notify are covered in [Calling other services](#calling-other-services
   personal token is refused super-sensitive fields on `RevealSecretFieldForPrincipal`,
   `PrepareSecretUse` and `RedeemSecretUse` (`PermissionDenied`, `API_SENSITIVE_DISABLED`, audited
   as `secret.reveal.denied`). Every refused reveal, copy or version reveal is audited the same
-  way, with the reason (`NO_ACCESS`, `RETIRED`, `API_SENSITIVE_DISABLED`) and the action. Step-up on reveal (`require_mfa_for_reveal`, overridden per folder
+  way, with the reason (`NO_ACCESS`, `RETIRED`, `API_SENSITIVE_DISABLED`) and the action, and the
+  refusal carries the same reason as an ErrorInfo (domain `sneakers.vault`): `NO_ACCESS` with
+  `PERMISSION_DENIED`, `RETIRED` with `FAILED_PRECONDITION`. Step-up on reveal (`require_mfa_for_reveal`, overridden per folder
   by `SetFolderRevealStepUp`, site admin only) refuses a person's `RevealSecretField` or
   `CopySecret` without an MFA within `MFA_MAX_AGE` (`STEP_UP_REQUIRED`, audited as
   `secret.reveal.step_up_required`). See [configuration.md](configuration.md#security-settings).
