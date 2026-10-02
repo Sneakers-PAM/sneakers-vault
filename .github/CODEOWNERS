@@ -1,0 +1,3 @@
+# Workflow and CODEOWNERS changes need the maintainer's review.
+/.github/workflows/** @Bugs5382
+/.github/CODEOWNERS @Bugs5382

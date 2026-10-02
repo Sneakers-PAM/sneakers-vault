@@ -1,0 +1,14 @@
+# The Sneakers-PAM header: two SPDX lines above the code, written as line
+# comments, as in:
+#   // Copyright 2026 The Sneakers-PAM Authors
+#   // SPDX-License-Identifier: Apache-2.0
+golic:
+  licenses:
+    spdx-apache2: |
+      Copyright {{copyright}}
+      SPDX-License-Identifier: Apache-2.0
+  rules:
+    .go:
+      prefix: "// "
+    .proto:
+      prefix: "// "

@@ -1,0 +1,19 @@
+name: checks
+# The org's scrub (gitleaks, generic identifier patterns, DCO) over the PR's
+# commits, title and body. The ruleset on main requires its `checks / scrub`
+# status, so the caller job keeps the id `checks`. `edited` reruns it when the
+# PR title or body changes.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    if: github.event.pull_request.draft != true
+    uses: Sneakers-PAM/.github/.github/workflows/scrub.yml@main

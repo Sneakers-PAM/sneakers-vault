@@ -1,0 +1,54 @@
+version: '3'
+vars:
+  ARTIFACT_NAME: sneakers-vault
+  TESTPARALLELISM: 4
+  GOLIC_VERSION: v0.3.0
+  GOLANGCI_VERSION: v2.12.2
+  COMMON_LIC: "2026 The Sneakers-PAM Authors"
+  TEMPLATE_LIC: "spdx-apache2"
+tasks:
+  default:
+    cmds:
+      - task: lint
+  fmt:
+    desc: Format Go sources
+    cmds:
+      - gofmt -w .
+      - goimports -w ./
+  build:
+    desc: Build all packages
+    cmds:
+      - go build ./...
+  test:
+    desc: Run tests
+    cmds:
+      - go test -parallel {{.TESTPARALLELISM}} ./...
+  test-cover:
+    desc: Run tests with coverage reporting
+    cmds:
+      - go test ./... -cover
+  lint:
+    desc: Run all linters
+    deps: [test]
+    cmds:
+      - |
+        unformatted="$(gofmt -l .)"
+        if [ -n "$unformatted" ]; then echo "gofmt needed on:"; echo "$unformatted"; exit 1; fi
+      - golangci-lint run
+      - yamllint .
+  lint-init:
+    desc: Install lint dependencies (golangci-lint is built with the local Go toolchain)
+    cmds:
+      - brew install gitleaks yamllint
+      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{.GOLANGCI_VERSION}}
+      - go install golang.org/x/tools/cmd/goimports@latest
+  license:
+    desc: Verify every source file carries the Apache-2.0 license header (CI; never writes).
+    cmds:
+      - go install github.com/Bugs5382/golic/cmd/golic@{{.GOLIC_VERSION}}
+      - golic inject -t {{.TEMPLATE_LIC}} -c "{{.COMMON_LIC}}" --dry -x
+  license:fix:
+    desc: Inject the Apache-2.0 header into any source file missing it.
+    cmds:
+      - go install github.com/Bugs5382/golic/cmd/golic@{{.GOLIC_VERSION}}
+      - golic inject -t {{.TEMPLATE_LIC}} -c "{{.COMMON_LIC}}"
