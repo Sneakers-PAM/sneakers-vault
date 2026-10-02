@@ -31,7 +31,6 @@ const (
 // SealForImport, to verify an import.
 var migrateMethods = []string{
 	vaultv1.VaultService_RevealSecretField_FullMethodName,
-	vaultv1.VaultService_RevealSecretVersionField_FullMethodName,
 	vaultv1.VaultService_GetSecret_FullMethodName,
 	vaultv1.VaultService_ListTargets_FullMethodName,
 	vaultv1.VaultService_ListConnections_FullMethodName,

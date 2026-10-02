@@ -223,7 +223,7 @@ refused with `PermissionDenied`. Any caller or method not listed is refused.
 |---|---|---|---|
 | vault | every method except the connector pull-API and `SealForImport` | gateway | on behalf |
 | vault | `RevealSecretField` | sshbroker | on behalf |
-| vault | `SealForImport`, `RevealSecretField`, `RevealSecretVersionField`, `GetSecret`, `ListTargets`, `ListConnections` | migrate (the sneakers-migrate Job) | self, as `system:migrate` (root) |
+| vault | `SealForImport`, `RevealSecretField`, `GetSecret`, `ListTargets`, `ListConnections` | migrate (the sneakers-migrate Job) | self, as `system:migrate` (root) |
 | vault | `GetMySecretAccess` | workflow | on behalf (the check-out check) |
 | vault | `GetSecret`, `ListSecretTypes`, `GetSecretRuleset`, `SetSecretRuleset`, `MoveFolder`, `UpdateSecret`, `EnqueueRotation`, `GetSecuritySettings` | workflow | self |
 | vault | `ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeartbeat`, `ClaimDueRotations`, `RevealForRotation`, `ReportRotation` | connector | self |

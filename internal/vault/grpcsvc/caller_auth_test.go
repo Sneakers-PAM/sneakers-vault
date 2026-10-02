@@ -39,7 +39,7 @@ func newAuthFixture(t *testing.T) *authFixture {
 	t.Helper()
 	iss := oidctest.NewIssuer(t)
 	var allowed []string
-	for _, c := range []string{"gateway", "workflow", "sshbroker", "connector", "mcp"} {
+	for _, c := range []string{"gateway", "workflow", "sshbroker", "connector", "mcp", "migrate"} {
 		allowed = append(allowed, authNS+"/sneakers-"+c)
 	}
 	v, err := workloadauth.NewVerifier(workloadauth.Config{Issuer: iss.URL, CAFile: iss.CAFile, AllowedServiceAccounts: allowed}, log.Nop())
@@ -183,4 +183,49 @@ func TestCallerAuth_ServiceAccountOffTheListIsUnauthenticated(t *testing.T) {
 	if ev := f.ca.find("rpc.denied"); ev == nil || ev.Attributes["claimed_root"] != "true" {
 		t.Fatalf("audit = %+v", ev)
 	}
+}
+
+// sneakers-migrate seals and verifies as itself, and gets nothing beyond its
+// list: no actor of its own choosing, no version reveal.
+func TestCallerAuth_MigrateSealsAndVerifiesAsItselfOnly(t *testing.T) {
+	f := newAuthFixture(t)
+	ctx := f.as(t, "migrate")
+	resp, err := f.client.SealForImport(ctx, &vaultv1.SealForImportRequest{Items: []*vaultv1.SealForImportItem{{Fields: map[string]string{"password": "x"}}}})
+	if err != nil || len(resp.GetRecords()) != 1 {
+		t.Fatalf("seal: %v %v", resp, err)
+	}
+	if ev := f.ca.find("vault.import.seal"); ev == nil || ev.ActorUserID != "system:migrate" {
+		t.Fatalf("seal audit = %+v", ev)
+	}
+	got, err := f.reveal(ctx, nil)
+	if err != nil || got.GetValue() != "Sup3r$ecret" {
+		t.Fatalf("verify reveal: %v", err)
+	}
+	if _, err := f.client.GetSecret(ctx, &vaultv1.GetSecretRequest{Id: f.secret}); err != nil {
+		t.Fatalf("verify get: %v", err)
+	}
+
+	_, err = f.reveal(ctx, &vaultv1.ActorContext{UserId: "user-carol"})
+	wantCode(t, err, codes.PermissionDenied)
+	for method, call := range map[string]func() error{
+		vaultv1.VaultService_RevealSecretVersionField_FullMethodName: func() error {
+			_, err := f.client.RevealSecretVersionField(ctx, &vaultv1.RevealSecretVersionFieldRequest{SecretId: f.secret, VersionNo: 1, FieldKey: "password"})
+			return err
+		},
+		vaultv1.VaultService_ListSecretsInFolder_FullMethodName: func() error {
+			_, err := f.client.ListSecretsInFolder(ctx, &vaultv1.ListSecretsInFolderRequest{FolderId: f.folder})
+			return err
+		},
+	} {
+		f.ca.mu.Lock()
+		f.ca.events = nil
+		f.ca.mu.Unlock()
+		wantCode(t, call(), codes.PermissionDenied)
+		if ev := f.ca.find("rpc.denied"); ev == nil || ev.Attributes["method"] != method || ev.Attributes["reason"] != workloadauth.ReasonMethodNotAllowed {
+			t.Fatalf("%s: want the caller policy to refuse migrate, audit = %+v", method, ev)
+		}
+	}
+
+	_, err = f.client.SealForImport(f.as(t, "gateway"), &vaultv1.SealForImportRequest{Actor: &vaultv1.ActorContext{UserId: "user-carol", IsRoot: true}})
+	wantCode(t, err, codes.PermissionDenied)
 }
