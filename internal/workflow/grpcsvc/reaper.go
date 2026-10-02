@@ -47,9 +47,15 @@ func (s *Server) reapOnce(ctx context.Context) int {
 			l.Warn("reaper: bad run id", log.F("error", err.Error()), log.F("lease_id", d.ID), log.F("run_id", d.RunID))
 			continue
 		}
+		lease, _ := s.store.LeaseByRun(ctx, d.RunID)
 		if err := s.saga.Signal(ctx, runID, "checkin", nil); err != nil {
 			l.Warn("reaper: signal checkin", log.F("error", err.Error()), log.F("lease_id", d.ID))
 			continue
+		}
+		if lease != nil {
+			s.emit(ctx, "system:workflow", "lease.expire", lease.GetSecretId(), map[string]string{
+				"lease_id": lease.GetId(), "user_id": lease.GetUserId(), "expires_at": lease.GetExpiresAt(),
+			})
 		}
 		n++
 	}

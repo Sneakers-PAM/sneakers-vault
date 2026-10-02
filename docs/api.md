@@ -118,7 +118,8 @@ audit and notify are covered in [Calling other services](#calling-other-services
 - **Sensitive data switches:** with `allow_api_for_sensitive` off, a service account or
   personal token is refused super-sensitive fields on `RevealSecretFieldForPrincipal`,
   `PrepareSecretUse` and `RedeemSecretUse` (`PermissionDenied`, `API_SENSITIVE_DISABLED`, audited
-  as `secret.reveal.denied`). Step-up on reveal (`require_mfa_for_reveal`, overridden per folder
+  as `secret.reveal.denied`). Every refused reveal, copy or version reveal is audited the same
+  way, with the reason (`NO_ACCESS`, `RETIRED`, `API_SENSITIVE_DISABLED`) and the action. Step-up on reveal (`require_mfa_for_reveal`, overridden per folder
   by `SetFolderRevealStepUp`, site admin only) refuses a person's `RevealSecretField` or
   `CopySecret` without an MFA within `MFA_MAX_AGE` (`STEP_UP_REQUIRED`, audited as
   `secret.reveal.step_up_required`). See [configuration.md](configuration.md#security-settings).
@@ -154,8 +155,17 @@ audit and notify are covered in [Calling other services](#calling-other-services
   `CHECKOUT_LEASE_HELD` (`FailedPrecondition`, metadata `holder_user_id`; also when approving an
   access request while someone else holds the secret, and the request stays pending), and
   `CHECKIN_NOT_HOLDER` (`PermissionDenied`).
-- **Audit:** `checkout` (lease id, expiry), `checkin` (lease id), and `checkout.denied` /
-  `checkin.denied` (reason), under the user, with the secret as subject. Never a value.
+- **Audit:** the workflow records, to the audit service (activity tier), never a value, a
+  comment body or a reason's text:
+  - `checkout` (lease id, expiry), `checkin` (lease id), `checkout.denied` and `checkin.denied`
+    (reason), under the user, with the secret as subject;
+  - `request.create` (kind, secret or folder ids), under the requester, with the request as
+    subject;
+  - `request.approve` (requester, secret, grant hours) and `request.deny`, under the approver;
+    `approval.denied` (reason) for a refused resolve;
+  - `request.comment` (comment id), under the author;
+  - `lease.expire` (lease id, user, expiry), under `system:workflow`, when the reaper closes an
+    expired lease.
 - **Approvals:** an approved access request grants temporary read on the secret in the vault for
   the approver's chosen window (`grant_hours`, clamped to 1 to 24, default from the service), and
   check-in revokes it. Folder-move and secret-move requests are resolved by a site admin, and the

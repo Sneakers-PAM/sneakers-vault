@@ -94,3 +94,23 @@ func (s *Server) SetFolderRevealStepUp(ctx context.Context, req *vaultv1.SetFold
 	s.emitAttrs(ctx, req.GetActor().GetUserId(), "folder.reveal_step_up.set", f.GetId(), false, map[string]string{"mode": req.GetMode().String()})
 	return &vaultv1.SetFolderRevealStepUpResponse{Folder: f}, nil
 }
+
+// Reasons recorded on secret.reveal.denied.
+const (
+	ReasonNoAccess = "NO_ACCESS"
+	ReasonRetired  = "RETIRED"
+)
+
+// auditRevealDenied records a refused reveal, copy or version reveal. Never a
+// value.
+func (s *Server) auditRevealDenied(ctx context.Context, actor *vaultv1.ActorContext, subject, action, reason string) {
+	id := actor.GetUserId()
+	if id == "" || actor.GetPrincipalKind() == vaultv1.PrincipalKind_PRINCIPAL_KIND_SERVICE_ACCOUNT || actor.GetPrincipalKind() == vaultv1.PrincipalKind_PRINCIPAL_KIND_WORKLOAD {
+		id = actor.GetPrincipalId()
+	}
+	s.lg(ctx).Info("reveal refused", log.F("subject", subject), log.F("action", action), log.F("reason", reason), log.F("principal_kind", actor.GetPrincipalKind().String()))
+	s.emitAttrs(ctx, id, "secret.reveal.denied", subject, true, map[string]string{
+		"reason": reason, "action": action,
+		"principal_kind": actor.GetPrincipalKind().String(), "token_id": actor.GetTokenId(),
+	})
+}
