@@ -402,12 +402,14 @@ func (s *Server) RevealSecretField(ctx context.Context, req *vaultv1.RevealSecre
 		return nil, errNotFound("secret")
 	}
 	if sec.GetRetired() {
+		s.auditRevealDenied(ctx, req.GetActor(), sec.Id+"#"+req.GetFieldKey(), "reveal", ReasonRetired)
 		return nil, status.Error(codes.FailedPrecondition, "secret is retired")
 	}
 	if !s.isSensitiveField(s.findType(sec.TypeId), req.GetFieldKey()) {
 		return nil, status.Error(codes.InvalidArgument, "field is not sensitive")
 	}
 	if !s.canRead(req.GetActor(), sec) {
+		s.auditRevealDenied(ctx, req.GetActor(), sec.Id+"#"+req.GetFieldKey(), "reveal", ReasonNoAccess)
 		return nil, status.Error(codes.PermissionDenied, "not permitted to reveal this secret")
 	}
 	if err := s.checkRevealStepUp(ctx, req.GetActor(), sec, "reveal"); err != nil {
@@ -467,10 +469,12 @@ func (s *Server) revealForPrincipal(ctx context.Context, actor *vaultv1.ActorCon
 		return nil, errNotFound("secret")
 	}
 	if sec.GetRetired() {
+		s.auditRevealDenied(ctx, actor, sec.Id+"#"+fieldKey, "reveal", ReasonRetired)
 		return nil, status.Error(codes.FailedPrecondition, "secret is retired")
 	}
 	sensitive := s.isSensitiveField(s.findType(sec.TypeId), fieldKey)
 	if !s.canRead(actor, sec) {
+		s.auditRevealDenied(ctx, actor, sec.Id+"#"+fieldKey, "reveal", ReasonNoAccess)
 		return nil, status.Error(codes.PermissionDenied, "not permitted to reveal this secret")
 	}
 	if err := s.checkAPIForSensitive(ctx, actor, sec, fieldKey, "reveal"); err != nil {
@@ -550,9 +554,11 @@ func (s *Server) CopySecret(ctx context.Context, req *vaultv1.CopySecretRequest)
 		return nil, errNotFound("secret")
 	}
 	if sec.GetRetired() {
+		s.auditRevealDenied(ctx, req.GetActor(), sec.Id, "copy", ReasonRetired)
 		return nil, status.Error(codes.FailedPrecondition, "secret is retired")
 	}
 	if !s.canRead(req.GetActor(), sec) {
+		s.auditRevealDenied(ctx, req.GetActor(), sec.Id, "copy", ReasonNoAccess)
 		return nil, status.Error(codes.PermissionDenied, "not permitted to copy this secret")
 	}
 	if err := s.checkRevealStepUp(ctx, req.GetActor(), sec, "copy"); err != nil {

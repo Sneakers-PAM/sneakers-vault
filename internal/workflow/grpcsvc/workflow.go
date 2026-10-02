@@ -176,6 +176,7 @@ func (s *Server) CreateAccessRequest(ctx context.Context, req *workflowv1.Create
 	if err := s.store.InsertRequest(ctx, r); err != nil {
 		return nil, err
 	}
+	s.auditRequestCreated(ctx, r)
 	return &workflowv1.CreateAccessRequestResponse{Request: r}, nil
 }
 
@@ -198,6 +199,7 @@ func (s *Server) CreateFolderMoveRequest(ctx context.Context, req *workflowv1.Cr
 	if err := s.store.InsertRequest(ctx, r); err != nil {
 		return nil, err
 	}
+	s.auditRequestCreated(ctx, r)
 	return &workflowv1.CreateFolderMoveRequestResponse{Request: r}, nil
 }
 
@@ -220,6 +222,7 @@ func (s *Server) CreateSecretMoveRequest(ctx context.Context, req *workflowv1.Cr
 	if err := s.store.InsertRequest(ctx, r); err != nil {
 		return nil, err
 	}
+	s.auditRequestCreated(ctx, r)
 	return &workflowv1.CreateSecretMoveRequestResponse{Request: r}, nil
 }
 
@@ -262,6 +265,7 @@ func (s *Server) ResolveApproval(ctx context.Context, req *workflowv1.ResolveApp
 	if r == nil {
 		return nil, fmt.Errorf("approval request %q not found", req.GetId())
 	}
+	s.auditResolved(ctx, req.GetActor().GetUserId(), r, req.GetApprove(), req.GetGrantHours())
 	// On approval, grant the requester time-boxed access by running the checkout
 	// saga on their behalf: it issues (and persists) the lease, then parks at
 	// wait-for-checkin — so the reaper and rotate-on-return handle it exactly
@@ -343,6 +347,7 @@ func (s *Server) AddApprovalComment(ctx context.Context, req *workflowv1.AddAppr
 	if err := s.store.AddComment(ctx, req.GetRequestId(), c); err != nil {
 		return nil, err
 	}
+	s.emit(ctx, c.GetAuthorUserId(), "request.comment", req.GetRequestId(), map[string]string{"comment_id": c.GetId()})
 	r, err := s.store.GetRequest(ctx, req.GetRequestId())
 	if err != nil {
 		return nil, err
