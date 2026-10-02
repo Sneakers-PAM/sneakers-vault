@@ -1,0 +1,134 @@
+// Copyright 2026 The Sneakers-PAM Authors
+// SPDX-License-Identifier: Apache-2.0
+
+package workloadauth
+
+import (
+	"errors"
+	"fmt"
+	"net/url"
+	"strings"
+)
+
+// Environment variables read by ConfigFromEnv and DialOptionFromEnv.
+const (
+	EnvIssuer                 = "WORKLOAD_OIDC_ISSUER"
+	EnvJWKSURL                = "WORKLOAD_OIDC_JWKS_URL"
+	EnvCAFile                 = "WORKLOAD_OIDC_CA_FILE"
+	EnvBearerFile             = "WORKLOAD_OIDC_BEARER_FILE" // #nosec G101 -- an environment variable name, not a credential
+	EnvAudience               = "WORKLOAD_AUDIENCE"
+	EnvAllowedServiceAccounts = "WORKLOAD_ALLOWED_SERVICEACCOUNTS"
+	EnvTokenFile              = "WORKLOAD_TOKEN_FILE" // #nosec G101 -- an environment variable name, not a credential
+)
+
+// DefaultAudience is the token audience required when WORKLOAD_AUDIENCE is unset.
+const DefaultAudience = "sneakers"
+
+// DefaultTokenFile is where the charts mount the caller's projected token.
+const DefaultTokenFile = "/var/run/secrets/sneakers/token" // #nosec G101 -- a file path, not a credential
+
+// Config configures the Verifier.
+type Config struct {
+	// Issuer must equal the token's iss exactly.
+	Issuer string
+	// JWKSURL overrides discovery through <Issuer>/.well-known/openid-configuration.
+	JWKSURL string
+	// CAFile is an extra PEM bundle trusted for the discovery and JWKS fetch.
+	CAFile string
+	// BearerFile holds a token sent on the discovery and JWKS fetch. It is
+	// re-read on every fetch because projected tokens rotate in place.
+	BearerFile string
+	// Audience must appear in the token's aud. Empty means DefaultAudience.
+	Audience string
+	// AllowedServiceAccounts are the "<namespace>/<serviceaccount>" entries
+	// that may call this service at all.
+	AllowedServiceAccounts []string
+}
+
+// ConfigFromEnv reads the WORKLOAD_* variables. ok is false when
+// WORKLOAD_OIDC_ISSUER is unset, meaning workload authentication is not
+// configured. A set issuer with a missing or malformed value elsewhere is an
+// error, so a typo fails start-up instead of silently refusing every caller.
+func ConfigFromEnv(getenv func(string) string) (cfg Config, ok bool, err error) {
+	raw := strings.TrimSpace(getenv(EnvIssuer))
+	if raw == "" {
+		return Config{}, false, nil
+	}
+	cfg = Config{
+		Issuer:     raw,
+		JWKSURL:    strings.TrimSpace(getenv(EnvJWKSURL)),
+		CAFile:     strings.TrimSpace(getenv(EnvCAFile)),
+		BearerFile: strings.TrimSpace(getenv(EnvBearerFile)),
+		Audience:   strings.TrimSpace(getenv(EnvAudience)),
+	}
+	if cfg.Audience == "" {
+		cfg.Audience = DefaultAudience
+	}
+	cfg.AllowedServiceAccounts, err = parseAllowed(getenv(EnvAllowedServiceAccounts))
+	if err != nil {
+		return Config{}, false, err
+	}
+	if err := cfg.validate(); err != nil {
+		return Config{}, false, err
+	}
+	return cfg, true, nil
+}
+
+func (c Config) validate() error {
+	if err := requireHTTPS(EnvIssuer, c.Issuer); err != nil {
+		return err
+	}
+	if c.JWKSURL != "" {
+		if err := requireHTTPS(EnvJWKSURL, c.JWKSURL); err != nil {
+			return err
+		}
+	}
+	if c.Audience == "" {
+		return fmt.Errorf("workloadauth: %s is empty", EnvAudience)
+	}
+	if len(c.AllowedServiceAccounts) == 0 {
+		return fmt.Errorf("workloadauth: %s is required when %s is set", EnvAllowedServiceAccounts, EnvIssuer)
+	}
+	for _, e := range c.AllowedServiceAccounts {
+		if err := checkEntry(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// requireHTTPS rejects plain-http key sources: whoever can rewrite the JWKS in
+// transit can mint any caller identity.
+func requireHTTPS(name, raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return fmt.Errorf("workloadauth: %s must be an absolute https URL, got %q", name, raw)
+	}
+	return nil
+}
+
+func parseAllowed(raw string) ([]string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, fmt.Errorf("workloadauth: %s is required when %s is set", EnvAllowedServiceAccounts, EnvIssuer)
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if err := checkEntry(p); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+var errEntry = errors.New("must be <namespace>/<serviceaccount>")
+
+func checkEntry(e string) error {
+	ns, sa, found := strings.Cut(e, "/")
+	if !found || ns == "" || sa == "" || strings.ContainsAny(e, ": \t") || strings.Contains(sa, "/") {
+		return fmt.Errorf("workloadauth: %s entry %q %w", EnvAllowedServiceAccounts, e, errEntry)
+	}
+	return nil
+}
