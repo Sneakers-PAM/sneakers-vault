@@ -6,6 +6,7 @@ package grpcsvc
 import (
 	"context"
 
+	log "github.com/Bugs5382/go-log"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -138,7 +139,14 @@ func (s *Server) SaveTarget(ctx context.Context, req *vaultv1.SaveTargetRequest)
 	if findByID(s.connections, in.GetConnectionId()) == nil {
 		return nil, errNotFound("connection")
 	}
+	var hostKeyChange map[string]string
 	if in.GetId() == "" {
+		keys, change, err := applyHostKeys(actor, nil, in.GetSshHostKeys())
+		if err != nil {
+			s.lg(ctx).Warn("target save refused: SSH host keys", log.F("actor_user_id", actor.GetUserId()), log.F("reason", status.Convert(err).Message()))
+			return nil, err
+		}
+		in.SshHostKeys, hostKeyChange = keys, change
 		in.Id = s.nextID("target")
 		// A non-admin's target is personal (owned by the actor); an admin's is
 		// shared (owner left empty). The caller cannot spoof another owner.
@@ -158,12 +166,24 @@ func (s *Server) SaveTarget(ctx context.Context, req *vaultv1.SaveTargetRequest)
 		if !admin && existing.GetOwnerUserId() != actor.GetUserId() {
 			return nil, status.Error(codes.PermissionDenied, "not permitted to edit this target")
 		}
+		keys, change, err := applyHostKeys(actor, existing.GetSshHostKeys(), in.GetSshHostKeys())
+		if err != nil {
+			s.lg(ctx).Warn("target save refused: SSH host keys", log.F("target_id", existing.GetId()),
+				log.F("actor_user_id", actor.GetUserId()), log.F("reason", status.Convert(err).Message()))
+			return nil, err
+		}
+		existing.SshHostKeys, hostKeyChange = keys, change
 		existing.Name, existing.Hostname = in.GetName(), in.GetHostname()
 		existing.ConnectionId, existing.Description = in.GetConnectionId(), in.GetDescription()
 		existing.Kind, existing.Domain, existing.Realm = in.GetKind(), in.GetDomain(), in.GetRealm()
 		in = existing
 	}
 	s.emit(ctx, req.GetActor().GetUserId(), "target.save", in.GetId(), false)
+	if hostKeyChange != nil {
+		s.lg(ctx).Info("target SSH host keys changed", log.F("target_id", in.GetId()), log.F("actor_user_id", actor.GetUserId()),
+			log.F("added", hostKeyChange["added"]), log.F("removed", hostKeyChange["removed"]))
+		s.emitAttrs(ctx, actor.GetUserId(), "target.host_keys.change", in.GetId(), false, hostKeyChange)
+	}
 	return &vaultv1.SaveTargetResponse{Target: in}, nil
 }
 

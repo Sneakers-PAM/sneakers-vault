@@ -8888,17 +8888,23 @@ func (x *Connection) GetBootstrap() bool {
 }
 
 type Target struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Hostname      string                 `protobuf:"bytes,3,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	ConnectionId  string                 `protobuf:"bytes,4,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
-	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	SecretCount   int32                  `protobuf:"varint,6,opt,name=secret_count,json=secretCount,proto3" json:"secret_count,omitempty"` // output-only: secrets pointing at this target
-	Kind          string                 `protobuf:"bytes,7,opt,name=kind,proto3" json:"kind,omitempty"`
-	Domain        string                 `protobuf:"bytes,8,opt,name=domain,proto3" json:"domain,omitempty"`
-	Realm         string                 `protobuf:"bytes,9,opt,name=realm,proto3" json:"realm,omitempty"`
-	OwnerUserId   string                 `protobuf:"bytes,10,opt,name=owner_user_id,json=ownerUserId,proto3" json:"owner_user_id,omitempty"` // empty = shared (admin-owned); set = personal (owner-scoped)
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Id           string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name         string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Hostname     string                 `protobuf:"bytes,3,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	ConnectionId string                 `protobuf:"bytes,4,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	Description  string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	SecretCount  int32                  `protobuf:"varint,6,opt,name=secret_count,json=secretCount,proto3" json:"secret_count,omitempty"` // output-only: secrets pointing at this target
+	Kind         string                 `protobuf:"bytes,7,opt,name=kind,proto3" json:"kind,omitempty"`
+	Domain       string                 `protobuf:"bytes,8,opt,name=domain,proto3" json:"domain,omitempty"`
+	Realm        string                 `protobuf:"bytes,9,opt,name=realm,proto3" json:"realm,omitempty"`
+	OwnerUserId  string                 `protobuf:"bytes,10,opt,name=owner_user_id,json=ownerUserId,proto3" json:"owner_user_id,omitempty"` // empty = shared (admin-owned); set = personal (owner-scoped)
+	// SSH host keys the broker accepts for this target, one OpenSSH public key
+	// per entry in authorized_keys form ("ssh-ed25519 AAAA... comment"). Public,
+	// not secret. Set by a site admin; checked on save (each must parse, carry
+	// no options and not be a private key or certificate). A save replaces the
+	// whole list; empty means not pinned, and the broker refuses to connect.
+	SshHostKeys   []string `protobuf:"bytes,11,rep,name=ssh_host_keys,json=sshHostKeys,proto3" json:"ssh_host_keys,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9001,6 +9007,13 @@ func (x *Target) GetOwnerUserId() string {
 		return x.OwnerUserId
 	}
 	return ""
+}
+
+func (x *Target) GetSshHostKeys() []string {
+	if x != nil {
+		return x.SshHostKeys
+	}
+	return nil
 }
 
 type ListConnectionsRequest struct {
@@ -14037,7 +14050,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\ttarget_id\x18\b \x01(\tR\btargetId\x120\n" +
 	"\x14privileged_secret_id\x18\t \x01(\tR\x12privilegedSecretId\x12\x1c\n" +
 	"\tbootstrap\x18\n" +
-	" \x01(\bR\tbootstrap\"\x98\x02\n" +
+	" \x01(\bR\tbootstrap\"\xbc\x02\n" +
 	"\x06Target\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -14049,7 +14062,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x06domain\x18\b \x01(\tR\x06domain\x12\x14\n" +
 	"\x05realm\x18\t \x01(\tR\x05realm\x12\"\n" +
 	"\rowner_user_id\x18\n" +
-	" \x01(\tR\vownerUserId\"\x18\n" +
+	" \x01(\tR\vownerUserId\x12\"\n" +
+	"\rssh_host_keys\x18\v \x03(\tR\vsshHostKeys\"\x18\n" +
 	"\x16ListConnectionsRequest\"Z\n" +
 	"\x17ListConnectionsResponse\x12?\n" +
 	"\vconnections\x18\x01 \x03(\v2\x1d.sneakers.vault.v1.ConnectionR\vconnections\"\x8d\x01\n" +

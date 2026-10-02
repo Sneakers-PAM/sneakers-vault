@@ -152,7 +152,7 @@ func (p *pgStore) Load(ctx context.Context) (*state, bool, error) {
 
 func loadState(ctx context.Context, q postgres.Querier) (*state, bool, error) {
 	st := &state{records: map[string]crypto.Record{}}
-	for _, load := range []func(context.Context, postgres.Querier, *state) error{loadCollections, loadTargetRulesets, loadSettings, loadRecords} {
+	for _, load := range []func(context.Context, postgres.Querier, *state) error{loadCollections, loadTargetHostKeys, loadTargetRulesets, loadSettings, loadRecords} {
 		if err := load(ctx, q, st); err != nil {
 			return nil, false, err
 		}
@@ -283,7 +283,7 @@ func (p *pgStore) Persist(ctx context.Context, st *state) error {
 }
 
 func persistState(ctx context.Context, tx postgres.Tx, st *state) error {
-	for _, save := range []func(context.Context, postgres.Tx, *state) error{persistCollections, persistTargetRulesets, persistSettings, persistRecords} {
+	for _, save := range []func(context.Context, postgres.Tx, *state) error{persistCollections, persistTargetHostKeys, persistTargetRulesets, persistSettings, persistRecords} {
 		if err := save(ctx, tx, st); err != nil {
 			return err
 		}
@@ -333,7 +333,7 @@ func persistCollections(ctx context.Context, tx postgres.Tx, st *state) error {
 	if err := replaceCollection(ctx, tx, "connections", st.connections, func(c *vaultv1.Connection) string { return c.GetId() }); err != nil {
 		return err
 	}
-	if err := replaceCollection(ctx, tx, "targets", st.targets, func(t *vaultv1.Target) string { return t.GetId() }); err != nil {
+	if err := replaceCollection(ctx, tx, "targets", targetsWithoutHostKeys(st.targets), func(t *vaultv1.Target) string { return t.GetId() }); err != nil {
 		return err
 	}
 	if err := replaceCollection(ctx, tx, "password_policies", st.policies, func(pp *vaultv1.PasswordPolicy) string { return pp.GetId() }); err != nil {

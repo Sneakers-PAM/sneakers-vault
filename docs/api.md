@@ -58,6 +58,17 @@ definitions are [vault.proto](../proto/sneakers/vault/v1/vault.proto) and
 - **Connections:** `SaveConnection` (site admin only) changes `target_id` and
   `privileged_secret_id` only when the request sets them; a change of the privileged secret is
   audited as `connection.privileged_secret.change`.
+- **SSH host keys:** `Target.ssh_host_keys` holds the host keys the SSH broker accepts for the
+  target, one OpenSSH public key per entry in authorized_keys form (`ssh-ed25519 AAAA... comment`).
+  They are public keys, not secrets. `SaveTarget` replaces the whole list: each entry must parse,
+  carry no options, and be neither a private key nor a certificate (else `InvalidArgument`, naming
+  the entry by position only); repeats of one key are dropped; at most 16 per target. Only a human
+  site admin may add, change or clear them (`PermissionDenied` otherwise); anyone who may edit the
+  target can save it with the pins it already has. A change is audited as
+  `target.host_keys.change` with the SHA256 fingerprints `added` and `removed`, never the keys.
+  `ListTargets` returns them. An empty list means the target isn't pinned, and the broker refuses
+  to connect to it. They're stored in `target_ssh_host_keys` (migration `0002`) with their
+  fingerprints.
 - **Type changes:** see [type-change.md](type-change.md).
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
   through `seed-catalog`.
