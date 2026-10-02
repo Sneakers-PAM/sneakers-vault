@@ -79,7 +79,7 @@ func (s *Server) RequestHeartbeatForPrincipal(ctx context.Context, req *vaultv1.
 	}
 	if !requested {
 		l.Info().Str("secret_id", sec.GetId()).Msg("heartbeat request rate-limited")
-		return nil, status.Error(codes.ResourceExhausted, "a check was requested in the last minute; read the status instead")
+		return nil, status.Error(codes.ResourceExhausted, "the last check request was under a minute ago; read the status instead")
 	}
 	l.Info().Str("secret_id", sec.GetId()).Str("principal_kind", actor.GetPrincipalKind().String()).Msg("heartbeat requested on demand")
 	now := s.clock()

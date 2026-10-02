@@ -102,7 +102,7 @@ func (h *heartbeatStore) Exists(ctx context.Context, secretID string) (bool, err
 	return true, nil
 }
 
-// RequestNow makes a scheduled heartbeat due now unless one was requested
+// RequestNow makes a scheduled heartbeat due now unless the last request came
 // within minGap. requested is false when the row exists but is rate-limited;
 // exists is false when the secret has no schedule row at all.
 func (h *heartbeatStore) RequestNow(ctx context.Context, secretID string, minGap time.Duration) (requested, exists bool, err error) {
