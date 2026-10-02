@@ -129,7 +129,7 @@ func randKEK(t *testing.T) string {
 // (seeding kek-v1); a second boot with the same KEK passes the unwrap check.
 func TestMigrateAfterPreflight_CorrectKEK_MigratesAndBoots(t *testing.T) {
 	dsn := freshDB(t)
-	migrateTo(t, dsn, "0002")
+	migrateTo(t, dsn, "0001")
 	t.Setenv("VAULT_ROOT_KEK", randKEK(t))
 	ctx := context.Background()
 

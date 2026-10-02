@@ -68,8 +68,7 @@ audit and notify are covered in [Calling other services](#calling-other-services
   target can save it with the pins it already has. A change is audited as
   `target.host_keys.change` with the SHA256 fingerprints `added` and `removed`, never the keys.
   `ListTargets` returns them. An empty list means the target isn't pinned, and the broker refuses
-  to connect to it. They're stored in `target_ssh_host_keys` (migration `0002`) with their
-  fingerprints.
+  to connect to it. They're stored in `target_ssh_host_keys` with their fingerprints.
 - **Type changes:** see [type-change.md](type-change.md).
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
   through `seed-catalog`.
