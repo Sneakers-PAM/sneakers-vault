@@ -32,7 +32,7 @@ const (
 // is no human actor behind a lease-lifecycle transition (the workflow engine
 // drives it), so a system root principal is the correct caller identity.
 func systemAdminActor() *vaultv1.ActorContext {
-	return &vaultv1.ActorContext{UserId: "system", IsRoot: true}
+	return &vaultv1.ActorContext{UserId: "system:workflow", IsRoot: true}
 }
 
 // isTempReadGrant reports whether r is the exact temporary rule this flow adds:

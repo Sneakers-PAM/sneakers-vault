@@ -190,7 +190,7 @@ func TestCreateSecretSchedulesRotationWhenPolicyHasInterval(t *testing.T) {
 	carol := &vaultv1.ActorContext{UserId: "user-carol"}
 
 	typ, err := s.CreateSecretType(ctx, &vaultv1.CreateSecretTypeRequest{
-		Actor: carol, Type: &vaultv1.SecretType{
+		Actor: siteAdmin, Type: &vaultv1.SecretType{
 			Name: "Rotatable Test Type", Heartbeat: true, Rotation: true,
 			Fields: []*vaultv1.SecretFieldDef{
 				{Key: "username", Label: "Username", Kind: vaultv1.FieldKind_FIELD_KIND_TEXT, Required: true},

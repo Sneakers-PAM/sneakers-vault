@@ -35,6 +35,13 @@ audit and notify are covered in [Calling other services](#calling-other-services
   I informed) on folders, secrets and targets, evaluated target first and then up the folder
   chain. Folder owners get read, approve and author. Site admins and root read everything but are
   never automatic approvers or authors.
+- **Admin authority:** the vault checks it itself and doesn't rely on the gateway. Security
+  settings, password policies, secret types, extensions, connections and `SeedBuiltins` need a
+  human site admin or root whose actor names a real user (an empty or `system` user id never
+  counts). Folder rules, renaming a folder and reordering a folder's children need the folder's
+  owner or such an admin; reordering top-level folders needs an admin. A refusal is
+  `PermissionDenied` with a `google.rpc.ErrorInfo` in domain `sneakers.vault`, reason
+  `NOT_SITE_ADMIN` or `NOT_FOLDER_OWNER`, and is audited as `authz.denied` (method, reason).
 - **Machine principals:** service accounts, workloads and personal tokens act only through the
   `*ForPrincipal` calls, which reject a human actor. Their admin flags are ignored, they never
   own a folder or target, and they get nothing from an `everyone` allow (an `everyone` deny still
@@ -119,6 +126,11 @@ audit and notify are covered in [Calling other services](#calling-other-services
   the approver's chosen window (`grant_hours`, clamped to 1 to 24, default from the service), and
   check-in revokes it. Folder-move and secret-move requests are resolved by a site admin, and the
   approval performs the move.
+- **Who may resolve:** approving or denying an access request needs RACI A on the secret (the
+  vault's `GetMySecretAccess`); a move request needs a site admin naming a real user. Nobody
+  resolves their own request. Refusals are `PermissionDenied` with reason `NOT_APPROVER` or
+  `SELF_APPROVAL` (domain `sneakers.workflow`), audited as `approval.denied`, and the request
+  stays pending.
 - **Retention:** resolved requests and their comments are purged after
   `request_history_retention_days` (vault security settings, default 90), daily and at start.
 

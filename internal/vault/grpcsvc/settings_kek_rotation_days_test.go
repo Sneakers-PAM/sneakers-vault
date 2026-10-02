@@ -39,7 +39,7 @@ func TestEnsureSecuritySettingsSeedsKekRotationDays(t *testing.T) {
 // value and must NOT be coerced to the default, unlike session_ttl_seconds.
 func TestUpdateSecuritySettingsKekRotationDays(t *testing.T) {
 	ctx := context.Background()
-	actor := &vaultv1.ActorContext{UserId: "user-carol"}
+	actor := siteAdmin
 
 	t.Run("set-30", func(t *testing.T) {
 		s := newServer(t)

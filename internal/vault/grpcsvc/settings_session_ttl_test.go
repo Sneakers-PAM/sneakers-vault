@@ -29,7 +29,7 @@ func TestSessionTTLDefault(t *testing.T) {
 // the [15m, 60m] policy bounds and passes valid values through unchanged.
 func TestSessionTTLClamp(t *testing.T) {
 	ctx := context.Background()
-	actor := &vaultv1.ActorContext{UserId: "user-carol"}
+	actor := siteAdmin
 
 	cases := []struct {
 		name string

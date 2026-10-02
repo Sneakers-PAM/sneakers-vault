@@ -69,6 +69,9 @@ func (s *Server) ListPasswordPolicies(_ context.Context, _ *vaultv1.ListPassword
 }
 
 func (s *Server) SavePasswordPolicy(ctx context.Context, req *vaultv1.SavePasswordPolicyRequest) (*vaultv1.SavePasswordPolicyResponse, error) {
+	if err := s.requireSiteAdmin(ctx, req.GetActor(), "SavePasswordPolicy"); err != nil {
+		return nil, err
+	}
 	in := req.GetPolicy()
 	if in == nil || in.GetName() == "" {
 		return nil, status.Error(codes.InvalidArgument, "policy name is required")
@@ -96,6 +99,9 @@ func (s *Server) SavePasswordPolicy(ctx context.Context, req *vaultv1.SavePasswo
 }
 
 func (s *Server) DeletePasswordPolicy(ctx context.Context, req *vaultv1.DeletePasswordPolicyRequest) (*vaultv1.DeletePasswordPolicyResponse, error) {
+	if err := s.requireSiteAdmin(ctx, req.GetActor(), "DeletePasswordPolicy"); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	p := findByID(s.policies, req.GetId())
@@ -186,6 +192,9 @@ func settingsWithDefaults(in *vaultv1.SecuritySettings) *vaultv1.SecuritySetting
 
 // UpdateSecuritySettings applies only the fields present on the request.
 func (s *Server) UpdateSecuritySettings(ctx context.Context, req *vaultv1.UpdateSecuritySettingsRequest) (*vaultv1.UpdateSecuritySettingsResponse, error) {
+	if err := s.requireSiteAdmin(ctx, req.GetActor(), "UpdateSecuritySettings"); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.settings == nil {

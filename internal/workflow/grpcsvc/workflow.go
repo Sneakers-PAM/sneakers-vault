@@ -243,6 +243,9 @@ func clampGrantHours(h int32) int {
 }
 
 func (s *Server) ResolveApproval(ctx context.Context, req *workflowv1.ResolveApprovalRequest) (*workflowv1.ResolveApprovalResponse, error) {
+	if err := s.checkApprover(ctx, req.GetActor(), req.GetId()); err != nil {
+		return nil, err
+	}
 	if req.GetApprove() {
 		if err := s.checkGrantFree(ctx, req.GetId()); err != nil {
 			return nil, err
