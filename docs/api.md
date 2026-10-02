@@ -1,7 +1,9 @@
 # API
 
-Both services speak gRPC with plaintext transport and trust the actor context the caller sends.
-Only the gateway, which sets that context from the signed-in session, should reach them. The full
+Both services speak gRPC with plaintext transport. Every call is authenticated with the caller's
+workload identity and checked against a per-method allow-list (see [Callers](#callers)); only a
+caller allowed to act on behalf of a user may send an actor context, which the gateway sets from
+the signed-in session. The full
 definitions are [vault.proto](../proto/sneakers/vault/v1/vault.proto) and
 [workflow.proto](../proto/sneakers/workflow/v1/workflow.proto); the generated Go is under
 `gen/go/sneakers/`. Both servers also serve gRPC health and reflection. The vault's own calls to
@@ -79,9 +81,9 @@ audit and notify are covered in [Calling other services](#calling-other-services
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
   through `seed-catalog`.
 - **Key rotation:** `RotateKek` runs as a human site admin, or as a `system:<name>` principal listed
-  in `VAULT_KEK_ROTATION_PRINCIPALS`, sent with `principal_kind: PRINCIPAL_KIND_WORKLOAD`. The
-  gateway never sends a workload actor, so that path is a direct call to the vault's gRPC port,
-  which trusts the actor it's given. Scheduled rotations are audited as `system:kek-scheduler`.
+  in `VAULT_KEK_ROTATION_PRINCIPALS`, sent with `principal_kind: PRINCIPAL_KIND_WORKLOAD`. Only the
+  gateway may call `RotateKek` and it never sends a workload actor, so with workload
+  authentication on that path is reachable only with `WORKLOAD_AUTH=disabled`. Scheduled rotations are audited as `system:kek-scheduler`.
 - **Delete:** with `ENVIRONMENT` set to `prod` or `production`, hard delete needs a human site
   admin or root.
 
@@ -108,11 +110,26 @@ audit and notify are covered in [Calling other services](#calling-other-services
 ## Callers
 
 Every call is authenticated with the caller's workload identity; see
-[workload-auth.md](workload-auth.md). Each service checks the caller against a per-method
+[workload-auth.md](workload-auth.md). A service refuses to start without it unless
+`WORKLOAD_AUTH=disabled` (local development only), in which case every caller is trusted as
+before. Each service checks the caller against a per-method
 allow-list in code (`CallerPolicy` in `internal/vault/grpcsvc/callers.go` and
 `internal/workflow/grpcsvc/callers.go`). **On behalf** means the caller may pass an end-user
 actor; **self** means it acts only as itself, and a request from it that carries an actor is
 refused with `PermissionDenied`. Any caller or method not listed is refused.
+
+- Codes: no token, or a token that fails verification, including a valid one from a service
+  account that isn't on `WORKLOAD_ALLOWED_SERVICEACCOUNTS`: `Unauthenticated`. A listed caller on
+  a method outside its allow-list, or a self caller that sends an actor: `PermissionDenied`. No
+  issuer key set loaded yet: `Unavailable`.
+- A refusal is audited as `rpc.denied` in the audit tier, under the actor `service:<caller>` (or
+  `service:unauthenticated`), never under the user a request claimed. The attributes carry the
+  method, caller, service account, code and reason, plus the claimed `user_id`, root, site-admin
+  and principal-kind flags when the request had an actor. The workflow logs its refusals.
+- The vault acts for the workflow as `system:workflow` (root on the workflow's methods only).
+  The workflow sends no actor on those calls.
+- The connector's pull-API also checks the worker identity in the request body
+  ([worker-identity.md](worker-identity.md)).
 
 | Service | Methods | Caller | Access |
 |---|---|---|---|

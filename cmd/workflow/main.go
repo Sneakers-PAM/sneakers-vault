@@ -52,6 +52,10 @@ func main() {
 		}
 	}()
 
+	// Service-to-service authentication fails closed: check it before the
+	// migrations run.
+	mustWorkloadAuthConfig(logger)
+
 	migrationsDir := os.Getenv("MIGRATIONS_DIR")
 	if migrationsDir == "" {
 		migrationsDir = "migrations/workflow"
@@ -110,10 +114,11 @@ func main() {
 	go svc.RunReaper(ctx, reaperInterval)
 	go svc.RunHistoryPurge(ctx, historyPurgeInterval, vault)
 
+	authOpts := mustCallerAuth(ctx, logger, svcLog)
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
 	if err := server.RunWithLogger(ctx, cfg.GRPCPort, svcLog, func(gs *grpc.Server) {
 		grpcsvc.Register(gs, svc)
-	}); err != nil {
+	}, authOpts...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
 	}
 }

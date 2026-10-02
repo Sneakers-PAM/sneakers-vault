@@ -31,7 +31,6 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const serviceName = "vault"
@@ -185,9 +184,14 @@ func main() {
 		}
 	}()
 
+	// Service-to-service authentication fails closed: check it before anything
+	// else so a missing issuer stops the boot with the schema untouched.
+	mustWorkloadAuthConfig(logger)
+	dialOpts := mustDialOptions(logger)
+
 	// Direct (no-broker) audit: every mutation records to the append-only chain.
 	auditAddr := env("AUDIT_ADDR", "localhost:9194")
-	auditConn, err := grpc.NewClient(auditAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), server.ClientStatsHandler())
+	auditConn, err := grpc.NewClient(auditAddr, dialOpts...)
 	if err != nil {
 		logger.Fatal().Err(err).Str("audit", auditAddr).Msg("dial audit")
 	}
@@ -195,7 +199,7 @@ func main() {
 	auditor := auditclient.New(auditv1.NewAuditServiceClient(auditConn))
 
 	notifyAddr := env("NOTIFY_ADDR", "localhost:9195")
-	notifyConn, err := grpc.NewClient(notifyAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), server.ClientStatsHandler())
+	notifyConn, err := grpc.NewClient(notifyAddr, dialOpts...)
 	if err != nil {
 		logger.Fatal().Err(err).Str("notify", notifyAddr).Msg("dial notify")
 	}
@@ -278,8 +282,12 @@ func main() {
 		srv.SetInvalidation(nil, "") // explicit: subscriber/publisher are no-ops
 	}
 
+	authOpts, err := callerAuth(ctx, os.Getenv, svcLog, srv)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("workload auth")
+	}
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	if err := server.RunWithLogger(ctx, cfg.GRPCPort, svcLog, srv.RegisterInto, grpc.ChainUnaryInterceptor(srv.PersistUnary)); err != nil {
+	if err := server.RunWithLogger(ctx, cfg.GRPCPort, svcLog, srv.RegisterInto, append(authOpts, grpc.ChainUnaryInterceptor(srv.PersistUnary))...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
 	}
 }

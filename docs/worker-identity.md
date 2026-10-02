@@ -22,7 +22,7 @@ The verifiers live in `internal/vault/workloadid`. Vault only picks one at boot 
 | `WORKLOAD_OIDC_JWKS_URL` | no | discovered | JWKS URL. When unset, it's read from `jwks_uri` in `<issuer>/.well-known/openid-configuration`. Must be `https://`. |
 | `WORKLOAD_OIDC_CA_FILE` | no | system roots | Extra PEM CA bundle trusted for discovery and the JWKS fetch, such as the in-cluster API server CA. |
 | `WORKLOAD_OIDC_BEARER_FILE` | no | | File holding a bearer token sent on discovery and the JWKS fetch. It's re-read on every fetch, so a projected token rotated by the kubelet keeps working. |
-| `WORKLOAD_AUDIENCE` | no | `sneakers-vault` | The token's `aud` must contain it. |
+| `WORKLOAD_AUDIENCE` | no | `sneakers` | The token's `aud` must contain it. |
 | `WORKLOAD_ALLOWED_SERVICEACCOUNTS` | yes | | Comma list of `<namespace>/<serviceaccount>`. Matched exactly against `sub` = `system:serviceaccount:<namespace>:<serviceaccount>`. |
 
 Vault refuses to boot when the issuer is set and the allow-list is missing or has a malformed entry, when a URL isn't `https://`, or when the CA or bearer file can't be read.
@@ -69,4 +69,4 @@ WORKLOAD_ALLOWED_SERVICEACCOUNTS=<connector namespace>/<connector serviceaccount
 
 The bearer must belong to a ServiceAccount allowed to read the issuer discovery endpoints (the default `system:service-account-issuer-discovery` ClusterRole).
 
-The connector gets its token from a projected `serviceAccountToken` volume with audience `sneakers-vault`, which its deployment sets up.
+The connector gets its token from a projected `serviceAccountToken` volume with audience `sneakers`, which its deployment sets up. The same token goes in the `authorization` metadata that every vault call carries ([workload-auth.md](workload-auth.md)), and the transport check lets only the connector reach these methods. The settings above are the ones the vault's [workload authentication](workload-auth.md) reads too, so `WORKLOAD_ALLOWED_SERVICEACCOUNTS` lists every caller of the vault.
