@@ -61,8 +61,9 @@ failed sweep resumes on the next run. Callers:
 - the scheduler, when the active key is older than `kek_rotation_days` (security settings; `0`
   turns it off), checked every `KEK_SCHEDULER_CHECK_MINUTES`;
 - a `system:<name>` principal listed in `VAULT_KEK_ROTATION_PRINCIPALS`, called directly on the
-  vault's gRPC port with `principal_kind: PRINCIPAL_KIND_WORKLOAD`. Leave the list empty unless an
-  operator task needs it, because that port trusts the actor it's given.
+  vault's gRPC port with `principal_kind: PRINCIPAL_KIND_WORKLOAD`. With workload authentication
+  on, only the gateway may call `RotateKek`, so this path works only with `WORKLOAD_AUTH=disabled`
+  (local development). Leave the list empty.
 
 Other replicas pick up the new generation through the cache invalidation channel, or at their
 next restart without Redis.

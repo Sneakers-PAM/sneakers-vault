@@ -14,6 +14,20 @@ at start. `.env.example` holds safe local defaults.
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `localhost:4317` | OpenTelemetry OTLP gRPC endpoint for traces and metrics. |
 | `LOG_LEVEL`, `LOG_FORMAT` | `go-log` defaults | Log level and format. Local development uses `trace` and `console`; clusters log JSON. |
 
+### Service-to-service authentication
+
+Both services authenticate every caller and present their own token on outbound calls. See
+[workload-auth.md](workload-auth.md).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `WORKLOAD_OIDC_ISSUER` | (required) | The cluster's ServiceAccount issuer. Without it a service refuses to start, in every environment, unless `WORKLOAD_AUTH=disabled`. |
+| `WORKLOAD_OIDC_JWKS_URL`, `WORKLOAD_OIDC_CA_FILE`, `WORKLOAD_OIDC_BEARER_FILE` | | Where and how the issuer's keys are fetched. |
+| `WORKLOAD_AUDIENCE` | `sneakers` | The audience every caller's token must carry. |
+| `WORKLOAD_ALLOWED_SERVICEACCOUNTS` | (required with the issuer) | Comma list of `<namespace>/<serviceaccount>`: the service's callers. The vault's are gateway, workflow, sshbroker and connector; the workflow's is the gateway. |
+| `WORKLOAD_AUTH` | (unset) | `disabled` trusts every caller. Local development and mocks only; the charts never set it. A warning is logged at start and every 5 minutes. |
+| `WORKLOAD_TOKEN_FILE` | (unset) | This service's projected token (audience `sneakers`), sent on every outbound call: the vault's to audit and notify, the workflow's (and `workflow-purge`'s) to the vault. The charts mount it at `/var/run/secrets/sneakers/token`. Unset sends none. |
+
 ## Vault service
 
 ### Environment and keys
@@ -47,9 +61,8 @@ openssl rand -base64 32
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `WORKLOAD_OIDC_ISSUER` | (none) | Turns on the OIDC verifier for connector calls. |
-| `WORKLOAD_OIDC_JWKS_URL`, `WORKLOAD_OIDC_CA_FILE`, `WORKLOAD_OIDC_BEARER_FILE`, `WORKLOAD_AUDIENCE`, `WORKLOAD_ALLOWED_SERVICEACCOUNTS` | | The OIDC verifier's settings. |
-| `CONNECTOR_DEV_TOKEN` | `dev-connector-token` | The shared dev token, used only outside production and only when no OIDC issuer is set. |
+| `WORKLOAD_OIDC_*`, `WORKLOAD_AUDIENCE`, `WORKLOAD_ALLOWED_SERVICEACCOUNTS` | | The same settings as above; with the issuer set, the connector's body token is checked by the OIDC verifier too. |
+| `CONNECTOR_DEV_TOKEN` | `dev-connector-token` | The shared dev token for the connector's body token, used only outside production and only when no OIDC issuer is set (so with `WORKLOAD_AUTH=disabled`). |
 
 [worker-identity.md](worker-identity.md) explains which verifier runs and what each setting does.
 

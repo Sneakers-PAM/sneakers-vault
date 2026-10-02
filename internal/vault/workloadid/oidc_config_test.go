@@ -43,7 +43,7 @@ func TestConfigFromEnvValid(t *testing.T) {
 	if !reflect.DeepEqual(cfg, want) {
 		t.Fatalf("got %+v\nwant %+v", cfg, want)
 	}
-	if DefaultAudience != "sneakers-vault" {
+	if DefaultAudience != "sneakers" {
 		t.Fatalf("default audience %q", DefaultAudience)
 	}
 }

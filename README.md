@@ -39,11 +39,16 @@ docker run -d --name sneakers-pg -e POSTGRES_HOST_AUTH_METHOD=trust \
 docker exec sneakers-pg createdb -U postgres vault
 docker exec sneakers-pg createdb -U postgres workflow
 
+export WORKLOAD_AUTH=disabled   # local only: trust every caller
 DATABASE_DSN='postgres://postgres@localhost:5432/vault?sslmode=disable' GRPC_PORT=9091 \
   go run ./cmd/vault
 DATABASE_DSN='postgres://postgres@localhost:5432/workflow?sslmode=disable' GRPC_PORT=9193 \
   VAULT_ADDR=localhost:9091 go run ./cmd/workflow
 ```
+
+Both services refuse to start without service-to-service authentication
+(`WORKLOAD_OIDC_ISSUER` and friends) unless `WORKLOAD_AUTH=disabled` is set, which is for local
+development only; see [docs/workload-auth.md](docs/workload-auth.md).
 
 The container trusts local connections without a password, for development only. Each service
 applies its own migrations at start. Outside `ENVIRONMENT=dev` the vault needs a root key in
@@ -77,7 +82,8 @@ docker build --target vault .     # or workflow, seed-catalog, seed
   tools.
 - [docs/api.md](docs/api.md): both gRPC APIs, by area, and the rules they enforce.
 - [docs/runbook.md](docs/runbook.md): operating the services, the key ring and the seed tools.
-- [docs/worker-identity.md](docs/worker-identity.md): how the connector proves who it is.
+- [docs/workload-auth.md](docs/workload-auth.md): how every caller proves who it is.
+- [docs/worker-identity.md](docs/worker-identity.md): the connector's worker identity on its pull-API.
 - [docs/type-change.md](docs/type-change.md): changing a secret's type as a machine principal.
 - [proto/sneakers/vault/v1/vault.proto](proto/sneakers/vault/v1/vault.proto) and
   [proto/sneakers/workflow/v1/workflow.proto](proto/sneakers/workflow/v1/workflow.proto): the API

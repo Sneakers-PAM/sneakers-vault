@@ -21,7 +21,7 @@ const (
 )
 
 // DefaultAudience is the token audience required when WORKLOAD_AUDIENCE is unset.
-const DefaultAudience = "sneakers-vault"
+const DefaultAudience = "sneakers"
 
 // OIDCConfig configures the OIDC verifier.
 type OIDCConfig struct {
