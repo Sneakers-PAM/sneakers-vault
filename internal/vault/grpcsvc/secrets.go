@@ -388,7 +388,7 @@ func (s *Server) GetSecretFields(ctx context.Context, req *vaultv1.GetSecretFiel
 	// data: they need read on the secret.
 	if !s.canRead(req.GetActor(), sec) {
 		s.auditReadDenied(ctx, req.GetActor(), sec.GetId(), "fields")
-		return nil, status.Error(codes.PermissionDenied, "not permitted to read this secret")
+		return nil, refuseCode(codes.PermissionDenied, ReasonNoAccess, "not permitted to read this secret")
 	}
 	t := s.findType(sec.TypeId)
 	rec, ok := s.records[sec.Id]
@@ -418,14 +418,14 @@ func (s *Server) RevealSecretField(ctx context.Context, req *vaultv1.RevealSecre
 	}
 	if sec.GetRetired() {
 		s.auditRevealDenied(ctx, req.GetActor(), sec.Id+"#"+req.GetFieldKey(), "reveal", ReasonRetired)
-		return nil, status.Error(codes.FailedPrecondition, "secret is retired")
+		return nil, refuseCode(codes.FailedPrecondition, ReasonRetired, "secret is retired")
 	}
 	if !s.isSensitiveField(s.findType(sec.TypeId), req.GetFieldKey()) {
 		return nil, status.Error(codes.InvalidArgument, "field is not sensitive")
 	}
 	if !s.canRead(req.GetActor(), sec) {
 		s.auditRevealDenied(ctx, req.GetActor(), sec.Id+"#"+req.GetFieldKey(), "reveal", ReasonNoAccess)
-		return nil, status.Error(codes.PermissionDenied, "not permitted to reveal this secret")
+		return nil, refuseCode(codes.PermissionDenied, ReasonNoAccess, "not permitted to reveal this secret")
 	}
 	if err := s.checkRevealStepUp(ctx, req.GetActor(), sec, "reveal"); err != nil {
 		return nil, err
@@ -485,12 +485,12 @@ func (s *Server) revealForPrincipal(ctx context.Context, actor *vaultv1.ActorCon
 	}
 	if sec.GetRetired() {
 		s.auditRevealDenied(ctx, actor, sec.Id+"#"+fieldKey, "reveal", ReasonRetired)
-		return nil, status.Error(codes.FailedPrecondition, "secret is retired")
+		return nil, refuseCode(codes.FailedPrecondition, ReasonRetired, "secret is retired")
 	}
 	sensitive := s.isSensitiveField(s.findType(sec.TypeId), fieldKey)
 	if !s.canRead(actor, sec) {
 		s.auditRevealDenied(ctx, actor, sec.Id+"#"+fieldKey, "reveal", ReasonNoAccess)
-		return nil, status.Error(codes.PermissionDenied, "not permitted to reveal this secret")
+		return nil, refuseCode(codes.PermissionDenied, ReasonNoAccess, "not permitted to reveal this secret")
 	}
 	if err := s.checkAPIForSensitive(ctx, actor, sec, fieldKey, "reveal"); err != nil {
 		return nil, err
@@ -570,11 +570,11 @@ func (s *Server) CopySecret(ctx context.Context, req *vaultv1.CopySecretRequest)
 	}
 	if sec.GetRetired() {
 		s.auditRevealDenied(ctx, req.GetActor(), sec.Id, "copy", ReasonRetired)
-		return nil, status.Error(codes.FailedPrecondition, "secret is retired")
+		return nil, refuseCode(codes.FailedPrecondition, ReasonRetired, "secret is retired")
 	}
 	if !s.canRead(req.GetActor(), sec) {
 		s.auditRevealDenied(ctx, req.GetActor(), sec.Id, "copy", ReasonNoAccess)
-		return nil, status.Error(codes.PermissionDenied, "not permitted to copy this secret")
+		return nil, refuseCode(codes.PermissionDenied, ReasonNoAccess, "not permitted to copy this secret")
 	}
 	if err := s.checkRevealStepUp(ctx, req.GetActor(), sec, "copy"); err != nil {
 		return nil, err
