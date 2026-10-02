@@ -5,12 +5,15 @@ package grpcsvc
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/Bugs5382/go-postgres"
 	workflowv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/workflow/v1"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func nowRFC3339() string { return time.Now().UTC().Format(time.RFC3339) }
@@ -25,6 +28,10 @@ func future(ts string) bool {
 // engine persists its own run/step/signal state separately (store/postgres).
 // A lease carries the checkout saga run that owns it (runID) so check-in can
 // find and signal the run.
+// ErrLeaseHeld is returned by InsertLease when the secret already has an
+// active lease: a secret has at most one at a time.
+var ErrLeaseHeld = errors.New("workflow: the secret already has an active lease")
+
 type Store interface {
 	InsertLease(ctx context.Context, l *workflowv1.Lease, runID string) error
 	CloseLeaseByRun(ctx context.Context, runID string) error
@@ -83,6 +90,11 @@ func newMemStore() *memStore {
 func (m *memStore) InsertLease(_ context.Context, l *workflowv1.Lease, runID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	for _, ml := range m.leases {
+		if !l.GetReturned() && !ml.l.GetReturned() && ml.l.GetSecretId() == l.GetSecretId() {
+			return ErrLeaseHeld
+		}
+	}
 	m.leases = append(m.leases, &memLease{l: l, runID: runID})
 	return nil
 }
@@ -251,6 +263,10 @@ func (p *pgStore) InsertLease(ctx context.Context, l *workflowv1.Lease, runID st
 	_, err := p.db.Exec(ctx,
 		`INSERT INTO leases (`+leaseCols+`) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
 		l.GetId(), l.GetSecretId(), l.GetUserId(), l.GetIssuedAt(), l.GetExpiresAt(), l.GetReturned(), runID)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation && pgErr.ConstraintName == "leases_one_active_per_secret" {
+		return ErrLeaseHeld
+	}
 	return err
 }
 func (p *pgStore) CloseLeaseByRun(ctx context.Context, runID string) error {

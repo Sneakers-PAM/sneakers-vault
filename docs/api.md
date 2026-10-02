@@ -103,6 +103,18 @@ audit and notify are covered in [Calling other services](#calling-other-services
 - **Check-out** runs as a saga: issue the lease, wait for check-in, rotate through the vault, then
   close the lease. If the run fails, a compensation releases the lease. A reaper closes leases
   that pass their expiry without a check-in, once a minute.
+- **Who may check out:** the caller needs read (RACI C) on the secret, from the vault's
+  `GetMySecretAccess` with the user's full context (groups, admin flags, MFA time), and the
+  secret's type must have check-out on. A secret has at most one active lease (a unique index
+  enforces it, so racing check-outs get one lease between them). Only the lease holder can check
+  in, so nobody else can force a rotation.
+- **Refusals** carry a `google.rpc.ErrorInfo` with domain `sneakers.workflow` and a stable reason:
+  `CHECKOUT_NO_ACCESS` (`PermissionDenied`), `CHECKOUT_TYPE_DISABLED` (`FailedPrecondition`),
+  `CHECKOUT_LEASE_HELD` (`FailedPrecondition`, metadata `holder_user_id`; also when approving an
+  access request while someone else holds the secret, and the request stays pending), and
+  `CHECKIN_NOT_HOLDER` (`PermissionDenied`).
+- **Audit:** `checkout` (lease id, expiry), `checkin` (lease id), and `checkout.denied` /
+  `checkin.denied` (reason), under the user, with the secret as subject. Never a value.
 - **Approvals:** an approved access request grants temporary read on the secret in the vault for
   the approver's chosen window (`grant_hours`, clamped to 1 to 24, default from the service), and
   check-in revokes it. Folder-move and secret-move requests are resolved by a site admin, and the
@@ -138,7 +150,8 @@ refused with `PermissionDenied`. Any caller or method not listed is refused.
 |---|---|---|---|
 | vault | every method except the connector pull-API | gateway | on behalf |
 | vault | `RevealSecretField` | sshbroker | on behalf |
-| vault | `GetSecretRuleset`, `SetSecretRuleset`, `MoveFolder`, `UpdateSecret`, `EnqueueRotation`, `GetSecuritySettings` | workflow | self |
+| vault | `GetMySecretAccess` | workflow | on behalf (the check-out check) |
+| vault | `GetSecret`, `ListSecretTypes`, `GetSecretRuleset`, `SetSecretRuleset`, `MoveFolder`, `UpdateSecret`, `EnqueueRotation`, `GetSecuritySettings` | workflow | self |
 | vault | `ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeartbeat`, `ClaimDueRotations`, `RevealForRotation`, `ReportRotation` | connector | self |
 | workflow | every method | gateway | on behalf |
 

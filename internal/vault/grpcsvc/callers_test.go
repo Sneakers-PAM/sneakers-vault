@@ -30,6 +30,9 @@ func TestCallerPolicyPerMethod(t *testing.T) {
 		"UpdateSecret":        {CallerGateway: gw, CallerWorkflow: self},
 		"EnqueueRotation":     {CallerGateway: gw, CallerWorkflow: self},
 		"GetSecuritySettings": {CallerGateway: gw, CallerWorkflow: self},
+		"GetSecret":           {CallerGateway: gw, CallerWorkflow: self},
+		"ListSecretTypes":     {CallerGateway: gw, CallerWorkflow: self},
+		"GetMySecretAccess":   {CallerGateway: gw, CallerWorkflow: gw},
 	}
 	p := CallerPolicy()
 	desc := vaultv1.VaultService_ServiceDesc

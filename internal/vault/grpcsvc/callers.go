@@ -36,9 +36,12 @@ var connectorMethods = []string{
 }
 
 // workflowMethods are the calls the workflow service makes as itself: the
-// temporary read grant behind a lease, approved moves, rotation on check-in
-// and the request-history retention setting.
+// temporary read grant behind a lease, approved moves, rotation on check-in,
+// the request-history retention setting and the secret's type for the
+// check-out check.
 var workflowMethods = []string{
+	vaultv1.VaultService_GetSecret_FullMethodName,
+	vaultv1.VaultService_ListSecretTypes_FullMethodName,
 	vaultv1.VaultService_GetSecretRuleset_FullMethodName,
 	vaultv1.VaultService_SetSecretRuleset_FullMethodName,
 	vaultv1.VaultService_MoveFolder_FullMethodName,
@@ -68,6 +71,8 @@ func CallerPolicy() workloadauth.Policy {
 		p[m][CallerWorkflow] = workloadauth.Self
 	}
 	p[vaultv1.VaultService_RevealSecretField_FullMethodName][CallerSSHBroker] = workloadauth.OnBehalf
+	// The check-out check asks for the user's own RACI decision.
+	p[vaultv1.VaultService_GetMySecretAccess_FullMethodName][CallerWorkflow] = workloadauth.OnBehalf
 	return p
 }
 

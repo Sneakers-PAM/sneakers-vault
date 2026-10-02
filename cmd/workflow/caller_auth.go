@@ -13,6 +13,7 @@ import (
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workloadauth"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // callerAuth builds the interceptors that authenticate every caller against
@@ -37,4 +38,24 @@ func mustCallerAuth(ctx context.Context, logger zerolog.Logger, lg log.Logger) [
 		logger.Fatal().Err(err).Msg("workload auth")
 	}
 	return opts
+}
+
+// mustDialAudit connects to the audit service (AUDIT_ADDR, default
+// localhost:9194) with the workflow's workload token. The connection is lazy,
+// so an audit service that is down doesn't stop the boot; events are then
+// only logged.
+func mustDialAudit(logger zerolog.Logger) *grpc.ClientConn {
+	auth, err := server.ClientAuth(os.Getenv)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("workload token")
+	}
+	addr := os.Getenv("AUDIT_ADDR")
+	if addr == "" {
+		addr = "localhost:9194"
+	}
+	conn, err := grpc.NewClient(addr, append([]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials()), server.ClientStatsHandler()}, auth...)...)
+	if err != nil {
+		logger.Fatal().Err(err).Str("audit", addr).Msg("dial audit")
+	}
+	return conn
 }
