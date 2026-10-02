@@ -1,16 +1,14 @@
 module github.com/Sneakers-PAM/sneakers-vault
 
-go 1.26.3
-
-toolchain go1.26.6
+go 1.26.6
 
 require (
 	github.com/Bugs5382/go-certkit v1.0.0
-	github.com/Bugs5382/go-log v1.2.0
+	github.com/Bugs5382/go-log v1.2.1
 	github.com/Bugs5382/go-otel v1.3.2
 	github.com/Bugs5382/go-postgres v1.2.2
 	github.com/Bugs5382/go-redis v1.0.0
-	github.com/Bugs5382/go-saga-orchestration v0.6.2
+	github.com/Bugs5382/go-saga-orchestration v0.7.0
 	github.com/Bugs5382/go-seed v1.0.0
 	github.com/Sneakers-PAM/sneakers-audit v0.0.0-20261001205656-04173a5f69e7
 	github.com/Sneakers-PAM/sneakers-notify v0.0.0-20261002014027-7322d3e5f0d3
@@ -45,7 +43,7 @@ require (
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.21 // indirect
-	github.com/rabbitmq/amqp091-go v1.11.0 // indirect
+	github.com/rabbitmq/amqp091-go v1.13.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
@@ -61,9 +59,9 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc // indirect
 	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
 	software.sslmate.com/src/go-pkcs12 v0.7.3 // indirect
