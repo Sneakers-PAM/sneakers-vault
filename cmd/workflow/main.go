@@ -15,8 +15,10 @@ import (
 	postgres "github.com/Bugs5382/go-postgres"
 	otelpg "github.com/Bugs5382/go-postgres/otel"
 	sagapg "github.com/Bugs5382/go-saga-orchestration/store/postgres"
+	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/auditclient"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/grpcsvc"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/vaultclient"
 	"google.golang.org/grpc"
@@ -107,6 +109,9 @@ func main() {
 	svcLog := log.NewLogger(serviceName)
 	svc := grpcsvc.New(st, engine, vault)
 	svc.SetLogger(svcLog)
+	auditConn := mustDialAudit(logger)
+	defer func() { _ = auditConn.Close() }()
+	svc.SetAuditor(auditclient.New(auditv1.NewAuditServiceClient(auditConn)))
 	if err := svc.SeedIfEmpty(ctx); err != nil {
 		logger.Fatal().Err(err).Msg("seed")
 	}

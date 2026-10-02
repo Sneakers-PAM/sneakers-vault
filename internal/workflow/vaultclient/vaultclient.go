@@ -33,6 +33,8 @@ type Client struct {
 // refuses an actor on them from the workflow and acts as its own
 // system:workflow actor instead (CallerPolicy in internal/vault/grpcsvc).
 var selfMethods = map[string]bool{
+	vaultv1.VaultService_GetSecret_FullMethodName:           true,
+	vaultv1.VaultService_ListSecretTypes_FullMethodName:     true,
 	vaultv1.VaultService_GetSecretRuleset_FullMethodName:    true,
 	vaultv1.VaultService_SetSecretRuleset_FullMethodName:    true,
 	vaultv1.VaultService_MoveFolder_FullMethodName:          true,

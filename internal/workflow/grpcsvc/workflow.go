@@ -20,6 +20,7 @@ import (
 	workflowv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/workflow/v1"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 type Server struct {
@@ -32,6 +33,8 @@ type Server struct {
 	vault vaultv1.VaultServiceClient
 	// log is the service logger; nil discards (tests that build a bare Server).
 	log log.Logger
+	// audit records workflow events; nil only logs them.
+	audit Auditor
 }
 
 func New(store Store, saga *sagasdk.Saga, vault vaultv1.VaultServiceClient) *Server {
@@ -67,16 +70,23 @@ func (s *Server) GetActiveLease(ctx context.Context, req *workflowv1.GetActiveLe
 	return &workflowv1.GetActiveLeaseResponse{Lease: l}, nil
 }
 
-// CheckoutSecret starts the checkout saga. Start advances the run through
-// issue_lease (which persists the lease) and parks it at the wait-for-checkin
-// step; we then return the lease the run created.
+// CheckoutSecret checks the caller and the secret (checkout.go), then starts
+// the checkout saga. Start advances the run through issue_lease (which
+// persists the lease) and parks it at the wait-for-checkin step; we then
+// return the lease the run created.
 func (s *Server) CheckoutSecret(ctx context.Context, req *workflowv1.CheckoutSecretRequest) (*workflowv1.CheckoutSecretResponse, error) {
+	if err := s.checkCheckout(ctx, req.GetActor(), req.GetSecretId()); err != nil {
+		return nil, err
+	}
 	runID, err := s.saga.Start(ctx, wfCheckout, map[string]any{
 		"secret_id": req.GetSecretId(),
 		"user_id":   req.GetActor().GetUserId(),
 		"hours":     int(req.GetHours()),
 	})
 	if err != nil {
+		if held := s.checkNoLease(ctx, req.GetActor().GetUserId(), req.GetSecretId()); held != nil {
+			return nil, held
+		}
 		return nil, fmt.Errorf("start checkout saga: %w", err)
 	}
 	lease, err := s.store.LeaseByRun(ctx, runID.String())
@@ -84,15 +94,32 @@ func (s *Server) CheckoutSecret(ctx context.Context, req *workflowv1.CheckoutSec
 		return nil, err
 	}
 	if lease == nil {
+		// Lost a race for the secret: the store keeps one active lease per
+		// secret, so the run couldn't issue one.
+		if err := s.checkNoLease(ctx, req.GetActor().GetUserId(), req.GetSecretId()); err != nil {
+			return nil, err
+		}
 		return nil, fmt.Errorf("checkout saga did not issue a lease")
 	}
+	s.emit(ctx, lease.GetUserId(), "checkout", lease.GetSecretId(),
+		map[string]string{"lease_id": lease.GetId(), "expires_at": lease.GetExpiresAt()})
 	return &workflowv1.CheckoutSecretResponse{Lease: lease}, nil
 }
 
 // CheckinSecret signals the checkout run to advance through rotate-on-checkin
 // and close the lease.
 func (s *Server) CheckinSecret(ctx context.Context, req *workflowv1.CheckinSecretRequest) (*workflowv1.CheckinSecretResponse, error) {
-	runID, err := s.store.ActiveLeaseRunForSecretUser(ctx, req.GetSecretId(), req.GetActor().GetUserId())
+	userID := req.GetActor().GetUserId()
+	held, err := s.store.ActiveLeaseForSecret(ctx, req.GetSecretId())
+	if err != nil {
+		return nil, err
+	}
+	if held != nil && held.GetUserId() != userID {
+		s.lg(ctx).Warn("check-in refused: not the lease holder", log.F("secret_id", req.GetSecretId()), log.F("user_id", userID))
+		s.emit(ctx, userID, "checkin.denied", req.GetSecretId(), map[string]string{"reason": ReasonCheckinNotHolder})
+		return nil, refuse(codes.PermissionDenied, ReasonCheckinNotHolder, "only the lease holder can check this secret in", nil)
+	}
+	runID, err := s.store.ActiveLeaseRunForSecretUser(ctx, req.GetSecretId(), userID)
 	if err != nil {
 		return nil, err
 	}
@@ -106,6 +133,7 @@ func (s *Server) CheckinSecret(ctx context.Context, req *workflowv1.CheckinSecre
 	if err := s.saga.Signal(ctx, rid, "checkin", nil); err != nil {
 		return nil, fmt.Errorf("signal checkin: %w", err)
 	}
+	s.emit(ctx, userID, "checkin", req.GetSecretId(), map[string]string{"lease_id": held.GetId()})
 	return &workflowv1.CheckinSecretResponse{}, nil
 }
 
@@ -215,6 +243,11 @@ func clampGrantHours(h int32) int {
 }
 
 func (s *Server) ResolveApproval(ctx context.Context, req *workflowv1.ResolveApprovalRequest) (*workflowv1.ResolveApprovalResponse, error) {
+	if req.GetApprove() {
+		if err := s.checkGrantFree(ctx, req.GetId()); err != nil {
+			return nil, err
+		}
+	}
 	r, err := s.store.ResolveRequest(ctx, req.GetId(), req.GetActor().GetUserId(), time.Now().UTC().Format(time.RFC3339), req.GetApprove())
 	if err != nil {
 		return nil, err
@@ -255,30 +288,39 @@ func (s *Server) ResolveApproval(ctx context.Context, req *workflowv1.ResolveApp
 		return &workflowv1.ResolveApprovalResponse{Request: r}, nil
 	}
 	if req.GetApprove() {
-		existing, err := s.store.ActiveLeaseRunForSecretUser(ctx, r.GetSecretId(), r.GetRequestedByUserId())
-		if err != nil {
+		if err := s.grantAccess(ctx, r, req.GetGrantHours()); err != nil {
 			return nil, err
-		}
-		if existing == "" {
-			if _, err := s.saga.Start(ctx, wfCheckout, map[string]any{
-				"secret_id": r.GetSecretId(),
-				"user_id":   r.GetRequestedByUserId(),
-				"hours":     clampGrantHours(req.GetGrantHours()),
-			}); err != nil {
-				return nil, fmt.Errorf("issue grant lease: %w", err)
-			}
-		}
-		// A lease alone doesn't confer reveal access: the vault's access check is
-		// firewall-RACI, and the requester has no read grant on this secret. Add a
-		// temporary secret-level read grant for the requester so they can actually
-		// reveal/copy and load history for the lease window; the checkout saga's
-		// close_lease step revokes it when the lease ends. Idempotent, so a
-		// double-approve (existing lease) still ensures the grant is present.
-		if err := grantSecretRead(ctx, s.vault, r.GetSecretId(), r.GetRequestedByUserId()); err != nil {
-			return nil, fmt.Errorf("grant temp read access: %w", err)
 		}
 	}
 	return &workflowv1.ResolveApprovalResponse{Request: r}, nil
+}
+
+// grantAccess gives an approved access request's requester a time-boxed
+// lease and the temporary read grant behind it.
+func (s *Server) grantAccess(ctx context.Context, r *workflowv1.ApprovalRequest, grantHours int32) error {
+	existing, err := s.store.ActiveLeaseRunForSecretUser(ctx, r.GetSecretId(), r.GetRequestedByUserId())
+	if err != nil {
+		return err
+	}
+	if existing == "" {
+		if _, err := s.saga.Start(ctx, wfCheckout, map[string]any{
+			"secret_id": r.GetSecretId(),
+			"user_id":   r.GetRequestedByUserId(),
+			"hours":     clampGrantHours(grantHours),
+		}); err != nil {
+			return fmt.Errorf("issue grant lease: %w", err)
+		}
+	}
+	// A lease alone doesn't confer reveal access: the vault's access check is
+	// firewall-RACI, and the requester has no read grant on this secret. Add a
+	// temporary secret-level read grant for the requester so they can actually
+	// reveal/copy and load history for the lease window; the checkout saga's
+	// close_lease step revokes it when the lease ends. Idempotent, so a
+	// double-approve (existing lease) still ensures the grant is present.
+	if err := grantSecretRead(ctx, s.vault, r.GetSecretId(), r.GetRequestedByUserId()); err != nil {
+		return fmt.Errorf("grant temp read access: %w", err)
+	}
+	return nil
 }
 
 // AddApprovalComment appends a message to an access request's discussion

@@ -1,8 +1,8 @@
 // Copyright 2026 The Sneakers-PAM Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// Package auditclient adapts the vault's grpcsvc.Auditor seam onto the audit
-// service's gRPC contract. audit.Event is the vault-side domain type; the audit
+// Package auditclient adapts the vault's and the workflow's Auditor seams onto
+// the audit service's gRPC contract. audit.Event is the vault-side domain type; the audit
 // service speaks auditv1.RecordEventRequest.
 package auditclient
 
@@ -11,15 +11,16 @@ import (
 
 	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/audit"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
 )
 
-type client struct{ c auditv1.AuditServiceClient }
+// Client records audit events through the audit service.
+type Client struct{ c auditv1.AuditServiceClient }
 
-// New returns a grpcsvc.Auditor backed by the audit service.
-func New(c auditv1.AuditServiceClient) grpcsvc.Auditor { return &client{c: c} }
+// New returns an auditor backed by the audit service.
+func New(c auditv1.AuditServiceClient) *Client { return &Client{c: c} }
 
-func (a *client) Emit(ctx context.Context, ev audit.Event) error {
+// Emit records ev.
+func (a *Client) Emit(ctx context.Context, ev audit.Event) error {
 	_, err := a.c.RecordEvent(ctx, toRequest(ev))
 	return err
 }

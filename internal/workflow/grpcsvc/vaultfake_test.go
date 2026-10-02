@@ -12,9 +12,10 @@ import (
 )
 
 // fakeVaultClient is a minimal vaultv1.VaultServiceClient test double: it
-// implements EnqueueRotation (the rotate action) plus Get/SetSecretRuleset (the
-// temporary read grant/revoke the lease lifecycle drives), backed by an
-// in-memory per-secret ruleset. Every other method is promoted from the nil
+// implements EnqueueRotation (the rotate action), Get/SetSecretRuleset (the
+// temporary read grant/revoke the lease lifecycle drives, backed by an
+// in-memory per-secret ruleset), and the check-out checks' GetMySecretAccess,
+// GetSecret and ListSecretTypes. Every other method is promoted from the nil
 // embedded interface and would panic if invoked — no test exercises those.
 type fakeVaultClient struct {
 	vaultv1.VaultServiceClient
@@ -22,10 +23,54 @@ type fakeVaultClient struct {
 	mu       sync.Mutex
 	calls    []*vaultv1.EnqueueRotationRequest
 	rulesets map[string][]*vaultv1.RaciRule // secretID -> ordered ruleset
+	// noRead lists "secretID|userID" pairs the fake vault denies read on;
+	// everyone else may read. checkoutOff lists secrets whose type has
+	// check-out off; every other secret's type allows it.
+	noRead      map[string]bool
+	checkoutOff map[string]bool
+	// accessActors records the actor of each GetMySecretAccess call.
+	accessActors []*vaultv1.ActorContext
 }
 
 func newFakeVaultClient() *fakeVaultClient {
-	return &fakeVaultClient{rulesets: map[string][]*vaultv1.RaciRule{}}
+	return &fakeVaultClient{rulesets: map[string][]*vaultv1.RaciRule{}, noRead: map[string]bool{}, checkoutOff: map[string]bool{}}
+}
+
+func (f *fakeVaultClient) denyRead(secretID, userID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.noRead[secretID+"|"+userID] = true
+}
+
+func (f *fakeVaultClient) disableCheckout(secretID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.checkoutOff[secretID] = true
+}
+
+func (f *fakeVaultClient) GetMySecretAccess(_ context.Context, in *vaultv1.GetMySecretAccessRequest, _ ...grpc.CallOption) (*vaultv1.GetMySecretAccessResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.accessActors = append(f.accessActors, in.GetActor())
+	read := !f.noRead[in.GetSecretId()+"|"+in.GetActor().GetUserId()]
+	return &vaultv1.GetMySecretAccessResponse{Access: &vaultv1.FolderAccess{Read: read, Reveal: read}}, nil
+}
+
+func (f *fakeVaultClient) GetSecret(_ context.Context, in *vaultv1.GetSecretRequest, _ ...grpc.CallOption) (*vaultv1.GetSecretResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	typeID := "type-checkout"
+	if f.checkoutOff[in.GetId()] {
+		typeID = "type-no-checkout"
+	}
+	return &vaultv1.GetSecretResponse{Secret: &vaultv1.Secret{Id: in.GetId(), TypeId: typeID}}, nil
+}
+
+func (f *fakeVaultClient) ListSecretTypes(context.Context, *vaultv1.ListSecretTypesRequest, ...grpc.CallOption) (*vaultv1.ListSecretTypesResponse, error) {
+	return &vaultv1.ListSecretTypesResponse{Types: []*vaultv1.SecretType{
+		{Id: "type-checkout", Name: "Domain account", Checkout: true},
+		{Id: "type-no-checkout", Name: "Password", Checkout: false},
+	}}, nil
 }
 
 func (f *fakeVaultClient) EnqueueRotation(_ context.Context, in *vaultv1.EnqueueRotationRequest, _ ...grpc.CallOption) (*vaultv1.EnqueueRotationResponse, error) {

@@ -84,6 +84,11 @@ CREATE INDEX leases_secret_idx ON public.leases USING btree (secret_id);
 
 
 
+-- One active lease per secret.
+CREATE UNIQUE INDEX leases_one_active_per_secret ON public.leases USING btree (secret_id) WHERE (NOT returned);
+
+
+
 CREATE INDEX leases_user_idx ON public.leases USING btree (user_id);
 
 

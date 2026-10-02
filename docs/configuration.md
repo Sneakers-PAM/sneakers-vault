@@ -70,7 +70,8 @@ openssl rand -base64 32
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `VAULT_ADDR` | `localhost:9091` | The vault, for check-out leases, rotation on check-in and the retention setting. |
+| `VAULT_ADDR` | `localhost:9091` | The vault, for the check-out checks, check-out leases, rotation on check-in and the retention setting. |
+| `AUDIT_ADDR` | `localhost:9194` | The audit service, for the workflow's events. Unreachable only logs them. |
 
 The workflow service keeps its own tables (`workflow_schema_migrations`) and the saga engine's
 tables in the same database.
