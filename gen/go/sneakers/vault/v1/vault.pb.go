@@ -359,6 +359,12 @@ const (
 	HeartbeatResult_HEARTBEAT_RESULT_FAILED      HeartbeatResult = 2
 	HeartbeatResult_HEARTBEAT_RESULT_UNKNOWN     HeartbeatResult = 3
 	HeartbeatResult_HEARTBEAT_RESULT_UNREACHABLE HeartbeatResult = 4
+	// SSH: the target has no host-key pins, so the connector didn't connect.
+	// Recorded as a failed check.
+	HeartbeatResult_HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED HeartbeatResult = 5
+	// SSH: the host offered a key that isn't one of the target's pins.
+	// Recorded as a failed check.
+	HeartbeatResult_HEARTBEAT_RESULT_HOST_KEY_MISMATCH HeartbeatResult = 6
 )
 
 // Enum value maps for HeartbeatResult.
@@ -369,13 +375,17 @@ var (
 		2: "HEARTBEAT_RESULT_FAILED",
 		3: "HEARTBEAT_RESULT_UNKNOWN",
 		4: "HEARTBEAT_RESULT_UNREACHABLE",
+		5: "HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED",
+		6: "HEARTBEAT_RESULT_HOST_KEY_MISMATCH",
 	}
 	HeartbeatResult_value = map[string]int32{
-		"HEARTBEAT_RESULT_UNSPECIFIED": 0,
-		"HEARTBEAT_RESULT_OK":          1,
-		"HEARTBEAT_RESULT_FAILED":      2,
-		"HEARTBEAT_RESULT_UNKNOWN":     3,
-		"HEARTBEAT_RESULT_UNREACHABLE": 4,
+		"HEARTBEAT_RESULT_UNSPECIFIED":         0,
+		"HEARTBEAT_RESULT_OK":                  1,
+		"HEARTBEAT_RESULT_FAILED":              2,
+		"HEARTBEAT_RESULT_UNKNOWN":             3,
+		"HEARTBEAT_RESULT_UNREACHABLE":         4,
+		"HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED": 5,
+		"HEARTBEAT_RESULT_HOST_KEY_MISMATCH":   6,
 	}
 )
 
@@ -513,6 +523,55 @@ func (RotationState) EnumDescriptor() ([]byte, []int) {
 	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{8}
 }
 
+type StepUpMode int32
+
+const (
+	StepUpMode_STEP_UP_MODE_UNSPECIFIED StepUpMode = 0 // inherit
+	StepUpMode_STEP_UP_MODE_REQUIRE     StepUpMode = 1
+	StepUpMode_STEP_UP_MODE_OFF         StepUpMode = 2
+)
+
+// Enum value maps for StepUpMode.
+var (
+	StepUpMode_name = map[int32]string{
+		0: "STEP_UP_MODE_UNSPECIFIED",
+		1: "STEP_UP_MODE_REQUIRE",
+		2: "STEP_UP_MODE_OFF",
+	}
+	StepUpMode_value = map[string]int32{
+		"STEP_UP_MODE_UNSPECIFIED": 0,
+		"STEP_UP_MODE_REQUIRE":     1,
+		"STEP_UP_MODE_OFF":         2,
+	}
+)
+
+func (x StepUpMode) Enum() *StepUpMode {
+	p := new(StepUpMode)
+	*p = x
+	return p
+}
+
+func (x StepUpMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StepUpMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_sneakers_vault_v1_vault_proto_enumTypes[9].Descriptor()
+}
+
+func (StepUpMode) Type() protoreflect.EnumType {
+	return &file_sneakers_vault_v1_vault_proto_enumTypes[9]
+}
+
+func (x StepUpMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StepUpMode.Descriptor instead.
+func (StepUpMode) EnumDescriptor() ([]byte, []int) {
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{9}
+}
+
 // PrincipalKind distinguishes a human (cookie/session) caller from a
 // non-human caller (service-account API token, or an in-cluster workload
 // verified via the workload-identity (SPIFFE) seam). Default (0) is
@@ -559,11 +618,11 @@ func (x PrincipalKind) String() string {
 }
 
 func (PrincipalKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_sneakers_vault_v1_vault_proto_enumTypes[9].Descriptor()
+	return file_sneakers_vault_v1_vault_proto_enumTypes[10].Descriptor()
 }
 
 func (PrincipalKind) Type() protoreflect.EnumType {
-	return &file_sneakers_vault_v1_vault_proto_enumTypes[9]
+	return &file_sneakers_vault_v1_vault_proto_enumTypes[10]
 }
 
 func (x PrincipalKind) Number() protoreflect.EnumNumber {
@@ -572,7 +631,7 @@ func (x PrincipalKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PrincipalKind.Descriptor instead.
 func (PrincipalKind) EnumDescriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{9}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{10}
 }
 
 // What ChangeSecretTypeForPrincipal does with a non-empty value that has no
@@ -614,11 +673,11 @@ func (x UnmappedFieldPolicy) String() string {
 }
 
 func (UnmappedFieldPolicy) Descriptor() protoreflect.EnumDescriptor {
-	return file_sneakers_vault_v1_vault_proto_enumTypes[10].Descriptor()
+	return file_sneakers_vault_v1_vault_proto_enumTypes[11].Descriptor()
 }
 
 func (UnmappedFieldPolicy) Type() protoreflect.EnumType {
-	return &file_sneakers_vault_v1_vault_proto_enumTypes[10]
+	return &file_sneakers_vault_v1_vault_proto_enumTypes[11]
 }
 
 func (x UnmappedFieldPolicy) Number() protoreflect.EnumNumber {
@@ -627,7 +686,7 @@ func (x UnmappedFieldPolicy) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use UnmappedFieldPolicy.Descriptor instead.
 func (UnmappedFieldPolicy) EnumDescriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{10}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{11}
 }
 
 // Use without reveal: a personal-token caller asks to use one secret field for
@@ -676,11 +735,11 @@ func (x SecretUseState) String() string {
 }
 
 func (SecretUseState) Descriptor() protoreflect.EnumDescriptor {
-	return file_sneakers_vault_v1_vault_proto_enumTypes[11].Descriptor()
+	return file_sneakers_vault_v1_vault_proto_enumTypes[12].Descriptor()
 }
 
 func (SecretUseState) Type() protoreflect.EnumType {
-	return &file_sneakers_vault_v1_vault_proto_enumTypes[11]
+	return &file_sneakers_vault_v1_vault_proto_enumTypes[12]
 }
 
 func (x SecretUseState) Number() protoreflect.EnumNumber {
@@ -689,7 +748,7 @@ func (x SecretUseState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SecretUseState.Descriptor instead.
 func (SecretUseState) EnumDescriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{11}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{12}
 }
 
 type SecretFieldDef struct {
@@ -946,8 +1005,13 @@ type Folder struct {
 	Owners             []string               `protobuf:"bytes,10,rep,name=owners,proto3" json:"owners,omitempty"`                                                      // RACI owners (user ids): auto read+approve+author, inherit down
 	SubtreeSecretCount int32                  `protobuf:"varint,11,opt,name=subtree_secret_count,json=subtreeSecretCount,proto3" json:"subtree_secret_count,omitempty"` // output-only: secrets in this folder + all descendants (drives delete UX)
 	CanManage          bool                   `protobuf:"varint,12,opt,name=can_manage,json=canManage,proto3" json:"can_manage,omitempty"`                              // output-only: whether the requesting actor may manage/create-under this folder (= isFolderOwner incl. site-admin/root, personal owner, and inherited ancestor ownership). Drives UI affordances (context menu, create-subfolder). Empty/false unless ListFolders computed it for the actor.
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Step-up MFA before a reveal in this folder and below. UNSPECIFIED inherits:
+	// the nearest ancestor that sets one, and at the top the global
+	// SecuritySettings.require_mfa_for_reveal. Set by a site admin only
+	// (SetFolderRevealStepUp).
+	RevealStepUp  StepUpMode `protobuf:"varint,13,opt,name=reveal_step_up,json=revealStepUp,proto3,enum=sneakers.vault.v1.StepUpMode" json:"reveal_step_up,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Folder) Reset() {
@@ -1062,6 +1126,13 @@ func (x *Folder) GetCanManage() bool {
 		return x.CanManage
 	}
 	return false
+}
+
+func (x *Folder) GetRevealStepUp() StepUpMode {
+	if x != nil {
+		return x.RevealStepUp
+	}
+	return StepUpMode_STEP_UP_MODE_UNSPECIFIED
 }
 
 type FolderAccessRule struct {
@@ -1208,13 +1279,17 @@ func (x *InheritedFolderRule) GetFromFolderName() string {
 // access requests), "I" (informed / metadata-only); values "allow"|"deny";
 // a missing key = blank (fall through). Mirrors the authz engine's Rule.
 type RaciRule struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	FolderId      string                 `protobuf:"bytes,2,opt,name=folder_id,json=folderId,proto3" json:"folder_id,omitempty"`
-	Order         int32                  `protobuf:"varint,3,opt,name=order,proto3" json:"order,omitempty"`                                                                            // position in the folder's ordered ruleset
-	SubjectKind   SubjectKind            `protobuf:"varint,4,opt,name=subject_kind,json=subjectKind,proto3,enum=sneakers.vault.v1.SubjectKind" json:"subject_kind,omitempty"`          // everyone | group | user
-	SubjectName   string                 `protobuf:"bytes,5,opt,name=subject_name,json=subjectName,proto3" json:"subject_name,omitempty"`                                              // group name or user id; empty for everyone
-	Grants        map[string]string      `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // {"C|R|A|I": "allow|deny"}
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	FolderId    string                 `protobuf:"bytes,2,opt,name=folder_id,json=folderId,proto3" json:"folder_id,omitempty"`
+	Order       int32                  `protobuf:"varint,3,opt,name=order,proto3" json:"order,omitempty"`                                                                            // position in the folder's ordered ruleset
+	SubjectKind SubjectKind            `protobuf:"varint,4,opt,name=subject_kind,json=subjectKind,proto3,enum=sneakers.vault.v1.SubjectKind" json:"subject_kind,omitempty"`          // everyone | group | user
+	SubjectName string                 `protobuf:"bytes,5,opt,name=subject_name,json=subjectName,proto3" json:"subject_name,omitempty"`                                              // group name or user id; empty for everyone
+	Grants      map[string]string      `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // {"C|R|A|I": "allow|deny"}
+	// GROUP subjects: the directory group id the rule matches on (against
+	// ActorContext.group_ids). subject_name is then the display name only, so a
+	// rename doesn't change who the rule covers.
+	SubjectId     string `protobuf:"bytes,7,opt,name=subject_id,json=subjectId,proto3" json:"subject_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1289,6 +1364,13 @@ func (x *RaciRule) GetGrants() map[string]string {
 		return x.Grants
 	}
 	return nil
+}
+
+func (x *RaciRule) GetSubjectId() string {
+	if x != nil {
+		return x.SubjectId
+	}
+	return ""
 }
 
 // The effective access a user has on a folder (Resolve over the chain), for UI
@@ -2332,6 +2414,15 @@ type ActorContext struct {
 	PrincipalKind PrincipalKind          `protobuf:"varint,6,opt,name=principal_kind,json=principalKind,proto3,enum=sneakers.vault.v1.PrincipalKind" json:"principal_kind,omitempty"` // human (default) | service_account | workload
 	PrincipalId   string                 `protobuf:"bytes,7,opt,name=principal_id,json=principalId,proto3" json:"principal_id,omitempty"`                                             // set for non-human principals: the service-account or workload id
 	TokenId       string                 `protobuf:"bytes,8,opt,name=token_id,json=tokenId,proto3" json:"token_id,omitempty"`                                                         // PRINCIPAL_KIND_USER_TOKEN: the personal token used, for audit
+	// When the human last completed an MFA challenge (Unix seconds), set by the
+	// gateway from the session. 0 = unknown. Step-up checks need it within the
+	// vault's freshness window, else STEP_UP_REQUIRED.
+	MfaVerifiedAtUnix int64 `protobuf:"varint,9,opt,name=mfa_verified_at_unix,json=mfaVerifiedAtUnix,proto3" json:"mfa_verified_at_unix,omitempty"`
+	// The human holds the recovery role. Trusted only from the gateway. Needed,
+	// with a fresh MFA, for prior-version values and RestoreSecretVersion.
+	IsRecovery bool `protobuf:"varint,10,opt,name=is_recovery,json=isRecovery,proto3" json:"is_recovery,omitempty"`
+	// Directory group ids, matched by GROUP rules that carry a subject_id.
+	GroupIds      []string `protobuf:"bytes,11,rep,name=group_ids,json=groupIds,proto3" json:"group_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2413,6 +2504,27 @@ func (x *ActorContext) GetTokenId() string {
 		return x.TokenId
 	}
 	return ""
+}
+
+func (x *ActorContext) GetMfaVerifiedAtUnix() int64 {
+	if x != nil {
+		return x.MfaVerifiedAtUnix
+	}
+	return 0
+}
+
+func (x *ActorContext) GetIsRecovery() bool {
+	if x != nil {
+		return x.IsRecovery
+	}
+	return false
+}
+
+func (x *ActorContext) GetGroupIds() []string {
+	if x != nil {
+		return x.GroupIds
+	}
+	return nil
 }
 
 type ListSecretTypesRequest struct {
@@ -6976,6 +7088,218 @@ func (x *RevealSecretVersionFieldResponse) GetValue() string {
 	return ""
 }
 
+// Make a prior version's fields the current ones, as a new version. Needs the
+// recovery role and a fresh MFA; refused while the secret is checked out or
+// rotating. Audited.
+type RestoreSecretVersionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Actor         *ActorContext          `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor,omitempty"`
+	SecretId      string                 `protobuf:"bytes,2,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
+	VersionNo     int32                  `protobuf:"varint,3,opt,name=version_no,json=versionNo,proto3" json:"version_no,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestoreSecretVersionRequest) Reset() {
+	*x = RestoreSecretVersionRequest{}
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[103]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestoreSecretVersionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestoreSecretVersionRequest) ProtoMessage() {}
+
+func (x *RestoreSecretVersionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[103]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestoreSecretVersionRequest.ProtoReflect.Descriptor instead.
+func (*RestoreSecretVersionRequest) Descriptor() ([]byte, []int) {
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{103}
+}
+
+func (x *RestoreSecretVersionRequest) GetActor() *ActorContext {
+	if x != nil {
+		return x.Actor
+	}
+	return nil
+}
+
+func (x *RestoreSecretVersionRequest) GetSecretId() string {
+	if x != nil {
+		return x.SecretId
+	}
+	return ""
+}
+
+func (x *RestoreSecretVersionRequest) GetVersionNo() int32 {
+	if x != nil {
+		return x.VersionNo
+	}
+	return 0
+}
+
+type RestoreSecretVersionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Secret        *Secret                `protobuf:"bytes,1,opt,name=secret,proto3" json:"secret,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestoreSecretVersionResponse) Reset() {
+	*x = RestoreSecretVersionResponse{}
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[104]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestoreSecretVersionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestoreSecretVersionResponse) ProtoMessage() {}
+
+func (x *RestoreSecretVersionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[104]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestoreSecretVersionResponse.ProtoReflect.Descriptor instead.
+func (*RestoreSecretVersionResponse) Descriptor() ([]byte, []int) {
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{104}
+}
+
+func (x *RestoreSecretVersionResponse) GetSecret() *Secret {
+	if x != nil {
+		return x.Secret
+	}
+	return nil
+}
+
+// Set a folder's step-up-on-reveal override. Human site admin only.
+type SetFolderRevealStepUpRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Actor         *ActorContext          `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor,omitempty"`
+	FolderId      string                 `protobuf:"bytes,2,opt,name=folder_id,json=folderId,proto3" json:"folder_id,omitempty"`
+	Mode          StepUpMode             `protobuf:"varint,3,opt,name=mode,proto3,enum=sneakers.vault.v1.StepUpMode" json:"mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetFolderRevealStepUpRequest) Reset() {
+	*x = SetFolderRevealStepUpRequest{}
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[105]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetFolderRevealStepUpRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetFolderRevealStepUpRequest) ProtoMessage() {}
+
+func (x *SetFolderRevealStepUpRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[105]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetFolderRevealStepUpRequest.ProtoReflect.Descriptor instead.
+func (*SetFolderRevealStepUpRequest) Descriptor() ([]byte, []int) {
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{105}
+}
+
+func (x *SetFolderRevealStepUpRequest) GetActor() *ActorContext {
+	if x != nil {
+		return x.Actor
+	}
+	return nil
+}
+
+func (x *SetFolderRevealStepUpRequest) GetFolderId() string {
+	if x != nil {
+		return x.FolderId
+	}
+	return ""
+}
+
+func (x *SetFolderRevealStepUpRequest) GetMode() StepUpMode {
+	if x != nil {
+		return x.Mode
+	}
+	return StepUpMode_STEP_UP_MODE_UNSPECIFIED
+}
+
+type SetFolderRevealStepUpResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Folder        *Folder                `protobuf:"bytes,1,opt,name=folder,proto3" json:"folder,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetFolderRevealStepUpResponse) Reset() {
+	*x = SetFolderRevealStepUpResponse{}
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[106]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetFolderRevealStepUpResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetFolderRevealStepUpResponse) ProtoMessage() {}
+
+func (x *SetFolderRevealStepUpResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[106]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetFolderRevealStepUpResponse.ProtoReflect.Descriptor instead.
+func (*SetFolderRevealStepUpResponse) Descriptor() ([]byte, []int) {
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{106}
+}
+
+func (x *SetFolderRevealStepUpResponse) GetFolder() *Folder {
+	if x != nil {
+		return x.Folder
+	}
+	return nil
+}
+
 // Emergency access: bypasses the checkout-lock/approval-pending gate for a
 // read-eligible actor (gateway MFA step-up gates the call before this RPC is
 // reached). Reveals ALL fields, records a high-severity audited event,
@@ -6991,7 +7315,7 @@ type BreakGlassSecretRequest struct {
 
 func (x *BreakGlassSecretRequest) Reset() {
 	*x = BreakGlassSecretRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[103]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7003,7 +7327,7 @@ func (x *BreakGlassSecretRequest) String() string {
 func (*BreakGlassSecretRequest) ProtoMessage() {}
 
 func (x *BreakGlassSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[103]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7016,7 +7340,7 @@ func (x *BreakGlassSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BreakGlassSecretRequest.ProtoReflect.Descriptor instead.
 func (*BreakGlassSecretRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{103}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *BreakGlassSecretRequest) GetActor() *ActorContext {
@@ -7049,7 +7373,7 @@ type BreakGlassSecretResponse struct {
 
 func (x *BreakGlassSecretResponse) Reset() {
 	*x = BreakGlassSecretResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[104]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7061,7 +7385,7 @@ func (x *BreakGlassSecretResponse) String() string {
 func (*BreakGlassSecretResponse) ProtoMessage() {}
 
 func (x *BreakGlassSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[104]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7074,7 +7398,7 @@ func (x *BreakGlassSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BreakGlassSecretResponse.ProtoReflect.Descriptor instead.
 func (*BreakGlassSecretResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{104}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *BreakGlassSecretResponse) GetFields() map[string]string {
@@ -7096,7 +7420,7 @@ type CopySecretRequest struct {
 
 func (x *CopySecretRequest) Reset() {
 	*x = CopySecretRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[105]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7108,7 +7432,7 @@ func (x *CopySecretRequest) String() string {
 func (*CopySecretRequest) ProtoMessage() {}
 
 func (x *CopySecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[105]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7121,7 +7445,7 @@ func (x *CopySecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopySecretRequest.ProtoReflect.Descriptor instead.
 func (*CopySecretRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{105}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *CopySecretRequest) GetActor() *ActorContext {
@@ -7147,7 +7471,7 @@ type CopySecretResponse struct {
 
 func (x *CopySecretResponse) Reset() {
 	*x = CopySecretResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[106]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7159,7 +7483,7 @@ func (x *CopySecretResponse) String() string {
 func (*CopySecretResponse) ProtoMessage() {}
 
 func (x *CopySecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[106]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7172,7 +7496,7 @@ func (x *CopySecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopySecretResponse.ProtoReflect.Descriptor instead.
 func (*CopySecretResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{106}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *CopySecretResponse) GetValue() string {
@@ -7193,7 +7517,7 @@ type RetireSecretRequest struct {
 
 func (x *RetireSecretRequest) Reset() {
 	*x = RetireSecretRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[107]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7205,7 +7529,7 @@ func (x *RetireSecretRequest) String() string {
 func (*RetireSecretRequest) ProtoMessage() {}
 
 func (x *RetireSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[107]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7218,7 +7542,7 @@ func (x *RetireSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetireSecretRequest.ProtoReflect.Descriptor instead.
 func (*RetireSecretRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{107}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *RetireSecretRequest) GetActor() *ActorContext {
@@ -7244,7 +7568,7 @@ type RetireSecretResponse struct {
 
 func (x *RetireSecretResponse) Reset() {
 	*x = RetireSecretResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[108]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7256,7 +7580,7 @@ func (x *RetireSecretResponse) String() string {
 func (*RetireSecretResponse) ProtoMessage() {}
 
 func (x *RetireSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[108]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7269,7 +7593,7 @@ func (x *RetireSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetireSecretResponse.ProtoReflect.Descriptor instead.
 func (*RetireSecretResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{108}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *RetireSecretResponse) GetSecret() *Secret {
@@ -7290,7 +7614,7 @@ type RestoreSecretRequest struct {
 
 func (x *RestoreSecretRequest) Reset() {
 	*x = RestoreSecretRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[109]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7302,7 +7626,7 @@ func (x *RestoreSecretRequest) String() string {
 func (*RestoreSecretRequest) ProtoMessage() {}
 
 func (x *RestoreSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[109]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7315,7 +7639,7 @@ func (x *RestoreSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreSecretRequest.ProtoReflect.Descriptor instead.
 func (*RestoreSecretRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{109}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *RestoreSecretRequest) GetActor() *ActorContext {
@@ -7341,7 +7665,7 @@ type RestoreSecretResponse struct {
 
 func (x *RestoreSecretResponse) Reset() {
 	*x = RestoreSecretResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[110]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7353,7 +7677,7 @@ func (x *RestoreSecretResponse) String() string {
 func (*RestoreSecretResponse) ProtoMessage() {}
 
 func (x *RestoreSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[110]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7366,7 +7690,7 @@ func (x *RestoreSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreSecretResponse.ProtoReflect.Descriptor instead.
 func (*RestoreSecretResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{110}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *RestoreSecretResponse) GetSecret() *Secret {
@@ -7387,7 +7711,7 @@ type DeleteSecretRequest struct {
 
 func (x *DeleteSecretRequest) Reset() {
 	*x = DeleteSecretRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[111]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7399,7 +7723,7 @@ func (x *DeleteSecretRequest) String() string {
 func (*DeleteSecretRequest) ProtoMessage() {}
 
 func (x *DeleteSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[111]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7412,7 +7736,7 @@ func (x *DeleteSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSecretRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSecretRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{111}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *DeleteSecretRequest) GetActor() *ActorContext {
@@ -7437,7 +7761,7 @@ type DeleteSecretResponse struct {
 
 func (x *DeleteSecretResponse) Reset() {
 	*x = DeleteSecretResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[112]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7449,7 +7773,7 @@ func (x *DeleteSecretResponse) String() string {
 func (*DeleteSecretResponse) ProtoMessage() {}
 
 func (x *DeleteSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[112]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7462,7 +7786,7 @@ func (x *DeleteSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSecretResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSecretResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{112}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{116}
 }
 
 // Dashboard rollup over the actor's readable secrets.
@@ -7478,7 +7802,7 @@ type SecretStats struct {
 
 func (x *SecretStats) Reset() {
 	*x = SecretStats{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[113]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7490,7 +7814,7 @@ func (x *SecretStats) String() string {
 func (*SecretStats) ProtoMessage() {}
 
 func (x *SecretStats) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[113]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7503,7 +7827,7 @@ func (x *SecretStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretStats.ProtoReflect.Descriptor instead.
 func (*SecretStats) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{113}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{117}
 }
 
 func (x *SecretStats) GetTotal() int32 {
@@ -7543,7 +7867,7 @@ type GetSecretStatsRequest struct {
 
 func (x *GetSecretStatsRequest) Reset() {
 	*x = GetSecretStatsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[114]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[118]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7555,7 +7879,7 @@ func (x *GetSecretStatsRequest) String() string {
 func (*GetSecretStatsRequest) ProtoMessage() {}
 
 func (x *GetSecretStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[114]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[118]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7568,7 +7892,7 @@ func (x *GetSecretStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecretStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetSecretStatsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{114}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{118}
 }
 
 func (x *GetSecretStatsRequest) GetActor() *ActorContext {
@@ -7587,7 +7911,7 @@ type GetSecretStatsResponse struct {
 
 func (x *GetSecretStatsResponse) Reset() {
 	*x = GetSecretStatsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[115]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[119]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7599,7 +7923,7 @@ func (x *GetSecretStatsResponse) String() string {
 func (*GetSecretStatsResponse) ProtoMessage() {}
 
 func (x *GetSecretStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[115]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[119]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7612,7 +7936,7 @@ func (x *GetSecretStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecretStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetSecretStatsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{115}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{119}
 }
 
 func (x *GetSecretStatsResponse) GetStats() *SecretStats {
@@ -7632,7 +7956,7 @@ type GetTopAccessedSecretsRequest struct {
 
 func (x *GetTopAccessedSecretsRequest) Reset() {
 	*x = GetTopAccessedSecretsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[116]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[120]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7644,7 +7968,7 @@ func (x *GetTopAccessedSecretsRequest) String() string {
 func (*GetTopAccessedSecretsRequest) ProtoMessage() {}
 
 func (x *GetTopAccessedSecretsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[116]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[120]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7657,7 +7981,7 @@ func (x *GetTopAccessedSecretsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTopAccessedSecretsRequest.ProtoReflect.Descriptor instead.
 func (*GetTopAccessedSecretsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{116}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{120}
 }
 
 func (x *GetTopAccessedSecretsRequest) GetActor() *ActorContext {
@@ -7683,7 +8007,7 @@ type GetTopAccessedSecretsResponse struct {
 
 func (x *GetTopAccessedSecretsResponse) Reset() {
 	*x = GetTopAccessedSecretsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[117]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[121]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7695,7 +8019,7 @@ func (x *GetTopAccessedSecretsResponse) String() string {
 func (*GetTopAccessedSecretsResponse) ProtoMessage() {}
 
 func (x *GetTopAccessedSecretsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[117]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[121]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7708,7 +8032,7 @@ func (x *GetTopAccessedSecretsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTopAccessedSecretsResponse.ProtoReflect.Descriptor instead.
 func (*GetTopAccessedSecretsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{117}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{121}
 }
 
 func (x *GetTopAccessedSecretsResponse) GetSecrets() []*Secret {
@@ -7731,7 +8055,7 @@ type ListSecretsByStatusRequest struct {
 
 func (x *ListSecretsByStatusRequest) Reset() {
 	*x = ListSecretsByStatusRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[118]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[122]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7743,7 +8067,7 @@ func (x *ListSecretsByStatusRequest) String() string {
 func (*ListSecretsByStatusRequest) ProtoMessage() {}
 
 func (x *ListSecretsByStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[118]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[122]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7756,7 +8080,7 @@ func (x *ListSecretsByStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSecretsByStatusRequest.ProtoReflect.Descriptor instead.
 func (*ListSecretsByStatusRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{118}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{122}
 }
 
 func (x *ListSecretsByStatusRequest) GetActor() *ActorContext {
@@ -7782,7 +8106,7 @@ type ListSecretsByStatusResponse struct {
 
 func (x *ListSecretsByStatusResponse) Reset() {
 	*x = ListSecretsByStatusResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[119]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[123]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7794,7 +8118,7 @@ func (x *ListSecretsByStatusResponse) String() string {
 func (*ListSecretsByStatusResponse) ProtoMessage() {}
 
 func (x *ListSecretsByStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[119]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[123]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7807,7 +8131,7 @@ func (x *ListSecretsByStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSecretsByStatusResponse.ProtoReflect.Descriptor instead.
 func (*ListSecretsByStatusResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{119}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{123}
 }
 
 func (x *ListSecretsByStatusResponse) GetSecrets() []*Secret {
@@ -7829,7 +8153,7 @@ type FindSecretsByPublicKeyRequest struct {
 
 func (x *FindSecretsByPublicKeyRequest) Reset() {
 	*x = FindSecretsByPublicKeyRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[120]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[124]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7841,7 +8165,7 @@ func (x *FindSecretsByPublicKeyRequest) String() string {
 func (*FindSecretsByPublicKeyRequest) ProtoMessage() {}
 
 func (x *FindSecretsByPublicKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[120]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[124]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7854,7 +8178,7 @@ func (x *FindSecretsByPublicKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FindSecretsByPublicKeyRequest.ProtoReflect.Descriptor instead.
 func (*FindSecretsByPublicKeyRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{120}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{124}
 }
 
 func (x *FindSecretsByPublicKeyRequest) GetActor() *ActorContext {
@@ -7880,7 +8204,7 @@ type FindSecretsByPublicKeyResponse struct {
 
 func (x *FindSecretsByPublicKeyResponse) Reset() {
 	*x = FindSecretsByPublicKeyResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[121]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7892,7 +8216,7 @@ func (x *FindSecretsByPublicKeyResponse) String() string {
 func (*FindSecretsByPublicKeyResponse) ProtoMessage() {}
 
 func (x *FindSecretsByPublicKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[121]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7905,7 +8229,7 @@ func (x *FindSecretsByPublicKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FindSecretsByPublicKeyResponse.ProtoReflect.Descriptor instead.
 func (*FindSecretsByPublicKeyResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{121}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{125}
 }
 
 func (x *FindSecretsByPublicKeyResponse) GetSecrets() []*Secret {
@@ -7927,7 +8251,7 @@ type GetSecretRulesetRequest struct {
 
 func (x *GetSecretRulesetRequest) Reset() {
 	*x = GetSecretRulesetRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[122]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7939,7 +8263,7 @@ func (x *GetSecretRulesetRequest) String() string {
 func (*GetSecretRulesetRequest) ProtoMessage() {}
 
 func (x *GetSecretRulesetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[122]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7952,7 +8276,7 @@ func (x *GetSecretRulesetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecretRulesetRequest.ProtoReflect.Descriptor instead.
 func (*GetSecretRulesetRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{122}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{126}
 }
 
 func (x *GetSecretRulesetRequest) GetActor() *ActorContext {
@@ -7978,7 +8302,7 @@ type GetSecretRulesetResponse struct {
 
 func (x *GetSecretRulesetResponse) Reset() {
 	*x = GetSecretRulesetResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[123]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[127]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7990,7 +8314,7 @@ func (x *GetSecretRulesetResponse) String() string {
 func (*GetSecretRulesetResponse) ProtoMessage() {}
 
 func (x *GetSecretRulesetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[123]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[127]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8003,7 +8327,7 @@ func (x *GetSecretRulesetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecretRulesetResponse.ProtoReflect.Descriptor instead.
 func (*GetSecretRulesetResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{123}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{127}
 }
 
 func (x *GetSecretRulesetResponse) GetRules() []*RaciRule {
@@ -8024,7 +8348,7 @@ type SetSecretRulesetRequest struct {
 
 func (x *SetSecretRulesetRequest) Reset() {
 	*x = SetSecretRulesetRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[124]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[128]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8036,7 +8360,7 @@ func (x *SetSecretRulesetRequest) String() string {
 func (*SetSecretRulesetRequest) ProtoMessage() {}
 
 func (x *SetSecretRulesetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[124]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[128]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8049,7 +8373,7 @@ func (x *SetSecretRulesetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSecretRulesetRequest.ProtoReflect.Descriptor instead.
 func (*SetSecretRulesetRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{124}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{128}
 }
 
 func (x *SetSecretRulesetRequest) GetActor() *ActorContext {
@@ -8082,7 +8406,7 @@ type SetSecretRulesetResponse struct {
 
 func (x *SetSecretRulesetResponse) Reset() {
 	*x = SetSecretRulesetResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[125]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[129]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8094,7 +8418,7 @@ func (x *SetSecretRulesetResponse) String() string {
 func (*SetSecretRulesetResponse) ProtoMessage() {}
 
 func (x *SetSecretRulesetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[125]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[129]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8107,7 +8431,7 @@ func (x *SetSecretRulesetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSecretRulesetResponse.ProtoReflect.Descriptor instead.
 func (*SetSecretRulesetResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{125}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{129}
 }
 
 func (x *SetSecretRulesetResponse) GetRules() []*RaciRule {
@@ -8127,7 +8451,7 @@ type GetMySecretAccessRequest struct {
 
 func (x *GetMySecretAccessRequest) Reset() {
 	*x = GetMySecretAccessRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[126]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[130]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8139,7 +8463,7 @@ func (x *GetMySecretAccessRequest) String() string {
 func (*GetMySecretAccessRequest) ProtoMessage() {}
 
 func (x *GetMySecretAccessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[126]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[130]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8152,7 +8476,7 @@ func (x *GetMySecretAccessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMySecretAccessRequest.ProtoReflect.Descriptor instead.
 func (*GetMySecretAccessRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{126}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{130}
 }
 
 func (x *GetMySecretAccessRequest) GetActor() *ActorContext {
@@ -8178,7 +8502,7 @@ type GetMySecretAccessResponse struct {
 
 func (x *GetMySecretAccessResponse) Reset() {
 	*x = GetMySecretAccessResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[127]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[131]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8190,7 +8514,7 @@ func (x *GetMySecretAccessResponse) String() string {
 func (*GetMySecretAccessResponse) ProtoMessage() {}
 
 func (x *GetMySecretAccessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[127]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[131]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8203,7 +8527,7 @@ func (x *GetMySecretAccessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMySecretAccessResponse.ProtoReflect.Descriptor instead.
 func (*GetMySecretAccessResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{127}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{131}
 }
 
 func (x *GetMySecretAccessResponse) GetAccess() *FolderAccess {
@@ -8239,7 +8563,7 @@ type CertMeta struct {
 
 func (x *CertMeta) Reset() {
 	*x = CertMeta{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[128]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[132]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8251,7 +8575,7 @@ func (x *CertMeta) String() string {
 func (*CertMeta) ProtoMessage() {}
 
 func (x *CertMeta) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[128]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[132]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8264,7 +8588,7 @@ func (x *CertMeta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CertMeta.ProtoReflect.Descriptor instead.
 func (*CertMeta) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{128}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{132}
 }
 
 func (x *CertMeta) GetSubject() string {
@@ -8364,7 +8688,7 @@ type ImportCertificateRequest struct {
 
 func (x *ImportCertificateRequest) Reset() {
 	*x = ImportCertificateRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[129]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[133]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8376,7 +8700,7 @@ func (x *ImportCertificateRequest) String() string {
 func (*ImportCertificateRequest) ProtoMessage() {}
 
 func (x *ImportCertificateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[129]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[133]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8389,7 +8713,7 @@ func (x *ImportCertificateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportCertificateRequest.ProtoReflect.Descriptor instead.
 func (*ImportCertificateRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{129}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{133}
 }
 
 func (x *ImportCertificateRequest) GetActor() *ActorContext {
@@ -8447,7 +8771,7 @@ type ImportCertificateResponse struct {
 
 func (x *ImportCertificateResponse) Reset() {
 	*x = ImportCertificateResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[130]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[134]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8459,7 +8783,7 @@ func (x *ImportCertificateResponse) String() string {
 func (*ImportCertificateResponse) ProtoMessage() {}
 
 func (x *ImportCertificateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[130]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[134]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8472,7 +8796,7 @@ func (x *ImportCertificateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportCertificateResponse.ProtoReflect.Descriptor instead.
 func (*ImportCertificateResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{130}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{134}
 }
 
 func (x *ImportCertificateResponse) GetSecret() *Secret {
@@ -8511,7 +8835,7 @@ type ExportCertificateRequest struct {
 
 func (x *ExportCertificateRequest) Reset() {
 	*x = ExportCertificateRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[131]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[135]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8523,7 +8847,7 @@ func (x *ExportCertificateRequest) String() string {
 func (*ExportCertificateRequest) ProtoMessage() {}
 
 func (x *ExportCertificateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[131]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[135]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8536,7 +8860,7 @@ func (x *ExportCertificateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportCertificateRequest.ProtoReflect.Descriptor instead.
 func (*ExportCertificateRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{131}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{135}
 }
 
 func (x *ExportCertificateRequest) GetActor() *ActorContext {
@@ -8578,7 +8902,7 @@ type ExportCertificateResponse struct {
 
 func (x *ExportCertificateResponse) Reset() {
 	*x = ExportCertificateResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[132]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[136]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8590,7 +8914,7 @@ func (x *ExportCertificateResponse) String() string {
 func (*ExportCertificateResponse) ProtoMessage() {}
 
 func (x *ExportCertificateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[132]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[136]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8603,7 +8927,7 @@ func (x *ExportCertificateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportCertificateResponse.ProtoReflect.Descriptor instead.
 func (*ExportCertificateResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{132}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{136}
 }
 
 func (x *ExportCertificateResponse) GetFileBytes() []byte {
@@ -8646,7 +8970,7 @@ type ReplaceCertificateRequest struct {
 
 func (x *ReplaceCertificateRequest) Reset() {
 	*x = ReplaceCertificateRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[133]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[137]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8658,7 +8982,7 @@ func (x *ReplaceCertificateRequest) String() string {
 func (*ReplaceCertificateRequest) ProtoMessage() {}
 
 func (x *ReplaceCertificateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[133]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[137]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8671,7 +8995,7 @@ func (x *ReplaceCertificateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplaceCertificateRequest.ProtoReflect.Descriptor instead.
 func (*ReplaceCertificateRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{133}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{137}
 }
 
 func (x *ReplaceCertificateRequest) GetActor() *ActorContext {
@@ -8722,7 +9046,7 @@ type ReplaceCertificateResponse struct {
 
 func (x *ReplaceCertificateResponse) Reset() {
 	*x = ReplaceCertificateResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[134]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[138]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8734,7 +9058,7 @@ func (x *ReplaceCertificateResponse) String() string {
 func (*ReplaceCertificateResponse) ProtoMessage() {}
 
 func (x *ReplaceCertificateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[134]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[138]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8747,7 +9071,7 @@ func (x *ReplaceCertificateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplaceCertificateResponse.ProtoReflect.Descriptor instead.
 func (*ReplaceCertificateResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{134}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{138}
 }
 
 func (x *ReplaceCertificateResponse) GetSecret() *Secret {
@@ -8789,7 +9113,7 @@ type Connection struct {
 
 func (x *Connection) Reset() {
 	*x = Connection{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[135]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[139]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8801,7 +9125,7 @@ func (x *Connection) String() string {
 func (*Connection) ProtoMessage() {}
 
 func (x *Connection) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[135]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[139]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8814,7 +9138,7 @@ func (x *Connection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Connection.ProtoReflect.Descriptor instead.
 func (*Connection) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{135}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{139}
 }
 
 func (x *Connection) GetId() string {
@@ -8911,7 +9235,7 @@ type Target struct {
 
 func (x *Target) Reset() {
 	*x = Target{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[136]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[140]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8923,7 +9247,7 @@ func (x *Target) String() string {
 func (*Target) ProtoMessage() {}
 
 func (x *Target) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[136]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[140]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8936,7 +9260,7 @@ func (x *Target) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Target.ProtoReflect.Descriptor instead.
 func (*Target) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{136}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{140}
 }
 
 func (x *Target) GetId() string {
@@ -9024,7 +9348,7 @@ type ListConnectionsRequest struct {
 
 func (x *ListConnectionsRequest) Reset() {
 	*x = ListConnectionsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[137]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[141]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9036,7 +9360,7 @@ func (x *ListConnectionsRequest) String() string {
 func (*ListConnectionsRequest) ProtoMessage() {}
 
 func (x *ListConnectionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[137]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[141]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9049,7 +9373,7 @@ func (x *ListConnectionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListConnectionsRequest.ProtoReflect.Descriptor instead.
 func (*ListConnectionsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{137}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{141}
 }
 
 type ListConnectionsResponse struct {
@@ -9061,7 +9385,7 @@ type ListConnectionsResponse struct {
 
 func (x *ListConnectionsResponse) Reset() {
 	*x = ListConnectionsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[138]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[142]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9073,7 +9397,7 @@ func (x *ListConnectionsResponse) String() string {
 func (*ListConnectionsResponse) ProtoMessage() {}
 
 func (x *ListConnectionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[138]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[142]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9086,7 +9410,7 @@ func (x *ListConnectionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListConnectionsResponse.ProtoReflect.Descriptor instead.
 func (*ListConnectionsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{138}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{142}
 }
 
 func (x *ListConnectionsResponse) GetConnections() []*Connection {
@@ -9106,7 +9430,7 @@ type SaveConnectionRequest struct {
 
 func (x *SaveConnectionRequest) Reset() {
 	*x = SaveConnectionRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[139]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[143]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9118,7 +9442,7 @@ func (x *SaveConnectionRequest) String() string {
 func (*SaveConnectionRequest) ProtoMessage() {}
 
 func (x *SaveConnectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[139]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[143]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9131,7 +9455,7 @@ func (x *SaveConnectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveConnectionRequest.ProtoReflect.Descriptor instead.
 func (*SaveConnectionRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{139}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{143}
 }
 
 func (x *SaveConnectionRequest) GetActor() *ActorContext {
@@ -9157,7 +9481,7 @@ type SaveConnectionResponse struct {
 
 func (x *SaveConnectionResponse) Reset() {
 	*x = SaveConnectionResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[140]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[144]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9169,7 +9493,7 @@ func (x *SaveConnectionResponse) String() string {
 func (*SaveConnectionResponse) ProtoMessage() {}
 
 func (x *SaveConnectionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[140]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[144]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9182,7 +9506,7 @@ func (x *SaveConnectionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveConnectionResponse.ProtoReflect.Descriptor instead.
 func (*SaveConnectionResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{140}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{144}
 }
 
 func (x *SaveConnectionResponse) GetConnection() *Connection {
@@ -9202,7 +9526,7 @@ type DeleteConnectionRequest struct {
 
 func (x *DeleteConnectionRequest) Reset() {
 	*x = DeleteConnectionRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[141]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[145]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9214,7 +9538,7 @@ func (x *DeleteConnectionRequest) String() string {
 func (*DeleteConnectionRequest) ProtoMessage() {}
 
 func (x *DeleteConnectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[141]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[145]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9227,7 +9551,7 @@ func (x *DeleteConnectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteConnectionRequest.ProtoReflect.Descriptor instead.
 func (*DeleteConnectionRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{141}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{145}
 }
 
 func (x *DeleteConnectionRequest) GetActor() *ActorContext {
@@ -9253,7 +9577,7 @@ type DeleteConnectionResponse struct {
 
 func (x *DeleteConnectionResponse) Reset() {
 	*x = DeleteConnectionResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[142]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[146]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9265,7 +9589,7 @@ func (x *DeleteConnectionResponse) String() string {
 func (*DeleteConnectionResponse) ProtoMessage() {}
 
 func (x *DeleteConnectionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[142]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[146]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9278,7 +9602,7 @@ func (x *DeleteConnectionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteConnectionResponse.ProtoReflect.Descriptor instead.
 func (*DeleteConnectionResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{142}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{146}
 }
 
 func (x *DeleteConnectionResponse) GetRemoved() bool {
@@ -9299,7 +9623,7 @@ type ListTargetsRequest struct {
 
 func (x *ListTargetsRequest) Reset() {
 	*x = ListTargetsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[143]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[147]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9311,7 +9635,7 @@ func (x *ListTargetsRequest) String() string {
 func (*ListTargetsRequest) ProtoMessage() {}
 
 func (x *ListTargetsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[143]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[147]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9324,7 +9648,7 @@ func (x *ListTargetsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTargetsRequest.ProtoReflect.Descriptor instead.
 func (*ListTargetsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{143}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{147}
 }
 
 func (x *ListTargetsRequest) GetActor() *ActorContext {
@@ -9343,7 +9667,7 @@ type ListTargetsResponse struct {
 
 func (x *ListTargetsResponse) Reset() {
 	*x = ListTargetsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[144]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[148]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9355,7 +9679,7 @@ func (x *ListTargetsResponse) String() string {
 func (*ListTargetsResponse) ProtoMessage() {}
 
 func (x *ListTargetsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[144]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[148]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9368,7 +9692,7 @@ func (x *ListTargetsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTargetsResponse.ProtoReflect.Descriptor instead.
 func (*ListTargetsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{144}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{148}
 }
 
 func (x *ListTargetsResponse) GetTargets() []*Target {
@@ -9388,7 +9712,7 @@ type SaveTargetRequest struct {
 
 func (x *SaveTargetRequest) Reset() {
 	*x = SaveTargetRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[145]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[149]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9400,7 +9724,7 @@ func (x *SaveTargetRequest) String() string {
 func (*SaveTargetRequest) ProtoMessage() {}
 
 func (x *SaveTargetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[145]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[149]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9413,7 +9737,7 @@ func (x *SaveTargetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveTargetRequest.ProtoReflect.Descriptor instead.
 func (*SaveTargetRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{145}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{149}
 }
 
 func (x *SaveTargetRequest) GetActor() *ActorContext {
@@ -9439,7 +9763,7 @@ type SaveTargetResponse struct {
 
 func (x *SaveTargetResponse) Reset() {
 	*x = SaveTargetResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[146]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[150]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9451,7 +9775,7 @@ func (x *SaveTargetResponse) String() string {
 func (*SaveTargetResponse) ProtoMessage() {}
 
 func (x *SaveTargetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[146]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[150]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9464,7 +9788,7 @@ func (x *SaveTargetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveTargetResponse.ProtoReflect.Descriptor instead.
 func (*SaveTargetResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{146}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{150}
 }
 
 func (x *SaveTargetResponse) GetTarget() *Target {
@@ -9484,7 +9808,7 @@ type DeleteTargetRequest struct {
 
 func (x *DeleteTargetRequest) Reset() {
 	*x = DeleteTargetRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[147]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[151]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9496,7 +9820,7 @@ func (x *DeleteTargetRequest) String() string {
 func (*DeleteTargetRequest) ProtoMessage() {}
 
 func (x *DeleteTargetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[147]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[151]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9509,7 +9833,7 @@ func (x *DeleteTargetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTargetRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTargetRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{147}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{151}
 }
 
 func (x *DeleteTargetRequest) GetActor() *ActorContext {
@@ -9535,7 +9859,7 @@ type DeleteTargetResponse struct {
 
 func (x *DeleteTargetResponse) Reset() {
 	*x = DeleteTargetResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[148]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[152]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9547,7 +9871,7 @@ func (x *DeleteTargetResponse) String() string {
 func (*DeleteTargetResponse) ProtoMessage() {}
 
 func (x *DeleteTargetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[148]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[152]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9560,7 +9884,7 @@ func (x *DeleteTargetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTargetResponse.ProtoReflect.Descriptor instead.
 func (*DeleteTargetResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{148}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{152}
 }
 
 func (x *DeleteTargetResponse) GetRemoved() bool {
@@ -9584,7 +9908,7 @@ type GetTargetRulesetRequest struct {
 
 func (x *GetTargetRulesetRequest) Reset() {
 	*x = GetTargetRulesetRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[149]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[153]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9596,7 +9920,7 @@ func (x *GetTargetRulesetRequest) String() string {
 func (*GetTargetRulesetRequest) ProtoMessage() {}
 
 func (x *GetTargetRulesetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[149]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[153]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9609,7 +9933,7 @@ func (x *GetTargetRulesetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTargetRulesetRequest.ProtoReflect.Descriptor instead.
 func (*GetTargetRulesetRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{149}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{153}
 }
 
 func (x *GetTargetRulesetRequest) GetActor() *ActorContext {
@@ -9635,7 +9959,7 @@ type GetTargetRulesetResponse struct {
 
 func (x *GetTargetRulesetResponse) Reset() {
 	*x = GetTargetRulesetResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[150]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[154]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9647,7 +9971,7 @@ func (x *GetTargetRulesetResponse) String() string {
 func (*GetTargetRulesetResponse) ProtoMessage() {}
 
 func (x *GetTargetRulesetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[150]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[154]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9660,7 +9984,7 @@ func (x *GetTargetRulesetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTargetRulesetResponse.ProtoReflect.Descriptor instead.
 func (*GetTargetRulesetResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{150}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{154}
 }
 
 func (x *GetTargetRulesetResponse) GetRuleset() []*RaciRule {
@@ -9681,7 +10005,7 @@ type SetTargetRulesetRequest struct {
 
 func (x *SetTargetRulesetRequest) Reset() {
 	*x = SetTargetRulesetRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[151]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[155]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9693,7 +10017,7 @@ func (x *SetTargetRulesetRequest) String() string {
 func (*SetTargetRulesetRequest) ProtoMessage() {}
 
 func (x *SetTargetRulesetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[151]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[155]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9706,7 +10030,7 @@ func (x *SetTargetRulesetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetTargetRulesetRequest.ProtoReflect.Descriptor instead.
 func (*SetTargetRulesetRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{151}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{155}
 }
 
 func (x *SetTargetRulesetRequest) GetActor() *ActorContext {
@@ -9738,7 +10062,7 @@ type SetTargetRulesetResponse struct {
 
 func (x *SetTargetRulesetResponse) Reset() {
 	*x = SetTargetRulesetResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[152]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[156]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9750,7 +10074,7 @@ func (x *SetTargetRulesetResponse) String() string {
 func (*SetTargetRulesetResponse) ProtoMessage() {}
 
 func (x *SetTargetRulesetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[152]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[156]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9763,7 +10087,7 @@ func (x *SetTargetRulesetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetTargetRulesetResponse.ProtoReflect.Descriptor instead.
 func (*SetTargetRulesetResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{152}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{156}
 }
 
 // ---- Connector / heartbeat ----
@@ -9779,7 +10103,7 @@ type WorkerIdentity struct {
 
 func (x *WorkerIdentity) Reset() {
 	*x = WorkerIdentity{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[153]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[157]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9791,7 +10115,7 @@ func (x *WorkerIdentity) String() string {
 func (*WorkerIdentity) ProtoMessage() {}
 
 func (x *WorkerIdentity) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[153]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[157]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9804,7 +10128,7 @@ func (x *WorkerIdentity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkerIdentity.ProtoReflect.Descriptor instead.
 func (*WorkerIdentity) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{153}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{157}
 }
 
 func (x *WorkerIdentity) GetToken() string {
@@ -9833,7 +10157,7 @@ type HeartbeatConn struct {
 
 func (x *HeartbeatConn) Reset() {
 	*x = HeartbeatConn{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[154]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[158]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9845,7 +10169,7 @@ func (x *HeartbeatConn) String() string {
 func (*HeartbeatConn) ProtoMessage() {}
 
 func (x *HeartbeatConn) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[154]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[158]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9858,7 +10182,7 @@ func (x *HeartbeatConn) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatConn.ProtoReflect.Descriptor instead.
 func (*HeartbeatConn) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{154}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{158}
 }
 
 func (x *HeartbeatConn) GetProtocol() string {
@@ -9890,18 +10214,21 @@ func (x *HeartbeatConn) GetUseTls() bool {
 }
 
 type HeartbeatTarget struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Kind          string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
-	Domain        string                 `protobuf:"bytes,2,opt,name=domain,proto3" json:"domain,omitempty"`
-	Realm         string                 `protobuf:"bytes,3,opt,name=realm,proto3" json:"realm,omitempty"`
-	Hostname      string                 `protobuf:"bytes,4,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Kind     string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Domain   string                 `protobuf:"bytes,2,opt,name=domain,proto3" json:"domain,omitempty"`
+	Realm    string                 `protobuf:"bytes,3,opt,name=realm,proto3" json:"realm,omitempty"`
+	Hostname string                 `protobuf:"bytes,4,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	// The target's SSH host-key pins (Target.ssh_host_keys, authorized_keys
+	// form). Empty means not pinned: the connector must not connect over SSH.
+	SshHostKeys   []string `protobuf:"bytes,5,rep,name=ssh_host_keys,json=sshHostKeys,proto3" json:"ssh_host_keys,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *HeartbeatTarget) Reset() {
 	*x = HeartbeatTarget{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[155]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[159]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9913,7 +10240,7 @@ func (x *HeartbeatTarget) String() string {
 func (*HeartbeatTarget) ProtoMessage() {}
 
 func (x *HeartbeatTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[155]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[159]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9926,7 +10253,7 @@ func (x *HeartbeatTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatTarget.ProtoReflect.Descriptor instead.
 func (*HeartbeatTarget) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{155}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{159}
 }
 
 func (x *HeartbeatTarget) GetKind() string {
@@ -9957,6 +10284,13 @@ func (x *HeartbeatTarget) GetHostname() string {
 	return ""
 }
 
+func (x *HeartbeatTarget) GetSshHostKeys() []string {
+	if x != nil {
+		return x.SshHostKeys
+	}
+	return nil
+}
+
 // One due validation job (no secret value — reveal is a separate call).
 type HeartbeatJob struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -9971,7 +10305,7 @@ type HeartbeatJob struct {
 
 func (x *HeartbeatJob) Reset() {
 	*x = HeartbeatJob{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[156]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[160]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9983,7 +10317,7 @@ func (x *HeartbeatJob) String() string {
 func (*HeartbeatJob) ProtoMessage() {}
 
 func (x *HeartbeatJob) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[156]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[160]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9996,7 +10330,7 @@ func (x *HeartbeatJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatJob.ProtoReflect.Descriptor instead.
 func (*HeartbeatJob) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{156}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{160}
 }
 
 func (x *HeartbeatJob) GetSecretId() string {
@@ -10044,7 +10378,7 @@ type ClaimDueHeartbeatsRequest struct {
 
 func (x *ClaimDueHeartbeatsRequest) Reset() {
 	*x = ClaimDueHeartbeatsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[157]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[161]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10056,7 +10390,7 @@ func (x *ClaimDueHeartbeatsRequest) String() string {
 func (*ClaimDueHeartbeatsRequest) ProtoMessage() {}
 
 func (x *ClaimDueHeartbeatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[157]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[161]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10069,7 +10403,7 @@ func (x *ClaimDueHeartbeatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClaimDueHeartbeatsRequest.ProtoReflect.Descriptor instead.
 func (*ClaimDueHeartbeatsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{157}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{161}
 }
 
 func (x *ClaimDueHeartbeatsRequest) GetIdentity() *WorkerIdentity {
@@ -10095,7 +10429,7 @@ type ClaimDueHeartbeatsResponse struct {
 
 func (x *ClaimDueHeartbeatsResponse) Reset() {
 	*x = ClaimDueHeartbeatsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[158]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[162]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10107,7 +10441,7 @@ func (x *ClaimDueHeartbeatsResponse) String() string {
 func (*ClaimDueHeartbeatsResponse) ProtoMessage() {}
 
 func (x *ClaimDueHeartbeatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[158]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[162]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10120,7 +10454,7 @@ func (x *ClaimDueHeartbeatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClaimDueHeartbeatsResponse.ProtoReflect.Descriptor instead.
 func (*ClaimDueHeartbeatsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{158}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{162}
 }
 
 func (x *ClaimDueHeartbeatsResponse) GetJobs() []*HeartbeatJob {
@@ -10140,7 +10474,7 @@ type RevealForHeartbeatRequest struct {
 
 func (x *RevealForHeartbeatRequest) Reset() {
 	*x = RevealForHeartbeatRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[159]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[163]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10152,7 +10486,7 @@ func (x *RevealForHeartbeatRequest) String() string {
 func (*RevealForHeartbeatRequest) ProtoMessage() {}
 
 func (x *RevealForHeartbeatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[159]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[163]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10165,7 +10499,7 @@ func (x *RevealForHeartbeatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevealForHeartbeatRequest.ProtoReflect.Descriptor instead.
 func (*RevealForHeartbeatRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{159}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{163}
 }
 
 func (x *RevealForHeartbeatRequest) GetIdentity() *WorkerIdentity {
@@ -10197,7 +10531,7 @@ type RevealForHeartbeatResponse struct {
 
 func (x *RevealForHeartbeatResponse) Reset() {
 	*x = RevealForHeartbeatResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[160]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[164]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10209,7 +10543,7 @@ func (x *RevealForHeartbeatResponse) String() string {
 func (*RevealForHeartbeatResponse) ProtoMessage() {}
 
 func (x *RevealForHeartbeatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[160]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[164]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10222,7 +10556,7 @@ func (x *RevealForHeartbeatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevealForHeartbeatResponse.ProtoReflect.Descriptor instead.
 func (*RevealForHeartbeatResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{160}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{164}
 }
 
 func (x *RevealForHeartbeatResponse) GetUsername() string {
@@ -10270,7 +10604,7 @@ type ReportHeartbeatRequest struct {
 
 func (x *ReportHeartbeatRequest) Reset() {
 	*x = ReportHeartbeatRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[161]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[165]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10282,7 +10616,7 @@ func (x *ReportHeartbeatRequest) String() string {
 func (*ReportHeartbeatRequest) ProtoMessage() {}
 
 func (x *ReportHeartbeatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[161]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[165]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10295,7 +10629,7 @@ func (x *ReportHeartbeatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportHeartbeatRequest.ProtoReflect.Descriptor instead.
 func (*ReportHeartbeatRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{161}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{165}
 }
 
 func (x *ReportHeartbeatRequest) GetIdentity() *WorkerIdentity {
@@ -10349,7 +10683,7 @@ type ReportHeartbeatResponse struct {
 
 func (x *ReportHeartbeatResponse) Reset() {
 	*x = ReportHeartbeatResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[162]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[166]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10361,7 +10695,7 @@ func (x *ReportHeartbeatResponse) String() string {
 func (*ReportHeartbeatResponse) ProtoMessage() {}
 
 func (x *ReportHeartbeatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[162]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[166]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10374,7 +10708,7 @@ func (x *ReportHeartbeatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportHeartbeatResponse.ProtoReflect.Descriptor instead.
 func (*ReportHeartbeatResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{162}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{166}
 }
 
 func (x *ReportHeartbeatResponse) GetOk() bool {
@@ -10399,7 +10733,7 @@ type RotationJob struct {
 
 func (x *RotationJob) Reset() {
 	*x = RotationJob{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[163]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[167]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10411,7 +10745,7 @@ func (x *RotationJob) String() string {
 func (*RotationJob) ProtoMessage() {}
 
 func (x *RotationJob) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[163]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[167]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10424,7 +10758,7 @@ func (x *RotationJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotationJob.ProtoReflect.Descriptor instead.
 func (*RotationJob) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{163}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{167}
 }
 
 func (x *RotationJob) GetSecretId() string {
@@ -10473,7 +10807,7 @@ type EnqueueRotationRequest struct {
 
 func (x *EnqueueRotationRequest) Reset() {
 	*x = EnqueueRotationRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[164]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[168]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10485,7 +10819,7 @@ func (x *EnqueueRotationRequest) String() string {
 func (*EnqueueRotationRequest) ProtoMessage() {}
 
 func (x *EnqueueRotationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[164]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[168]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10498,7 +10832,7 @@ func (x *EnqueueRotationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnqueueRotationRequest.ProtoReflect.Descriptor instead.
 func (*EnqueueRotationRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{164}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{168}
 }
 
 func (x *EnqueueRotationRequest) GetActor() *ActorContext {
@@ -10531,7 +10865,7 @@ type EnqueueRotationResponse struct {
 
 func (x *EnqueueRotationResponse) Reset() {
 	*x = EnqueueRotationResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[165]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[169]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10543,7 +10877,7 @@ func (x *EnqueueRotationResponse) String() string {
 func (*EnqueueRotationResponse) ProtoMessage() {}
 
 func (x *EnqueueRotationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[165]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[169]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10556,7 +10890,7 @@ func (x *EnqueueRotationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnqueueRotationResponse.ProtoReflect.Descriptor instead.
 func (*EnqueueRotationResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{165}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{169}
 }
 
 func (x *EnqueueRotationResponse) GetOk() bool {
@@ -10576,7 +10910,7 @@ type ClaimDueRotationsRequest struct {
 
 func (x *ClaimDueRotationsRequest) Reset() {
 	*x = ClaimDueRotationsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[166]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[170]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10588,7 +10922,7 @@ func (x *ClaimDueRotationsRequest) String() string {
 func (*ClaimDueRotationsRequest) ProtoMessage() {}
 
 func (x *ClaimDueRotationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[166]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[170]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10601,7 +10935,7 @@ func (x *ClaimDueRotationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClaimDueRotationsRequest.ProtoReflect.Descriptor instead.
 func (*ClaimDueRotationsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{166}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{170}
 }
 
 func (x *ClaimDueRotationsRequest) GetIdentity() *WorkerIdentity {
@@ -10627,7 +10961,7 @@ type ClaimDueRotationsResponse struct {
 
 func (x *ClaimDueRotationsResponse) Reset() {
 	*x = ClaimDueRotationsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[167]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[171]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10639,7 +10973,7 @@ func (x *ClaimDueRotationsResponse) String() string {
 func (*ClaimDueRotationsResponse) ProtoMessage() {}
 
 func (x *ClaimDueRotationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[167]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[171]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10652,7 +10986,7 @@ func (x *ClaimDueRotationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClaimDueRotationsResponse.ProtoReflect.Descriptor instead.
 func (*ClaimDueRotationsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{167}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{171}
 }
 
 func (x *ClaimDueRotationsResponse) GetJobs() []*RotationJob {
@@ -10672,7 +11006,7 @@ type RevealForRotationRequest struct {
 
 func (x *RevealForRotationRequest) Reset() {
 	*x = RevealForRotationRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[168]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[172]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10684,7 +11018,7 @@ func (x *RevealForRotationRequest) String() string {
 func (*RevealForRotationRequest) ProtoMessage() {}
 
 func (x *RevealForRotationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[168]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[172]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10697,7 +11031,7 @@ func (x *RevealForRotationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevealForRotationRequest.ProtoReflect.Descriptor instead.
 func (*RevealForRotationRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{168}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{172}
 }
 
 func (x *RevealForRotationRequest) GetIdentity() *WorkerIdentity {
@@ -10728,7 +11062,7 @@ type RevealForRotationResponse struct {
 
 func (x *RevealForRotationResponse) Reset() {
 	*x = RevealForRotationResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[169]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[173]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10740,7 +11074,7 @@ func (x *RevealForRotationResponse) String() string {
 func (*RevealForRotationResponse) ProtoMessage() {}
 
 func (x *RevealForRotationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[169]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[173]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10753,7 +11087,7 @@ func (x *RevealForRotationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevealForRotationResponse.ProtoReflect.Descriptor instead.
 func (*RevealForRotationResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{169}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{173}
 }
 
 func (x *RevealForRotationResponse) GetUsername() string {
@@ -10802,7 +11136,7 @@ type ReportRotationRequest struct {
 
 func (x *ReportRotationRequest) Reset() {
 	*x = ReportRotationRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[170]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[174]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10814,7 +11148,7 @@ func (x *ReportRotationRequest) String() string {
 func (*ReportRotationRequest) ProtoMessage() {}
 
 func (x *ReportRotationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[170]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[174]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10827,7 +11161,7 @@ func (x *ReportRotationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportRotationRequest.ProtoReflect.Descriptor instead.
 func (*ReportRotationRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{170}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{174}
 }
 
 func (x *ReportRotationRequest) GetIdentity() *WorkerIdentity {
@@ -10888,7 +11222,7 @@ type ReportRotationResponse struct {
 
 func (x *ReportRotationResponse) Reset() {
 	*x = ReportRotationResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[171]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[175]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10900,7 +11234,7 @@ func (x *ReportRotationResponse) String() string {
 func (*ReportRotationResponse) ProtoMessage() {}
 
 func (x *ReportRotationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[171]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[175]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10913,7 +11247,7 @@ func (x *ReportRotationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportRotationResponse.ProtoReflect.Descriptor instead.
 func (*ReportRotationResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{171}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{175}
 }
 
 func (x *ReportRotationResponse) GetOk() bool {
@@ -10944,7 +11278,7 @@ type SecretUse struct {
 
 func (x *SecretUse) Reset() {
 	*x = SecretUse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[172]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[176]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10956,7 +11290,7 @@ func (x *SecretUse) String() string {
 func (*SecretUse) ProtoMessage() {}
 
 func (x *SecretUse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[172]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[176]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10969,7 +11303,7 @@ func (x *SecretUse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretUse.ProtoReflect.Descriptor instead.
 func (*SecretUse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{172}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{176}
 }
 
 func (x *SecretUse) GetId() string {
@@ -11077,7 +11411,7 @@ type PrepareSecretUseRequest struct {
 
 func (x *PrepareSecretUseRequest) Reset() {
 	*x = PrepareSecretUseRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[173]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[177]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11089,7 +11423,7 @@ func (x *PrepareSecretUseRequest) String() string {
 func (*PrepareSecretUseRequest) ProtoMessage() {}
 
 func (x *PrepareSecretUseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[173]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[177]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11102,7 +11436,7 @@ func (x *PrepareSecretUseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrepareSecretUseRequest.ProtoReflect.Descriptor instead.
 func (*PrepareSecretUseRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{173}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{177}
 }
 
 func (x *PrepareSecretUseRequest) GetActor() *ActorContext {
@@ -11156,7 +11490,7 @@ type PrepareSecretUseResponse struct {
 
 func (x *PrepareSecretUseResponse) Reset() {
 	*x = PrepareSecretUseResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[174]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[178]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11168,7 +11502,7 @@ func (x *PrepareSecretUseResponse) String() string {
 func (*PrepareSecretUseResponse) ProtoMessage() {}
 
 func (x *PrepareSecretUseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[174]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[178]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11181,7 +11515,7 @@ func (x *PrepareSecretUseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrepareSecretUseResponse.ProtoReflect.Descriptor instead.
 func (*PrepareSecretUseResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{174}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{178}
 }
 
 func (x *PrepareSecretUseResponse) GetUse() *SecretUse {
@@ -11201,7 +11535,7 @@ type GetSecretUseRequest struct {
 
 func (x *GetSecretUseRequest) Reset() {
 	*x = GetSecretUseRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[175]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[179]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11213,7 +11547,7 @@ func (x *GetSecretUseRequest) String() string {
 func (*GetSecretUseRequest) ProtoMessage() {}
 
 func (x *GetSecretUseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[175]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[179]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11226,7 +11560,7 @@ func (x *GetSecretUseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecretUseRequest.ProtoReflect.Descriptor instead.
 func (*GetSecretUseRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{175}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{179}
 }
 
 func (x *GetSecretUseRequest) GetActor() *ActorContext {
@@ -11252,7 +11586,7 @@ type GetSecretUseResponse struct {
 
 func (x *GetSecretUseResponse) Reset() {
 	*x = GetSecretUseResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[176]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[180]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11264,7 +11598,7 @@ func (x *GetSecretUseResponse) String() string {
 func (*GetSecretUseResponse) ProtoMessage() {}
 
 func (x *GetSecretUseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[176]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[180]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11277,7 +11611,7 @@ func (x *GetSecretUseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecretUseResponse.ProtoReflect.Descriptor instead.
 func (*GetSecretUseResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{176}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{180}
 }
 
 func (x *GetSecretUseResponse) GetUse() *SecretUse {
@@ -11296,7 +11630,7 @@ type ListPendingSecretUsesRequest struct {
 
 func (x *ListPendingSecretUsesRequest) Reset() {
 	*x = ListPendingSecretUsesRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[177]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[181]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11308,7 +11642,7 @@ func (x *ListPendingSecretUsesRequest) String() string {
 func (*ListPendingSecretUsesRequest) ProtoMessage() {}
 
 func (x *ListPendingSecretUsesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[177]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[181]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11321,7 +11655,7 @@ func (x *ListPendingSecretUsesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPendingSecretUsesRequest.ProtoReflect.Descriptor instead.
 func (*ListPendingSecretUsesRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{177}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{181}
 }
 
 func (x *ListPendingSecretUsesRequest) GetActor() *ActorContext {
@@ -11340,7 +11674,7 @@ type ListPendingSecretUsesResponse struct {
 
 func (x *ListPendingSecretUsesResponse) Reset() {
 	*x = ListPendingSecretUsesResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[178]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[182]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11352,7 +11686,7 @@ func (x *ListPendingSecretUsesResponse) String() string {
 func (*ListPendingSecretUsesResponse) ProtoMessage() {}
 
 func (x *ListPendingSecretUsesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[178]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[182]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11365,7 +11699,7 @@ func (x *ListPendingSecretUsesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPendingSecretUsesResponse.ProtoReflect.Descriptor instead.
 func (*ListPendingSecretUsesResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{178}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{182}
 }
 
 func (x *ListPendingSecretUsesResponse) GetUses() []*SecretUse {
@@ -11386,7 +11720,7 @@ type DecideSecretUseRequest struct {
 
 func (x *DecideSecretUseRequest) Reset() {
 	*x = DecideSecretUseRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[179]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[183]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11398,7 +11732,7 @@ func (x *DecideSecretUseRequest) String() string {
 func (*DecideSecretUseRequest) ProtoMessage() {}
 
 func (x *DecideSecretUseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[179]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[183]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11411,7 +11745,7 @@ func (x *DecideSecretUseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecideSecretUseRequest.ProtoReflect.Descriptor instead.
 func (*DecideSecretUseRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{179}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{183}
 }
 
 func (x *DecideSecretUseRequest) GetActor() *ActorContext {
@@ -11444,7 +11778,7 @@ type DecideSecretUseResponse struct {
 
 func (x *DecideSecretUseResponse) Reset() {
 	*x = DecideSecretUseResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[180]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[184]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11456,7 +11790,7 @@ func (x *DecideSecretUseResponse) String() string {
 func (*DecideSecretUseResponse) ProtoMessage() {}
 
 func (x *DecideSecretUseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[180]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[184]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11469,7 +11803,7 @@ func (x *DecideSecretUseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecideSecretUseResponse.ProtoReflect.Descriptor instead.
 func (*DecideSecretUseResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{180}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{184}
 }
 
 func (x *DecideSecretUseResponse) GetUse() *SecretUse {
@@ -11490,7 +11824,7 @@ type RedeemSecretUseRequest struct {
 
 func (x *RedeemSecretUseRequest) Reset() {
 	*x = RedeemSecretUseRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[181]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[185]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11502,7 +11836,7 @@ func (x *RedeemSecretUseRequest) String() string {
 func (*RedeemSecretUseRequest) ProtoMessage() {}
 
 func (x *RedeemSecretUseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[181]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[185]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11515,7 +11849,7 @@ func (x *RedeemSecretUseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RedeemSecretUseRequest.ProtoReflect.Descriptor instead.
 func (*RedeemSecretUseRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{181}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{185}
 }
 
 func (x *RedeemSecretUseRequest) GetActor() *ActorContext {
@@ -11542,7 +11876,7 @@ type RedeemSecretUseResponse struct {
 
 func (x *RedeemSecretUseResponse) Reset() {
 	*x = RedeemSecretUseResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[182]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[186]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11554,7 +11888,7 @@ func (x *RedeemSecretUseResponse) String() string {
 func (*RedeemSecretUseResponse) ProtoMessage() {}
 
 func (x *RedeemSecretUseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[182]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[186]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11567,7 +11901,7 @@ func (x *RedeemSecretUseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RedeemSecretUseResponse.ProtoReflect.Descriptor instead.
 func (*RedeemSecretUseResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{182}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{186}
 }
 
 func (x *RedeemSecretUseResponse) GetUse() *SecretUse {
@@ -11595,7 +11929,7 @@ type UseGrantProgram struct {
 
 func (x *UseGrantProgram) Reset() {
 	*x = UseGrantProgram{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[183]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[187]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11607,7 +11941,7 @@ func (x *UseGrantProgram) String() string {
 func (*UseGrantProgram) ProtoMessage() {}
 
 func (x *UseGrantProgram) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[183]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[187]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11620,7 +11954,7 @@ func (x *UseGrantProgram) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseGrantProgram.ProtoReflect.Descriptor instead.
 func (*UseGrantProgram) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{183}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{187}
 }
 
 func (x *UseGrantProgram) GetProgram() string {
@@ -11660,7 +11994,7 @@ type UseGrant struct {
 
 func (x *UseGrant) Reset() {
 	*x = UseGrant{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[184]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[188]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11672,7 +12006,7 @@ func (x *UseGrant) String() string {
 func (*UseGrant) ProtoMessage() {}
 
 func (x *UseGrant) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[184]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[188]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11685,7 +12019,7 @@ func (x *UseGrant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseGrant.ProtoReflect.Descriptor instead.
 func (*UseGrant) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{184}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{188}
 }
 
 func (x *UseGrant) GetId() string {
@@ -11793,7 +12127,7 @@ type SetSecretAutomationForPrincipalRequest struct {
 
 func (x *SetSecretAutomationForPrincipalRequest) Reset() {
 	*x = SetSecretAutomationForPrincipalRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[185]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[189]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11805,7 +12139,7 @@ func (x *SetSecretAutomationForPrincipalRequest) String() string {
 func (*SetSecretAutomationForPrincipalRequest) ProtoMessage() {}
 
 func (x *SetSecretAutomationForPrincipalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[185]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[189]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11818,7 +12152,7 @@ func (x *SetSecretAutomationForPrincipalRequest) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use SetSecretAutomationForPrincipalRequest.ProtoReflect.Descriptor instead.
 func (*SetSecretAutomationForPrincipalRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{185}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{189}
 }
 
 func (x *SetSecretAutomationForPrincipalRequest) GetActor() *ActorContext {
@@ -11858,7 +12192,7 @@ type SetSecretAutomationForPrincipalResponse struct {
 
 func (x *SetSecretAutomationForPrincipalResponse) Reset() {
 	*x = SetSecretAutomationForPrincipalResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[186]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[190]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11870,7 +12204,7 @@ func (x *SetSecretAutomationForPrincipalResponse) String() string {
 func (*SetSecretAutomationForPrincipalResponse) ProtoMessage() {}
 
 func (x *SetSecretAutomationForPrincipalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[186]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[190]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11883,7 +12217,7 @@ func (x *SetSecretAutomationForPrincipalResponse) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use SetSecretAutomationForPrincipalResponse.ProtoReflect.Descriptor instead.
 func (*SetSecretAutomationForPrincipalResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{186}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{190}
 }
 
 func (x *SetSecretAutomationForPrincipalResponse) GetSecret() *Secret {
@@ -11907,7 +12241,7 @@ type SetSecretTargetForPrincipalRequest struct {
 
 func (x *SetSecretTargetForPrincipalRequest) Reset() {
 	*x = SetSecretTargetForPrincipalRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[187]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[191]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11919,7 +12253,7 @@ func (x *SetSecretTargetForPrincipalRequest) String() string {
 func (*SetSecretTargetForPrincipalRequest) ProtoMessage() {}
 
 func (x *SetSecretTargetForPrincipalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[187]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[191]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11932,7 +12266,7 @@ func (x *SetSecretTargetForPrincipalRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use SetSecretTargetForPrincipalRequest.ProtoReflect.Descriptor instead.
 func (*SetSecretTargetForPrincipalRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{187}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{191}
 }
 
 func (x *SetSecretTargetForPrincipalRequest) GetActor() *ActorContext {
@@ -11965,7 +12299,7 @@ type SetSecretTargetForPrincipalResponse struct {
 
 func (x *SetSecretTargetForPrincipalResponse) Reset() {
 	*x = SetSecretTargetForPrincipalResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[188]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[192]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11977,7 +12311,7 @@ func (x *SetSecretTargetForPrincipalResponse) String() string {
 func (*SetSecretTargetForPrincipalResponse) ProtoMessage() {}
 
 func (x *SetSecretTargetForPrincipalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[188]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[192]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11990,7 +12324,7 @@ func (x *SetSecretTargetForPrincipalResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use SetSecretTargetForPrincipalResponse.ProtoReflect.Descriptor instead.
 func (*SetSecretTargetForPrincipalResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{188}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{192}
 }
 
 func (x *SetSecretTargetForPrincipalResponse) GetSecret() *Secret {
@@ -12013,7 +12347,7 @@ type RequestHeartbeatForPrincipalRequest struct {
 
 func (x *RequestHeartbeatForPrincipalRequest) Reset() {
 	*x = RequestHeartbeatForPrincipalRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[189]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[193]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12025,7 +12359,7 @@ func (x *RequestHeartbeatForPrincipalRequest) String() string {
 func (*RequestHeartbeatForPrincipalRequest) ProtoMessage() {}
 
 func (x *RequestHeartbeatForPrincipalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[189]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[193]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12038,7 +12372,7 @@ func (x *RequestHeartbeatForPrincipalRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use RequestHeartbeatForPrincipalRequest.ProtoReflect.Descriptor instead.
 func (*RequestHeartbeatForPrincipalRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{189}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{193}
 }
 
 func (x *RequestHeartbeatForPrincipalRequest) GetActor() *ActorContext {
@@ -12064,7 +12398,7 @@ type RequestHeartbeatForPrincipalResponse struct {
 
 func (x *RequestHeartbeatForPrincipalResponse) Reset() {
 	*x = RequestHeartbeatForPrincipalResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[190]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[194]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12076,7 +12410,7 @@ func (x *RequestHeartbeatForPrincipalResponse) String() string {
 func (*RequestHeartbeatForPrincipalResponse) ProtoMessage() {}
 
 func (x *RequestHeartbeatForPrincipalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[190]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[194]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12089,7 +12423,7 @@ func (x *RequestHeartbeatForPrincipalResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use RequestHeartbeatForPrincipalResponse.ProtoReflect.Descriptor instead.
 func (*RequestHeartbeatForPrincipalResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{190}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{194}
 }
 
 func (x *RequestHeartbeatForPrincipalResponse) GetRequestedAtUnix() int64 {
@@ -12111,7 +12445,7 @@ type GetHeartbeatStatusForPrincipalRequest struct {
 
 func (x *GetHeartbeatStatusForPrincipalRequest) Reset() {
 	*x = GetHeartbeatStatusForPrincipalRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[191]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[195]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12123,7 +12457,7 @@ func (x *GetHeartbeatStatusForPrincipalRequest) String() string {
 func (*GetHeartbeatStatusForPrincipalRequest) ProtoMessage() {}
 
 func (x *GetHeartbeatStatusForPrincipalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[191]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[195]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12136,7 +12470,7 @@ func (x *GetHeartbeatStatusForPrincipalRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use GetHeartbeatStatusForPrincipalRequest.ProtoReflect.Descriptor instead.
 func (*GetHeartbeatStatusForPrincipalRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{191}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{195}
 }
 
 func (x *GetHeartbeatStatusForPrincipalRequest) GetActor() *ActorContext {
@@ -12165,7 +12499,7 @@ type GetHeartbeatStatusForPrincipalResponse struct {
 
 func (x *GetHeartbeatStatusForPrincipalResponse) Reset() {
 	*x = GetHeartbeatStatusForPrincipalResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[192]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[196]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12177,7 +12511,7 @@ func (x *GetHeartbeatStatusForPrincipalResponse) String() string {
 func (*GetHeartbeatStatusForPrincipalResponse) ProtoMessage() {}
 
 func (x *GetHeartbeatStatusForPrincipalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[192]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[196]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12190,7 +12524,7 @@ func (x *GetHeartbeatStatusForPrincipalResponse) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use GetHeartbeatStatusForPrincipalResponse.ProtoReflect.Descriptor instead.
 func (*GetHeartbeatStatusForPrincipalResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{192}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{196}
 }
 
 func (x *GetHeartbeatStatusForPrincipalResponse) GetResult() HeartbeatResult {
@@ -12234,7 +12568,7 @@ type SetSecretTokenApprovalRequest struct {
 
 func (x *SetSecretTokenApprovalRequest) Reset() {
 	*x = SetSecretTokenApprovalRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[193]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[197]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12246,7 +12580,7 @@ func (x *SetSecretTokenApprovalRequest) String() string {
 func (*SetSecretTokenApprovalRequest) ProtoMessage() {}
 
 func (x *SetSecretTokenApprovalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[193]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[197]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12259,7 +12593,7 @@ func (x *SetSecretTokenApprovalRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSecretTokenApprovalRequest.ProtoReflect.Descriptor instead.
 func (*SetSecretTokenApprovalRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{193}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{197}
 }
 
 func (x *SetSecretTokenApprovalRequest) GetActor() *ActorContext {
@@ -12292,7 +12626,7 @@ type SetSecretTokenApprovalResponse struct {
 
 func (x *SetSecretTokenApprovalResponse) Reset() {
 	*x = SetSecretTokenApprovalResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[194]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[198]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12304,7 +12638,7 @@ func (x *SetSecretTokenApprovalResponse) String() string {
 func (*SetSecretTokenApprovalResponse) ProtoMessage() {}
 
 func (x *SetSecretTokenApprovalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[194]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[198]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12317,7 +12651,7 @@ func (x *SetSecretTokenApprovalResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSecretTokenApprovalResponse.ProtoReflect.Descriptor instead.
 func (*SetSecretTokenApprovalResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{194}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{198}
 }
 
 func (x *SetSecretTokenApprovalResponse) GetSecret() *Secret {
@@ -12337,7 +12671,7 @@ type CreateUseGrantRequest struct {
 
 func (x *CreateUseGrantRequest) Reset() {
 	*x = CreateUseGrantRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[195]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[199]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12349,7 +12683,7 @@ func (x *CreateUseGrantRequest) String() string {
 func (*CreateUseGrantRequest) ProtoMessage() {}
 
 func (x *CreateUseGrantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[195]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[199]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12362,7 +12696,7 @@ func (x *CreateUseGrantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateUseGrantRequest.ProtoReflect.Descriptor instead.
 func (*CreateUseGrantRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{195}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{199}
 }
 
 func (x *CreateUseGrantRequest) GetActor() *ActorContext {
@@ -12388,7 +12722,7 @@ type CreateUseGrantResponse struct {
 
 func (x *CreateUseGrantResponse) Reset() {
 	*x = CreateUseGrantResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[196]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[200]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12400,7 +12734,7 @@ func (x *CreateUseGrantResponse) String() string {
 func (*CreateUseGrantResponse) ProtoMessage() {}
 
 func (x *CreateUseGrantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[196]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[200]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12413,7 +12747,7 @@ func (x *CreateUseGrantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateUseGrantResponse.ProtoReflect.Descriptor instead.
 func (*CreateUseGrantResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{196}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{200}
 }
 
 func (x *CreateUseGrantResponse) GetGrant() *UseGrant {
@@ -12432,7 +12766,7 @@ type ListUseGrantsRequest struct {
 
 func (x *ListUseGrantsRequest) Reset() {
 	*x = ListUseGrantsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[197]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[201]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12444,7 +12778,7 @@ func (x *ListUseGrantsRequest) String() string {
 func (*ListUseGrantsRequest) ProtoMessage() {}
 
 func (x *ListUseGrantsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[197]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[201]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12457,7 +12791,7 @@ func (x *ListUseGrantsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUseGrantsRequest.ProtoReflect.Descriptor instead.
 func (*ListUseGrantsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{197}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{201}
 }
 
 func (x *ListUseGrantsRequest) GetActor() *ActorContext {
@@ -12476,7 +12810,7 @@ type ListUseGrantsResponse struct {
 
 func (x *ListUseGrantsResponse) Reset() {
 	*x = ListUseGrantsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[198]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[202]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12488,7 +12822,7 @@ func (x *ListUseGrantsResponse) String() string {
 func (*ListUseGrantsResponse) ProtoMessage() {}
 
 func (x *ListUseGrantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[198]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[202]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12501,7 +12835,7 @@ func (x *ListUseGrantsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUseGrantsResponse.ProtoReflect.Descriptor instead.
 func (*ListUseGrantsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{198}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{202}
 }
 
 func (x *ListUseGrantsResponse) GetGrants() []*UseGrant {
@@ -12521,7 +12855,7 @@ type RevokeUseGrantRequest struct {
 
 func (x *RevokeUseGrantRequest) Reset() {
 	*x = RevokeUseGrantRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[199]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[203]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12533,7 +12867,7 @@ func (x *RevokeUseGrantRequest) String() string {
 func (*RevokeUseGrantRequest) ProtoMessage() {}
 
 func (x *RevokeUseGrantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[199]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[203]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12546,7 +12880,7 @@ func (x *RevokeUseGrantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeUseGrantRequest.ProtoReflect.Descriptor instead.
 func (*RevokeUseGrantRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{199}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{203}
 }
 
 func (x *RevokeUseGrantRequest) GetActor() *ActorContext {
@@ -12572,7 +12906,7 @@ type RevokeUseGrantResponse struct {
 
 func (x *RevokeUseGrantResponse) Reset() {
 	*x = RevokeUseGrantResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[200]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[204]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12584,7 +12918,7 @@ func (x *RevokeUseGrantResponse) String() string {
 func (*RevokeUseGrantResponse) ProtoMessage() {}
 
 func (x *RevokeUseGrantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[200]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[204]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12597,7 +12931,7 @@ func (x *RevokeUseGrantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeUseGrantResponse.ProtoReflect.Descriptor instead.
 func (*RevokeUseGrantResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{200}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{204}
 }
 
 func (x *RevokeUseGrantResponse) GetGrant() *UseGrant {
@@ -12631,7 +12965,7 @@ type PasswordPolicy struct {
 
 func (x *PasswordPolicy) Reset() {
 	*x = PasswordPolicy{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[201]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[205]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12643,7 +12977,7 @@ func (x *PasswordPolicy) String() string {
 func (*PasswordPolicy) ProtoMessage() {}
 
 func (x *PasswordPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[201]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[205]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12656,7 +12990,7 @@ func (x *PasswordPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PasswordPolicy.ProtoReflect.Descriptor instead.
 func (*PasswordPolicy) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{201}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{205}
 }
 
 func (x *PasswordPolicy) GetId() string {
@@ -12777,13 +13111,16 @@ type SecuritySettings struct {
 	// effective value to [900, 3600] (15m-60m).
 	SessionTtlSeconds int32 `protobuf:"varint,6,opt,name=session_ttl_seconds,json=sessionTtlSeconds,proto3" json:"session_ttl_seconds,omitempty"`
 	KekRotationDays   int32 `protobuf:"varint,7,opt,name=kek_rotation_days,json=kekRotationDays,proto3" json:"kek_rotation_days,omitempty"` // 0 = auto-rotation off; admin override of KEK_ROTATION_DAYS
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Global default for step-up MFA before a reveal; folders override it
+	// (Folder.reveal_step_up).
+	RequireMfaForReveal bool `protobuf:"varint,8,opt,name=require_mfa_for_reveal,json=requireMfaForReveal,proto3" json:"require_mfa_for_reveal,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *SecuritySettings) Reset() {
 	*x = SecuritySettings{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[202]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[206]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12795,7 +13132,7 @@ func (x *SecuritySettings) String() string {
 func (*SecuritySettings) ProtoMessage() {}
 
 func (x *SecuritySettings) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[202]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[206]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12808,7 +13145,7 @@ func (x *SecuritySettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecuritySettings.ProtoReflect.Descriptor instead.
 func (*SecuritySettings) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{202}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{206}
 }
 
 func (x *SecuritySettings) GetDefaultPasswordPolicyId() string {
@@ -12853,6 +13190,13 @@ func (x *SecuritySettings) GetKekRotationDays() int32 {
 	return 0
 }
 
+func (x *SecuritySettings) GetRequireMfaForReveal() bool {
+	if x != nil {
+		return x.RequireMfaForReveal
+	}
+	return false
+}
+
 type ListPasswordPoliciesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -12861,7 +13205,7 @@ type ListPasswordPoliciesRequest struct {
 
 func (x *ListPasswordPoliciesRequest) Reset() {
 	*x = ListPasswordPoliciesRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[203]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[207]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12873,7 +13217,7 @@ func (x *ListPasswordPoliciesRequest) String() string {
 func (*ListPasswordPoliciesRequest) ProtoMessage() {}
 
 func (x *ListPasswordPoliciesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[203]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[207]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12886,7 +13230,7 @@ func (x *ListPasswordPoliciesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPasswordPoliciesRequest.ProtoReflect.Descriptor instead.
 func (*ListPasswordPoliciesRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{203}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{207}
 }
 
 type ListPasswordPoliciesResponse struct {
@@ -12898,7 +13242,7 @@ type ListPasswordPoliciesResponse struct {
 
 func (x *ListPasswordPoliciesResponse) Reset() {
 	*x = ListPasswordPoliciesResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[204]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[208]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12910,7 +13254,7 @@ func (x *ListPasswordPoliciesResponse) String() string {
 func (*ListPasswordPoliciesResponse) ProtoMessage() {}
 
 func (x *ListPasswordPoliciesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[204]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[208]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12923,7 +13267,7 @@ func (x *ListPasswordPoliciesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPasswordPoliciesResponse.ProtoReflect.Descriptor instead.
 func (*ListPasswordPoliciesResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{204}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{208}
 }
 
 func (x *ListPasswordPoliciesResponse) GetPolicies() []*PasswordPolicy {
@@ -12943,7 +13287,7 @@ type SavePasswordPolicyRequest struct {
 
 func (x *SavePasswordPolicyRequest) Reset() {
 	*x = SavePasswordPolicyRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[205]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[209]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12955,7 +13299,7 @@ func (x *SavePasswordPolicyRequest) String() string {
 func (*SavePasswordPolicyRequest) ProtoMessage() {}
 
 func (x *SavePasswordPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[205]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[209]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12968,7 +13312,7 @@ func (x *SavePasswordPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SavePasswordPolicyRequest.ProtoReflect.Descriptor instead.
 func (*SavePasswordPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{205}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{209}
 }
 
 func (x *SavePasswordPolicyRequest) GetActor() *ActorContext {
@@ -12994,7 +13338,7 @@ type SavePasswordPolicyResponse struct {
 
 func (x *SavePasswordPolicyResponse) Reset() {
 	*x = SavePasswordPolicyResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[206]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[210]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13006,7 +13350,7 @@ func (x *SavePasswordPolicyResponse) String() string {
 func (*SavePasswordPolicyResponse) ProtoMessage() {}
 
 func (x *SavePasswordPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[206]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[210]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13019,7 +13363,7 @@ func (x *SavePasswordPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SavePasswordPolicyResponse.ProtoReflect.Descriptor instead.
 func (*SavePasswordPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{206}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{210}
 }
 
 func (x *SavePasswordPolicyResponse) GetPolicy() *PasswordPolicy {
@@ -13039,7 +13383,7 @@ type DeletePasswordPolicyRequest struct {
 
 func (x *DeletePasswordPolicyRequest) Reset() {
 	*x = DeletePasswordPolicyRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[207]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[211]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13051,7 +13395,7 @@ func (x *DeletePasswordPolicyRequest) String() string {
 func (*DeletePasswordPolicyRequest) ProtoMessage() {}
 
 func (x *DeletePasswordPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[207]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[211]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13064,7 +13408,7 @@ func (x *DeletePasswordPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePasswordPolicyRequest.ProtoReflect.Descriptor instead.
 func (*DeletePasswordPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{207}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{211}
 }
 
 func (x *DeletePasswordPolicyRequest) GetActor() *ActorContext {
@@ -13090,7 +13434,7 @@ type DeletePasswordPolicyResponse struct {
 
 func (x *DeletePasswordPolicyResponse) Reset() {
 	*x = DeletePasswordPolicyResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[208]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[212]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13102,7 +13446,7 @@ func (x *DeletePasswordPolicyResponse) String() string {
 func (*DeletePasswordPolicyResponse) ProtoMessage() {}
 
 func (x *DeletePasswordPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[208]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[212]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13115,7 +13459,7 @@ func (x *DeletePasswordPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePasswordPolicyResponse.ProtoReflect.Descriptor instead.
 func (*DeletePasswordPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{208}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{212}
 }
 
 func (x *DeletePasswordPolicyResponse) GetRemoved() bool {
@@ -13133,7 +13477,7 @@ type GetSecuritySettingsRequest struct {
 
 func (x *GetSecuritySettingsRequest) Reset() {
 	*x = GetSecuritySettingsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[209]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[213]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13145,7 +13489,7 @@ func (x *GetSecuritySettingsRequest) String() string {
 func (*GetSecuritySettingsRequest) ProtoMessage() {}
 
 func (x *GetSecuritySettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[209]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[213]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13158,7 +13502,7 @@ func (x *GetSecuritySettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecuritySettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetSecuritySettingsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{209}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{213}
 }
 
 type GetSecuritySettingsResponse struct {
@@ -13170,7 +13514,7 @@ type GetSecuritySettingsResponse struct {
 
 func (x *GetSecuritySettingsResponse) Reset() {
 	*x = GetSecuritySettingsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[210]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[214]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13182,7 +13526,7 @@ func (x *GetSecuritySettingsResponse) String() string {
 func (*GetSecuritySettingsResponse) ProtoMessage() {}
 
 func (x *GetSecuritySettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[210]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[214]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13195,7 +13539,7 @@ func (x *GetSecuritySettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecuritySettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetSecuritySettingsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{210}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{214}
 }
 
 func (x *GetSecuritySettingsResponse) GetSettings() *SecuritySettings {
@@ -13215,13 +13559,14 @@ type UpdateSecuritySettingsRequest struct {
 	RequestHistoryRetentionDays    *int32                 `protobuf:"varint,6,opt,name=request_history_retention_days,json=requestHistoryRetentionDays,proto3,oneof" json:"request_history_retention_days,omitempty"`
 	SessionTtlSeconds              *int32                 `protobuf:"varint,7,opt,name=session_ttl_seconds,json=sessionTtlSeconds,proto3,oneof" json:"session_ttl_seconds,omitempty"`
 	KekRotationDays                *int32                 `protobuf:"varint,8,opt,name=kek_rotation_days,json=kekRotationDays,proto3,oneof" json:"kek_rotation_days,omitempty"` // 0 = auto-rotation off (distinct from unset = unchanged)
+	RequireMfaForReveal            *bool                  `protobuf:"varint,9,opt,name=require_mfa_for_reveal,json=requireMfaForReveal,proto3,oneof" json:"require_mfa_for_reveal,omitempty"`
 	unknownFields                  protoimpl.UnknownFields
 	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *UpdateSecuritySettingsRequest) Reset() {
 	*x = UpdateSecuritySettingsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[211]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[215]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13233,7 +13578,7 @@ func (x *UpdateSecuritySettingsRequest) String() string {
 func (*UpdateSecuritySettingsRequest) ProtoMessage() {}
 
 func (x *UpdateSecuritySettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[211]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[215]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13246,7 +13591,7 @@ func (x *UpdateSecuritySettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSecuritySettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSecuritySettingsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{211}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{215}
 }
 
 func (x *UpdateSecuritySettingsRequest) GetActor() *ActorContext {
@@ -13298,6 +13643,13 @@ func (x *UpdateSecuritySettingsRequest) GetKekRotationDays() int32 {
 	return 0
 }
 
+func (x *UpdateSecuritySettingsRequest) GetRequireMfaForReveal() bool {
+	if x != nil && x.RequireMfaForReveal != nil {
+		return *x.RequireMfaForReveal
+	}
+	return false
+}
+
 type UpdateSecuritySettingsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Settings      *SecuritySettings      `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
@@ -13307,7 +13659,7 @@ type UpdateSecuritySettingsResponse struct {
 
 func (x *UpdateSecuritySettingsResponse) Reset() {
 	*x = UpdateSecuritySettingsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[212]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[216]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13319,7 +13671,7 @@ func (x *UpdateSecuritySettingsResponse) String() string {
 func (*UpdateSecuritySettingsResponse) ProtoMessage() {}
 
 func (x *UpdateSecuritySettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[212]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[216]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13332,7 +13684,7 @@ func (x *UpdateSecuritySettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSecuritySettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSecuritySettingsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{212}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{216}
 }
 
 func (x *UpdateSecuritySettingsResponse) GetSettings() *SecuritySettings {
@@ -13353,7 +13705,7 @@ type SeedBuiltinsRequest struct {
 
 func (x *SeedBuiltinsRequest) Reset() {
 	*x = SeedBuiltinsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[213]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[217]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13365,7 +13717,7 @@ func (x *SeedBuiltinsRequest) String() string {
 func (*SeedBuiltinsRequest) ProtoMessage() {}
 
 func (x *SeedBuiltinsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[213]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[217]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13378,7 +13730,7 @@ func (x *SeedBuiltinsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeedBuiltinsRequest.ProtoReflect.Descriptor instead.
 func (*SeedBuiltinsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{213}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{217}
 }
 
 func (x *SeedBuiltinsRequest) GetActor() *ActorContext {
@@ -13401,7 +13753,7 @@ type SeedBuiltinsResponse struct {
 
 func (x *SeedBuiltinsResponse) Reset() {
 	*x = SeedBuiltinsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[214]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[218]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13413,7 +13765,7 @@ func (x *SeedBuiltinsResponse) String() string {
 func (*SeedBuiltinsResponse) ProtoMessage() {}
 
 func (x *SeedBuiltinsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[214]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[218]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13426,7 +13778,7 @@ func (x *SeedBuiltinsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeedBuiltinsResponse.ProtoReflect.Descriptor instead.
 func (*SeedBuiltinsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{214}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{218}
 }
 
 func (x *SeedBuiltinsResponse) GetTypes() int32 {
@@ -13480,7 +13832,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\bcheckout\x18\x05 \x01(\bR\bcheckout\x125\n" +
 	"\x06origin\x18\x06 \x01(\x0e2\x1d.sneakers.vault.v1.TypeOriginR\x06origin\x12\x16\n" +
 	"\x06vendor\x18\a \x01(\tR\x06vendor\x12\x1a\n" +
-	"\brotation\x18\b \x01(\bR\brotation\"\xff\x02\n" +
+	"\brotation\x18\b \x01(\bR\brotation\"\xc4\x03\n" +
 	"\x06Folder\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
@@ -13495,7 +13847,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	" \x03(\tR\x06owners\x120\n" +
 	"\x14subtree_secret_count\x18\v \x01(\x05R\x12subtreeSecretCount\x12\x1d\n" +
 	"\n" +
-	"can_manage\x18\f \x01(\bR\tcanManage\"\xd4\x01\n" +
+	"can_manage\x18\f \x01(\bR\tcanManage\x12C\n" +
+	"\x0ereveal_step_up\x18\r \x01(\x0e2\x1d.sneakers.vault.v1.StepUpModeR\frevealStepUp\"\xd4\x01\n" +
 	"\x10FolderAccessRule\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tfolder_id\x18\x02 \x01(\tR\bfolderId\x12A\n" +
@@ -13506,14 +13859,16 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x13InheritedFolderRule\x127\n" +
 	"\x04rule\x18\x01 \x01(\v2#.sneakers.vault.v1.FolderAccessRuleR\x04rule\x12$\n" +
 	"\x0efrom_folder_id\x18\x02 \x01(\tR\ffromFolderId\x12(\n" +
-	"\x10from_folder_name\x18\x03 \x01(\tR\x0efromFolderName\"\xaf\x02\n" +
+	"\x10from_folder_name\x18\x03 \x01(\tR\x0efromFolderName\"\xce\x02\n" +
 	"\bRaciRule\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tfolder_id\x18\x02 \x01(\tR\bfolderId\x12\x14\n" +
 	"\x05order\x18\x03 \x01(\x05R\x05order\x12A\n" +
 	"\fsubject_kind\x18\x04 \x01(\x0e2\x1e.sneakers.vault.v1.SubjectKindR\vsubjectKind\x12!\n" +
 	"\fsubject_name\x18\x05 \x01(\tR\vsubjectName\x12?\n" +
-	"\x06grants\x18\x06 \x03(\v2'.sneakers.vault.v1.RaciRule.GrantsEntryR\x06grants\x1a9\n" +
+	"\x06grants\x18\x06 \x03(\v2'.sneakers.vault.v1.RaciRule.GrantsEntryR\x06grants\x12\x1d\n" +
+	"\n" +
+	"subject_id\x18\a \x01(\tR\tsubjectId\x1a9\n" +
 	"\vGrantsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xaf\x01\n" +
@@ -13608,7 +13963,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"adminCount\x12*\n" +
 	"\x11heartbeat_opt_out\x18\x15 \x01(\bR\x0fheartbeatOptOut\x124\n" +
 	"\x16require_token_approval\x18\x16 \x01(\bR\x14requireTokenApproval\x122\n" +
-	"\x15last_heartbeat_detail\x18\x17 \x01(\tR\x13lastHeartbeatDetail\"\x8c\x02\n" +
+	"\x15last_heartbeat_detail\x18\x17 \x01(\tR\x13lastHeartbeatDetail\"\xfb\x02\n" +
 	"\fActorContext\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\"\n" +
 	"\ris_site_admin\x18\x02 \x01(\bR\visSiteAdmin\x12\x17\n" +
@@ -13617,7 +13972,12 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"groupNames\x12G\n" +
 	"\x0eprincipal_kind\x18\x06 \x01(\x0e2 .sneakers.vault.v1.PrincipalKindR\rprincipalKind\x12!\n" +
 	"\fprincipal_id\x18\a \x01(\tR\vprincipalId\x12\x19\n" +
-	"\btoken_id\x18\b \x01(\tR\atokenId\"\x18\n" +
+	"\btoken_id\x18\b \x01(\tR\atokenId\x12/\n" +
+	"\x14mfa_verified_at_unix\x18\t \x01(\x03R\x11mfaVerifiedAtUnix\x12\x1f\n" +
+	"\vis_recovery\x18\n" +
+	" \x01(\bR\n" +
+	"isRecovery\x12\x1b\n" +
+	"\tgroup_ids\x18\v \x03(\tR\bgroupIds\"\x18\n" +
 	"\x16ListSecretTypesRequest\"N\n" +
 	"\x17ListSecretTypesResponse\x123\n" +
 	"\x05types\x18\x01 \x03(\v2\x1d.sneakers.vault.v1.SecretTypeR\x05types\"\x83\x01\n" +
@@ -13918,7 +14278,20 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"version_no\x18\x03 \x01(\x05R\tversionNo\x12\x1b\n" +
 	"\tfield_key\x18\x04 \x01(\tR\bfieldKey\"8\n" +
 	" RevealSecretVersionFieldResponse\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\tR\x05value\"\x85\x01\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\"\x90\x01\n" +
+	"\x1bRestoreSecretVersionRequest\x125\n" +
+	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12\x1b\n" +
+	"\tsecret_id\x18\x02 \x01(\tR\bsecretId\x12\x1d\n" +
+	"\n" +
+	"version_no\x18\x03 \x01(\x05R\tversionNo\"Q\n" +
+	"\x1cRestoreSecretVersionResponse\x121\n" +
+	"\x06secret\x18\x01 \x01(\v2\x19.sneakers.vault.v1.SecretR\x06secret\"\xa5\x01\n" +
+	"\x1cSetFolderRevealStepUpRequest\x125\n" +
+	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12\x1b\n" +
+	"\tfolder_id\x18\x02 \x01(\tR\bfolderId\x121\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x1d.sneakers.vault.v1.StepUpModeR\x04mode\"R\n" +
+	"\x1dSetFolderRevealStepUpResponse\x121\n" +
+	"\x06folder\x18\x01 \x01(\v2\x19.sneakers.vault.v1.FolderR\x06folder\"\x85\x01\n" +
 	"\x17BreakGlassSecretRequest\x125\n" +
 	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12\x1b\n" +
 	"\tsecret_id\x18\x02 \x01(\tR\bsecretId\x12\x16\n" +
@@ -14112,12 +14485,13 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\bprotocol\x18\x01 \x01(\tR\bprotocol\x12\x12\n" +
 	"\x04host\x18\x02 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x03 \x01(\x05R\x04port\x12\x17\n" +
-	"\ause_tls\x18\x04 \x01(\bR\x06useTls\"o\n" +
+	"\ause_tls\x18\x04 \x01(\bR\x06useTls\"\x93\x01\n" +
 	"\x0fHeartbeatTarget\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x16\n" +
 	"\x06domain\x18\x02 \x01(\tR\x06domain\x12\x14\n" +
 	"\x05realm\x18\x03 \x01(\tR\x05realm\x12\x1a\n" +
-	"\bhostname\x18\x04 \x01(\tR\bhostname\"\xe6\x01\n" +
+	"\bhostname\x18\x04 \x01(\tR\bhostname\x12\"\n" +
+	"\rssh_host_keys\x18\x05 \x03(\tR\vsshHostKeys\"\xe6\x01\n" +
 	"\fHeartbeatJob\x12\x1b\n" +
 	"\tsecret_id\x18\x01 \x01(\tR\bsecretId\x12\x1f\n" +
 	"\vsecret_name\x18\x02 \x01(\tR\n" +
@@ -14330,14 +14704,15 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x0eby_type_fields\x18\x0e \x01(\x05R\fbyTypeFields\x12\x1c\n" +
 	"\tdeletable\x18\x0f \x01(\bR\tdeletableB\r\n" +
 	"\v_max_lengthB\x10\n" +
-	"\x0e_rotation_days\"\xf3\x02\n" +
+	"\x0e_rotation_days\"\xa8\x03\n" +
 	"\x10SecuritySettings\x12;\n" +
 	"\x1adefault_password_policy_id\x18\x01 \x01(\tR\x17defaultPasswordPolicyId\x12J\n" +
 	"\"require_mfa_for_sensitive_checkout\x18\x03 \x01(\bR\x1erequireMfaForSensitiveCheckout\x125\n" +
 	"\x17allow_api_for_sensitive\x18\x04 \x01(\bR\x14allowApiForSensitive\x12C\n" +
 	"\x1erequest_history_retention_days\x18\x05 \x01(\x05R\x1brequestHistoryRetentionDays\x12.\n" +
 	"\x13session_ttl_seconds\x18\x06 \x01(\x05R\x11sessionTtlSeconds\x12*\n" +
-	"\x11kek_rotation_days\x18\a \x01(\x05R\x0fkekRotationDays\"\x1d\n" +
+	"\x11kek_rotation_days\x18\a \x01(\x05R\x0fkekRotationDays\x123\n" +
+	"\x16require_mfa_for_reveal\x18\b \x01(\bR\x13requireMfaForReveal\"\x1d\n" +
 	"\x1bListPasswordPoliciesRequest\"]\n" +
 	"\x1cListPasswordPoliciesResponse\x12=\n" +
 	"\bpolicies\x18\x01 \x03(\v2!.sneakers.vault.v1.PasswordPolicyR\bpolicies\"\x8d\x01\n" +
@@ -14353,7 +14728,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\aremoved\x18\x01 \x01(\bR\aremoved\"\x1c\n" +
 	"\x1aGetSecuritySettingsRequest\"^\n" +
 	"\x1bGetSecuritySettingsResponse\x12?\n" +
-	"\bsettings\x18\x01 \x01(\v2#.sneakers.vault.v1.SecuritySettingsR\bsettings\"\x88\x05\n" +
+	"\bsettings\x18\x01 \x01(\v2#.sneakers.vault.v1.SecuritySettingsR\bsettings\"\xdd\x05\n" +
 	"\x1dUpdateSecuritySettingsRequest\x125\n" +
 	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12@\n" +
 	"\x1adefault_password_policy_id\x18\x02 \x01(\tH\x00R\x17defaultPasswordPolicyId\x88\x01\x01\x12O\n" +
@@ -14361,13 +14736,15 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x17allow_api_for_sensitive\x18\x05 \x01(\bH\x02R\x14allowApiForSensitive\x88\x01\x01\x12H\n" +
 	"\x1erequest_history_retention_days\x18\x06 \x01(\x05H\x03R\x1brequestHistoryRetentionDays\x88\x01\x01\x123\n" +
 	"\x13session_ttl_seconds\x18\a \x01(\x05H\x04R\x11sessionTtlSeconds\x88\x01\x01\x12/\n" +
-	"\x11kek_rotation_days\x18\b \x01(\x05H\x05R\x0fkekRotationDays\x88\x01\x01B\x1d\n" +
+	"\x11kek_rotation_days\x18\b \x01(\x05H\x05R\x0fkekRotationDays\x88\x01\x01\x128\n" +
+	"\x16require_mfa_for_reveal\x18\t \x01(\bH\x06R\x13requireMfaForReveal\x88\x01\x01B\x1d\n" +
 	"\x1b_default_password_policy_idB%\n" +
 	"#_require_mfa_for_sensitive_checkoutB\x1a\n" +
 	"\x18_allow_api_for_sensitiveB!\n" +
 	"\x1f_request_history_retention_daysB\x16\n" +
 	"\x14_session_ttl_secondsB\x14\n" +
-	"\x12_kek_rotation_days\"a\n" +
+	"\x12_kek_rotation_daysB\x19\n" +
+	"\x17_require_mfa_for_reveal\"a\n" +
 	"\x1eUpdateSecuritySettingsResponse\x12?\n" +
 	"\bsettings\x18\x01 \x01(\v2#.sneakers.vault.v1.SecuritySettingsR\bsettings\"L\n" +
 	"\x13SeedBuiltinsRequest\x125\n" +
@@ -14412,13 +14789,15 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x18SUBJECT_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SUBJECT_KIND_GROUP\x10\x01\x12\x15\n" +
 	"\x11SUBJECT_KIND_USER\x10\x02\x12\x19\n" +
-	"\x15SUBJECT_KIND_EVERYONE\x10\x03*\xa9\x01\n" +
+	"\x15SUBJECT_KIND_EVERYONE\x10\x03*\xfb\x01\n" +
 	"\x0fHeartbeatResult\x12 \n" +
 	"\x1cHEARTBEAT_RESULT_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13HEARTBEAT_RESULT_OK\x10\x01\x12\x1b\n" +
 	"\x17HEARTBEAT_RESULT_FAILED\x10\x02\x12\x1c\n" +
 	"\x18HEARTBEAT_RESULT_UNKNOWN\x10\x03\x12 \n" +
-	"\x1cHEARTBEAT_RESULT_UNREACHABLE\x10\x04*}\n" +
+	"\x1cHEARTBEAT_RESULT_UNREACHABLE\x10\x04\x12(\n" +
+	"$HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED\x10\x05\x12&\n" +
+	"\"HEARTBEAT_RESULT_HOST_KEY_MISMATCH\x10\x06*}\n" +
 	"\rRotationPhase\x12\x1e\n" +
 	"\x1aROTATION_PHASE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11ROTATION_PHASE_OK\x10\x01\x12\x19\n" +
@@ -14429,7 +14808,12 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x11ROTATION_STATE_OK\x10\x01\x12\x19\n" +
 	"\x15ROTATION_STATE_FAILED\x10\x02\x12\x1b\n" +
 	"\x17ROTATION_STATE_DEGRADED\x10\x03\x12\x1b\n" +
-	"\x17ROTATION_STATE_ROTATING\x10\x04*\x89\x01\n" +
+	"\x17ROTATION_STATE_ROTATING\x10\x04*Z\n" +
+	"\n" +
+	"StepUpMode\x12\x1c\n" +
+	"\x18STEP_UP_MODE_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14STEP_UP_MODE_REQUIRE\x10\x01\x12\x14\n" +
+	"\x10STEP_UP_MODE_OFF\x10\x02*\x89\x01\n" +
 	"\rPrincipalKind\x12\x18\n" +
 	"\x14PRINCIPAL_KIND_HUMAN\x10\x00\x12\"\n" +
 	"\x1ePRINCIPAL_KIND_SERVICE_ACCOUNT\x10\x01\x12\x1b\n" +
@@ -14445,7 +14829,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x19SECRET_USE_STATE_APPROVED\x10\x02\x12\x1b\n" +
 	"\x17SECRET_USE_STATE_DENIED\x10\x03\x12\x1d\n" +
 	"\x19SECRET_USE_STATE_REDEEMED\x10\x04\x12\x1c\n" +
-	"\x18SECRET_USE_STATE_EXPIRED\x10\x052\x96T\n" +
+	"\x18SECRET_USE_STATE_EXPIRED\x10\x052\x8bV\n" +
 	"\fVaultService\x12h\n" +
 	"\x0fListConnections\x12).sneakers.vault.v1.ListConnectionsRequest\x1a*.sneakers.vault.v1.ListConnectionsResponse\x12e\n" +
 	"\x0eSaveConnection\x12(.sneakers.vault.v1.SaveConnectionRequest\x1a).sneakers.vault.v1.SaveConnectionResponse\x12k\n" +
@@ -14479,7 +14863,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\rAddFolderRule\x12'.sneakers.vault.v1.AddFolderRuleRequest\x1a(.sneakers.vault.v1.AddFolderRuleResponse\x12k\n" +
 	"\x10RemoveFolderRule\x12*.sneakers.vault.v1.RemoveFolderRuleRequest\x1a+.sneakers.vault.v1.RemoveFolderRuleResponse\x12k\n" +
 	"\x10GetFolderRuleset\x12*.sneakers.vault.v1.GetFolderRulesetRequest\x1a+.sneakers.vault.v1.GetFolderRulesetResponse\x12k\n" +
-	"\x10SetFolderRuleset\x12*.sneakers.vault.v1.SetFolderRulesetRequest\x1a+.sneakers.vault.v1.SetFolderRulesetResponse\x12\\\n" +
+	"\x10SetFolderRuleset\x12*.sneakers.vault.v1.SetFolderRulesetRequest\x1a+.sneakers.vault.v1.SetFolderRulesetResponse\x12z\n" +
+	"\x15SetFolderRevealStepUp\x12/.sneakers.vault.v1.SetFolderRevealStepUpRequest\x1a0.sneakers.vault.v1.SetFolderRevealStepUpResponse\x12\\\n" +
 	"\vGetMyAccess\x12%.sneakers.vault.v1.GetMyAccessRequest\x1a&.sneakers.vault.v1.GetMyAccessResponse\x12e\n" +
 	"\x0eSimulateFolder\x12(.sneakers.vault.v1.SimulateFolderRequest\x1a).sneakers.vault.v1.SimulateFolderResponse\x12e\n" +
 	"\x0eSimulateSecret\x12(.sneakers.vault.v1.SimulateSecretRequest\x1a).sneakers.vault.v1.SimulateSecretResponse\x12t\n" +
@@ -14503,7 +14888,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x18RenameFolderForPrincipal\x122.sneakers.vault.v1.RenameFolderForPrincipalRequest\x1a3.sneakers.vault.v1.RenameFolderForPrincipalResponse\x12}\n" +
 	"\x16MoveFolderForPrincipal\x120.sneakers.vault.v1.MoveFolderForPrincipalRequest\x1a1.sneakers.vault.v1.MoveFolderForPrincipalResponse\x12q\n" +
 	"\x12ListSecretVersions\x12,.sneakers.vault.v1.ListSecretVersionsRequest\x1a-.sneakers.vault.v1.ListSecretVersionsResponse\x12\x83\x01\n" +
-	"\x18RevealSecretVersionField\x122.sneakers.vault.v1.RevealSecretVersionFieldRequest\x1a3.sneakers.vault.v1.RevealSecretVersionFieldResponse\x12k\n" +
+	"\x18RevealSecretVersionField\x122.sneakers.vault.v1.RevealSecretVersionFieldRequest\x1a3.sneakers.vault.v1.RevealSecretVersionFieldResponse\x12w\n" +
+	"\x14RestoreSecretVersion\x12..sneakers.vault.v1.RestoreSecretVersionRequest\x1a/.sneakers.vault.v1.RestoreSecretVersionResponse\x12k\n" +
 	"\x10BreakGlassSecret\x12*.sneakers.vault.v1.BreakGlassSecretRequest\x1a+.sneakers.vault.v1.BreakGlassSecretResponse\x12Y\n" +
 	"\n" +
 	"CopySecret\x12$.sneakers.vault.v1.CopySecretRequest\x1a%.sneakers.vault.v1.CopySecretResponse\x12_\n" +
@@ -14558,8 +14944,8 @@ func file_sneakers_vault_v1_vault_proto_rawDescGZIP() []byte {
 	return file_sneakers_vault_v1_vault_proto_rawDescData
 }
 
-var file_sneakers_vault_v1_vault_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
-var file_sneakers_vault_v1_vault_proto_msgTypes = make([]protoimpl.MessageInfo, 225)
+var file_sneakers_vault_v1_vault_proto_enumTypes = make([]protoimpl.EnumInfo, 13)
+var file_sneakers_vault_v1_vault_proto_msgTypes = make([]protoimpl.MessageInfo, 229)
 var file_sneakers_vault_v1_vault_proto_goTypes = []any{
 	(FieldKind)(0),                                  // 0: sneakers.vault.v1.FieldKind
 	(PolicyEnforcement)(0),                          // 1: sneakers.vault.v1.PolicyEnforcement
@@ -14570,637 +14956,652 @@ var file_sneakers_vault_v1_vault_proto_goTypes = []any{
 	(HeartbeatResult)(0),                            // 6: sneakers.vault.v1.HeartbeatResult
 	(RotationPhase)(0),                              // 7: sneakers.vault.v1.RotationPhase
 	(RotationState)(0),                              // 8: sneakers.vault.v1.RotationState
-	(PrincipalKind)(0),                              // 9: sneakers.vault.v1.PrincipalKind
-	(UnmappedFieldPolicy)(0),                        // 10: sneakers.vault.v1.UnmappedFieldPolicy
-	(SecretUseState)(0),                             // 11: sneakers.vault.v1.SecretUseState
-	(*SecretFieldDef)(nil),                          // 12: sneakers.vault.v1.SecretFieldDef
-	(*SecretType)(nil),                              // 13: sneakers.vault.v1.SecretType
-	(*Folder)(nil),                                  // 14: sneakers.vault.v1.Folder
-	(*FolderAccessRule)(nil),                        // 15: sneakers.vault.v1.FolderAccessRule
-	(*InheritedFolderRule)(nil),                     // 16: sneakers.vault.v1.InheritedFolderRule
-	(*RaciRule)(nil),                                // 17: sneakers.vault.v1.RaciRule
-	(*FolderAccess)(nil),                            // 18: sneakers.vault.v1.FolderAccess
-	(*GetFolderRulesetRequest)(nil),                 // 19: sneakers.vault.v1.GetFolderRulesetRequest
-	(*GetFolderRulesetResponse)(nil),                // 20: sneakers.vault.v1.GetFolderRulesetResponse
-	(*SetFolderRulesetRequest)(nil),                 // 21: sneakers.vault.v1.SetFolderRulesetRequest
-	(*SetFolderRulesetResponse)(nil),                // 22: sneakers.vault.v1.SetFolderRulesetResponse
-	(*GetMyAccessRequest)(nil),                      // 23: sneakers.vault.v1.GetMyAccessRequest
-	(*GetMyAccessResponse)(nil),                     // 24: sneakers.vault.v1.GetMyAccessResponse
-	(*RaciDecision)(nil),                            // 25: sneakers.vault.v1.RaciDecision
-	(*SimulateFolderRequest)(nil),                   // 26: sneakers.vault.v1.SimulateFolderRequest
-	(*SimulateFolderResponse)(nil),                  // 27: sneakers.vault.v1.SimulateFolderResponse
-	(*SimulateSecretRequest)(nil),                   // 28: sneakers.vault.v1.SimulateSecretRequest
-	(*SimulateSecretResponse)(nil),                  // 29: sneakers.vault.v1.SimulateSecretResponse
-	(*Secret)(nil),                                  // 30: sneakers.vault.v1.Secret
-	(*ActorContext)(nil),                            // 31: sneakers.vault.v1.ActorContext
-	(*ListSecretTypesRequest)(nil),                  // 32: sneakers.vault.v1.ListSecretTypesRequest
-	(*ListSecretTypesResponse)(nil),                 // 33: sneakers.vault.v1.ListSecretTypesResponse
-	(*CreateSecretTypeRequest)(nil),                 // 34: sneakers.vault.v1.CreateSecretTypeRequest
-	(*CreateSecretTypeResponse)(nil),                // 35: sneakers.vault.v1.CreateSecretTypeResponse
-	(*UpdateSecretTypeRequest)(nil),                 // 36: sneakers.vault.v1.UpdateSecretTypeRequest
-	(*UpdateSecretTypeResponse)(nil),                // 37: sneakers.vault.v1.UpdateSecretTypeResponse
-	(*DeleteSecretTypeRequest)(nil),                 // 38: sneakers.vault.v1.DeleteSecretTypeRequest
-	(*DeleteSecretTypeResponse)(nil),                // 39: sneakers.vault.v1.DeleteSecretTypeResponse
-	(*CloneSecretTypeRequest)(nil),                  // 40: sneakers.vault.v1.CloneSecretTypeRequest
-	(*CloneSecretTypeResponse)(nil),                 // 41: sneakers.vault.v1.CloneSecretTypeResponse
-	(*ListAvailableExtensionsRequest)(nil),          // 42: sneakers.vault.v1.ListAvailableExtensionsRequest
-	(*ListAvailableExtensionsResponse)(nil),         // 43: sneakers.vault.v1.ListAvailableExtensionsResponse
-	(*ImportExtensionRequest)(nil),                  // 44: sneakers.vault.v1.ImportExtensionRequest
-	(*ImportExtensionResponse)(nil),                 // 45: sneakers.vault.v1.ImportExtensionResponse
-	(*ImportExtensionFromJsonRequest)(nil),          // 46: sneakers.vault.v1.ImportExtensionFromJsonRequest
-	(*ImportExtensionFromJsonResponse)(nil),         // 47: sneakers.vault.v1.ImportExtensionFromJsonResponse
-	(*ListFoldersRequest)(nil),                      // 48: sneakers.vault.v1.ListFoldersRequest
-	(*ListFoldersResponse)(nil),                     // 49: sneakers.vault.v1.ListFoldersResponse
-	(*CreateFolderRequest)(nil),                     // 50: sneakers.vault.v1.CreateFolderRequest
-	(*CreateFolderResponse)(nil),                    // 51: sneakers.vault.v1.CreateFolderResponse
-	(*RenameFolderRequest)(nil),                     // 52: sneakers.vault.v1.RenameFolderRequest
-	(*RenameFolderResponse)(nil),                    // 53: sneakers.vault.v1.RenameFolderResponse
-	(*MoveFolderRequest)(nil),                       // 54: sneakers.vault.v1.MoveFolderRequest
-	(*MoveFolderResponse)(nil),                      // 55: sneakers.vault.v1.MoveFolderResponse
-	(*DeleteFolderRequest)(nil),                     // 56: sneakers.vault.v1.DeleteFolderRequest
-	(*DeleteFolderResponse)(nil),                    // 57: sneakers.vault.v1.DeleteFolderResponse
-	(*ReorderFoldersRequest)(nil),                   // 58: sneakers.vault.v1.ReorderFoldersRequest
-	(*ReorderFoldersResponse)(nil),                  // 59: sneakers.vault.v1.ReorderFoldersResponse
-	(*ListFolderRulesRequest)(nil),                  // 60: sneakers.vault.v1.ListFolderRulesRequest
-	(*ListFolderRulesResponse)(nil),                 // 61: sneakers.vault.v1.ListFolderRulesResponse
-	(*GetInheritedFolderRulesRequest)(nil),          // 62: sneakers.vault.v1.GetInheritedFolderRulesRequest
-	(*GetInheritedFolderRulesResponse)(nil),         // 63: sneakers.vault.v1.GetInheritedFolderRulesResponse
-	(*AddFolderRuleRequest)(nil),                    // 64: sneakers.vault.v1.AddFolderRuleRequest
-	(*AddFolderRuleResponse)(nil),                   // 65: sneakers.vault.v1.AddFolderRuleResponse
-	(*RemoveFolderRuleRequest)(nil),                 // 66: sneakers.vault.v1.RemoveFolderRuleRequest
-	(*RemoveFolderRuleResponse)(nil),                // 67: sneakers.vault.v1.RemoveFolderRuleResponse
-	(*ListSecretsInFolderRequest)(nil),              // 68: sneakers.vault.v1.ListSecretsInFolderRequest
-	(*ListSecretsInFolderResponse)(nil),             // 69: sneakers.vault.v1.ListSecretsInFolderResponse
-	(*GetSecretRequest)(nil),                        // 70: sneakers.vault.v1.GetSecretRequest
-	(*GetSecretResponse)(nil),                       // 71: sneakers.vault.v1.GetSecretResponse
-	(*CreateSecretRequest)(nil),                     // 72: sneakers.vault.v1.CreateSecretRequest
-	(*CreateSecretResponse)(nil),                    // 73: sneakers.vault.v1.CreateSecretResponse
-	(*UpdateSecretRequest)(nil),                     // 74: sneakers.vault.v1.UpdateSecretRequest
-	(*UpdateSecretResponse)(nil),                    // 75: sneakers.vault.v1.UpdateSecretResponse
-	(*SetSecretAutomationRequest)(nil),              // 76: sneakers.vault.v1.SetSecretAutomationRequest
-	(*SetSecretAutomationResponse)(nil),             // 77: sneakers.vault.v1.SetSecretAutomationResponse
-	(*GetSecretFieldsRequest)(nil),                  // 78: sneakers.vault.v1.GetSecretFieldsRequest
-	(*GetSecretFieldsResponse)(nil),                 // 79: sneakers.vault.v1.GetSecretFieldsResponse
-	(*RevealSecretFieldRequest)(nil),                // 80: sneakers.vault.v1.RevealSecretFieldRequest
-	(*RevealSecretFieldResponse)(nil),               // 81: sneakers.vault.v1.RevealSecretFieldResponse
-	(*RevealSecretFieldForPrincipalRequest)(nil),    // 82: sneakers.vault.v1.RevealSecretFieldForPrincipalRequest
-	(*RevealSecretFieldForPrincipalResponse)(nil),   // 83: sneakers.vault.v1.RevealSecretFieldForPrincipalResponse
-	(*ListSecretsForPrincipalRequest)(nil),          // 84: sneakers.vault.v1.ListSecretsForPrincipalRequest
-	(*ListSecretsForPrincipalResponse)(nil),         // 85: sneakers.vault.v1.ListSecretsForPrincipalResponse
-	(*CreateSecretForPrincipalRequest)(nil),         // 86: sneakers.vault.v1.CreateSecretForPrincipalRequest
-	(*CreateSecretForPrincipalResponse)(nil),        // 87: sneakers.vault.v1.CreateSecretForPrincipalResponse
-	(*GenerateSecretForPrincipalRequest)(nil),       // 88: sneakers.vault.v1.GenerateSecretForPrincipalRequest
-	(*GenerateSecretForPrincipalResponse)(nil),      // 89: sneakers.vault.v1.GenerateSecretForPrincipalResponse
-	(*MoveSecretForPrincipalRequest)(nil),           // 90: sneakers.vault.v1.MoveSecretForPrincipalRequest
-	(*MoveSecretForPrincipalResponse)(nil),          // 91: sneakers.vault.v1.MoveSecretForPrincipalResponse
-	(*ChangeSecretTypeForPrincipalRequest)(nil),     // 92: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest
-	(*ChangeSecretTypeForPrincipalResponse)(nil),    // 93: sneakers.vault.v1.ChangeSecretTypeForPrincipalResponse
-	(*RenameSecretForPrincipalRequest)(nil),         // 94: sneakers.vault.v1.RenameSecretForPrincipalRequest
-	(*RenameSecretForPrincipalResponse)(nil),        // 95: sneakers.vault.v1.RenameSecretForPrincipalResponse
-	(*UpdateSecretFieldsForPrincipalRequest)(nil),   // 96: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest
-	(*UpdateSecretFieldsForPrincipalResponse)(nil),  // 97: sneakers.vault.v1.UpdateSecretFieldsForPrincipalResponse
-	(*ListFoldersForPrincipalRequest)(nil),          // 98: sneakers.vault.v1.ListFoldersForPrincipalRequest
-	(*ListFoldersForPrincipalResponse)(nil),         // 99: sneakers.vault.v1.ListFoldersForPrincipalResponse
-	(*CreateFolderForPrincipalRequest)(nil),         // 100: sneakers.vault.v1.CreateFolderForPrincipalRequest
-	(*CreateFolderForPrincipalResponse)(nil),        // 101: sneakers.vault.v1.CreateFolderForPrincipalResponse
-	(*RenameFolderForPrincipalRequest)(nil),         // 102: sneakers.vault.v1.RenameFolderForPrincipalRequest
-	(*RenameFolderForPrincipalResponse)(nil),        // 103: sneakers.vault.v1.RenameFolderForPrincipalResponse
-	(*MoveFolderForPrincipalRequest)(nil),           // 104: sneakers.vault.v1.MoveFolderForPrincipalRequest
-	(*MoveFolderForPrincipalResponse)(nil),          // 105: sneakers.vault.v1.MoveFolderForPrincipalResponse
-	(*GenerateKeyPairRequest)(nil),                  // 106: sneakers.vault.v1.GenerateKeyPairRequest
-	(*GenerateKeyPairResponse)(nil),                 // 107: sneakers.vault.v1.GenerateKeyPairResponse
-	(*RotateKekRequest)(nil),                        // 108: sneakers.vault.v1.RotateKekRequest
-	(*RotateKekResponse)(nil),                       // 109: sneakers.vault.v1.RotateKekResponse
-	(*SecretVersion)(nil),                           // 110: sneakers.vault.v1.SecretVersion
-	(*ListSecretVersionsRequest)(nil),               // 111: sneakers.vault.v1.ListSecretVersionsRequest
-	(*ListSecretVersionsResponse)(nil),              // 112: sneakers.vault.v1.ListSecretVersionsResponse
-	(*RevealSecretVersionFieldRequest)(nil),         // 113: sneakers.vault.v1.RevealSecretVersionFieldRequest
-	(*RevealSecretVersionFieldResponse)(nil),        // 114: sneakers.vault.v1.RevealSecretVersionFieldResponse
-	(*BreakGlassSecretRequest)(nil),                 // 115: sneakers.vault.v1.BreakGlassSecretRequest
-	(*BreakGlassSecretResponse)(nil),                // 116: sneakers.vault.v1.BreakGlassSecretResponse
-	(*CopySecretRequest)(nil),                       // 117: sneakers.vault.v1.CopySecretRequest
-	(*CopySecretResponse)(nil),                      // 118: sneakers.vault.v1.CopySecretResponse
-	(*RetireSecretRequest)(nil),                     // 119: sneakers.vault.v1.RetireSecretRequest
-	(*RetireSecretResponse)(nil),                    // 120: sneakers.vault.v1.RetireSecretResponse
-	(*RestoreSecretRequest)(nil),                    // 121: sneakers.vault.v1.RestoreSecretRequest
-	(*RestoreSecretResponse)(nil),                   // 122: sneakers.vault.v1.RestoreSecretResponse
-	(*DeleteSecretRequest)(nil),                     // 123: sneakers.vault.v1.DeleteSecretRequest
-	(*DeleteSecretResponse)(nil),                    // 124: sneakers.vault.v1.DeleteSecretResponse
-	(*SecretStats)(nil),                             // 125: sneakers.vault.v1.SecretStats
-	(*GetSecretStatsRequest)(nil),                   // 126: sneakers.vault.v1.GetSecretStatsRequest
-	(*GetSecretStatsResponse)(nil),                  // 127: sneakers.vault.v1.GetSecretStatsResponse
-	(*GetTopAccessedSecretsRequest)(nil),            // 128: sneakers.vault.v1.GetTopAccessedSecretsRequest
-	(*GetTopAccessedSecretsResponse)(nil),           // 129: sneakers.vault.v1.GetTopAccessedSecretsResponse
-	(*ListSecretsByStatusRequest)(nil),              // 130: sneakers.vault.v1.ListSecretsByStatusRequest
-	(*ListSecretsByStatusResponse)(nil),             // 131: sneakers.vault.v1.ListSecretsByStatusResponse
-	(*FindSecretsByPublicKeyRequest)(nil),           // 132: sneakers.vault.v1.FindSecretsByPublicKeyRequest
-	(*FindSecretsByPublicKeyResponse)(nil),          // 133: sneakers.vault.v1.FindSecretsByPublicKeyResponse
-	(*GetSecretRulesetRequest)(nil),                 // 134: sneakers.vault.v1.GetSecretRulesetRequest
-	(*GetSecretRulesetResponse)(nil),                // 135: sneakers.vault.v1.GetSecretRulesetResponse
-	(*SetSecretRulesetRequest)(nil),                 // 136: sneakers.vault.v1.SetSecretRulesetRequest
-	(*SetSecretRulesetResponse)(nil),                // 137: sneakers.vault.v1.SetSecretRulesetResponse
-	(*GetMySecretAccessRequest)(nil),                // 138: sneakers.vault.v1.GetMySecretAccessRequest
-	(*GetMySecretAccessResponse)(nil),               // 139: sneakers.vault.v1.GetMySecretAccessResponse
-	(*CertMeta)(nil),                                // 140: sneakers.vault.v1.CertMeta
-	(*ImportCertificateRequest)(nil),                // 141: sneakers.vault.v1.ImportCertificateRequest
-	(*ImportCertificateResponse)(nil),               // 142: sneakers.vault.v1.ImportCertificateResponse
-	(*ExportCertificateRequest)(nil),                // 143: sneakers.vault.v1.ExportCertificateRequest
-	(*ExportCertificateResponse)(nil),               // 144: sneakers.vault.v1.ExportCertificateResponse
-	(*ReplaceCertificateRequest)(nil),               // 145: sneakers.vault.v1.ReplaceCertificateRequest
-	(*ReplaceCertificateResponse)(nil),              // 146: sneakers.vault.v1.ReplaceCertificateResponse
-	(*Connection)(nil),                              // 147: sneakers.vault.v1.Connection
-	(*Target)(nil),                                  // 148: sneakers.vault.v1.Target
-	(*ListConnectionsRequest)(nil),                  // 149: sneakers.vault.v1.ListConnectionsRequest
-	(*ListConnectionsResponse)(nil),                 // 150: sneakers.vault.v1.ListConnectionsResponse
-	(*SaveConnectionRequest)(nil),                   // 151: sneakers.vault.v1.SaveConnectionRequest
-	(*SaveConnectionResponse)(nil),                  // 152: sneakers.vault.v1.SaveConnectionResponse
-	(*DeleteConnectionRequest)(nil),                 // 153: sneakers.vault.v1.DeleteConnectionRequest
-	(*DeleteConnectionResponse)(nil),                // 154: sneakers.vault.v1.DeleteConnectionResponse
-	(*ListTargetsRequest)(nil),                      // 155: sneakers.vault.v1.ListTargetsRequest
-	(*ListTargetsResponse)(nil),                     // 156: sneakers.vault.v1.ListTargetsResponse
-	(*SaveTargetRequest)(nil),                       // 157: sneakers.vault.v1.SaveTargetRequest
-	(*SaveTargetResponse)(nil),                      // 158: sneakers.vault.v1.SaveTargetResponse
-	(*DeleteTargetRequest)(nil),                     // 159: sneakers.vault.v1.DeleteTargetRequest
-	(*DeleteTargetResponse)(nil),                    // 160: sneakers.vault.v1.DeleteTargetResponse
-	(*GetTargetRulesetRequest)(nil),                 // 161: sneakers.vault.v1.GetTargetRulesetRequest
-	(*GetTargetRulesetResponse)(nil),                // 162: sneakers.vault.v1.GetTargetRulesetResponse
-	(*SetTargetRulesetRequest)(nil),                 // 163: sneakers.vault.v1.SetTargetRulesetRequest
-	(*SetTargetRulesetResponse)(nil),                // 164: sneakers.vault.v1.SetTargetRulesetResponse
-	(*WorkerIdentity)(nil),                          // 165: sneakers.vault.v1.WorkerIdentity
-	(*HeartbeatConn)(nil),                           // 166: sneakers.vault.v1.HeartbeatConn
-	(*HeartbeatTarget)(nil),                         // 167: sneakers.vault.v1.HeartbeatTarget
-	(*HeartbeatJob)(nil),                            // 168: sneakers.vault.v1.HeartbeatJob
-	(*ClaimDueHeartbeatsRequest)(nil),               // 169: sneakers.vault.v1.ClaimDueHeartbeatsRequest
-	(*ClaimDueHeartbeatsResponse)(nil),              // 170: sneakers.vault.v1.ClaimDueHeartbeatsResponse
-	(*RevealForHeartbeatRequest)(nil),               // 171: sneakers.vault.v1.RevealForHeartbeatRequest
-	(*RevealForHeartbeatResponse)(nil),              // 172: sneakers.vault.v1.RevealForHeartbeatResponse
-	(*ReportHeartbeatRequest)(nil),                  // 173: sneakers.vault.v1.ReportHeartbeatRequest
-	(*ReportHeartbeatResponse)(nil),                 // 174: sneakers.vault.v1.ReportHeartbeatResponse
-	(*RotationJob)(nil),                             // 175: sneakers.vault.v1.RotationJob
-	(*EnqueueRotationRequest)(nil),                  // 176: sneakers.vault.v1.EnqueueRotationRequest
-	(*EnqueueRotationResponse)(nil),                 // 177: sneakers.vault.v1.EnqueueRotationResponse
-	(*ClaimDueRotationsRequest)(nil),                // 178: sneakers.vault.v1.ClaimDueRotationsRequest
-	(*ClaimDueRotationsResponse)(nil),               // 179: sneakers.vault.v1.ClaimDueRotationsResponse
-	(*RevealForRotationRequest)(nil),                // 180: sneakers.vault.v1.RevealForRotationRequest
-	(*RevealForRotationResponse)(nil),               // 181: sneakers.vault.v1.RevealForRotationResponse
-	(*ReportRotationRequest)(nil),                   // 182: sneakers.vault.v1.ReportRotationRequest
-	(*ReportRotationResponse)(nil),                  // 183: sneakers.vault.v1.ReportRotationResponse
-	(*SecretUse)(nil),                               // 184: sneakers.vault.v1.SecretUse
-	(*PrepareSecretUseRequest)(nil),                 // 185: sneakers.vault.v1.PrepareSecretUseRequest
-	(*PrepareSecretUseResponse)(nil),                // 186: sneakers.vault.v1.PrepareSecretUseResponse
-	(*GetSecretUseRequest)(nil),                     // 187: sneakers.vault.v1.GetSecretUseRequest
-	(*GetSecretUseResponse)(nil),                    // 188: sneakers.vault.v1.GetSecretUseResponse
-	(*ListPendingSecretUsesRequest)(nil),            // 189: sneakers.vault.v1.ListPendingSecretUsesRequest
-	(*ListPendingSecretUsesResponse)(nil),           // 190: sneakers.vault.v1.ListPendingSecretUsesResponse
-	(*DecideSecretUseRequest)(nil),                  // 191: sneakers.vault.v1.DecideSecretUseRequest
-	(*DecideSecretUseResponse)(nil),                 // 192: sneakers.vault.v1.DecideSecretUseResponse
-	(*RedeemSecretUseRequest)(nil),                  // 193: sneakers.vault.v1.RedeemSecretUseRequest
-	(*RedeemSecretUseResponse)(nil),                 // 194: sneakers.vault.v1.RedeemSecretUseResponse
-	(*UseGrantProgram)(nil),                         // 195: sneakers.vault.v1.UseGrantProgram
-	(*UseGrant)(nil),                                // 196: sneakers.vault.v1.UseGrant
-	(*SetSecretAutomationForPrincipalRequest)(nil),  // 197: sneakers.vault.v1.SetSecretAutomationForPrincipalRequest
-	(*SetSecretAutomationForPrincipalResponse)(nil), // 198: sneakers.vault.v1.SetSecretAutomationForPrincipalResponse
-	(*SetSecretTargetForPrincipalRequest)(nil),      // 199: sneakers.vault.v1.SetSecretTargetForPrincipalRequest
-	(*SetSecretTargetForPrincipalResponse)(nil),     // 200: sneakers.vault.v1.SetSecretTargetForPrincipalResponse
-	(*RequestHeartbeatForPrincipalRequest)(nil),     // 201: sneakers.vault.v1.RequestHeartbeatForPrincipalRequest
-	(*RequestHeartbeatForPrincipalResponse)(nil),    // 202: sneakers.vault.v1.RequestHeartbeatForPrincipalResponse
-	(*GetHeartbeatStatusForPrincipalRequest)(nil),   // 203: sneakers.vault.v1.GetHeartbeatStatusForPrincipalRequest
-	(*GetHeartbeatStatusForPrincipalResponse)(nil),  // 204: sneakers.vault.v1.GetHeartbeatStatusForPrincipalResponse
-	(*SetSecretTokenApprovalRequest)(nil),           // 205: sneakers.vault.v1.SetSecretTokenApprovalRequest
-	(*SetSecretTokenApprovalResponse)(nil),          // 206: sneakers.vault.v1.SetSecretTokenApprovalResponse
-	(*CreateUseGrantRequest)(nil),                   // 207: sneakers.vault.v1.CreateUseGrantRequest
-	(*CreateUseGrantResponse)(nil),                  // 208: sneakers.vault.v1.CreateUseGrantResponse
-	(*ListUseGrantsRequest)(nil),                    // 209: sneakers.vault.v1.ListUseGrantsRequest
-	(*ListUseGrantsResponse)(nil),                   // 210: sneakers.vault.v1.ListUseGrantsResponse
-	(*RevokeUseGrantRequest)(nil),                   // 211: sneakers.vault.v1.RevokeUseGrantRequest
-	(*RevokeUseGrantResponse)(nil),                  // 212: sneakers.vault.v1.RevokeUseGrantResponse
-	(*PasswordPolicy)(nil),                          // 213: sneakers.vault.v1.PasswordPolicy
-	(*SecuritySettings)(nil),                        // 214: sneakers.vault.v1.SecuritySettings
-	(*ListPasswordPoliciesRequest)(nil),             // 215: sneakers.vault.v1.ListPasswordPoliciesRequest
-	(*ListPasswordPoliciesResponse)(nil),            // 216: sneakers.vault.v1.ListPasswordPoliciesResponse
-	(*SavePasswordPolicyRequest)(nil),               // 217: sneakers.vault.v1.SavePasswordPolicyRequest
-	(*SavePasswordPolicyResponse)(nil),              // 218: sneakers.vault.v1.SavePasswordPolicyResponse
-	(*DeletePasswordPolicyRequest)(nil),             // 219: sneakers.vault.v1.DeletePasswordPolicyRequest
-	(*DeletePasswordPolicyResponse)(nil),            // 220: sneakers.vault.v1.DeletePasswordPolicyResponse
-	(*GetSecuritySettingsRequest)(nil),              // 221: sneakers.vault.v1.GetSecuritySettingsRequest
-	(*GetSecuritySettingsResponse)(nil),             // 222: sneakers.vault.v1.GetSecuritySettingsResponse
-	(*UpdateSecuritySettingsRequest)(nil),           // 223: sneakers.vault.v1.UpdateSecuritySettingsRequest
-	(*UpdateSecuritySettingsResponse)(nil),          // 224: sneakers.vault.v1.UpdateSecuritySettingsResponse
-	(*SeedBuiltinsRequest)(nil),                     // 225: sneakers.vault.v1.SeedBuiltinsRequest
-	(*SeedBuiltinsResponse)(nil),                    // 226: sneakers.vault.v1.SeedBuiltinsResponse
-	nil,                                             // 227: sneakers.vault.v1.RaciRule.GrantsEntry
-	nil,                                             // 228: sneakers.vault.v1.CreateSecretRequest.FieldsEntry
-	nil,                                             // 229: sneakers.vault.v1.UpdateSecretRequest.FieldsEntry
-	nil,                                             // 230: sneakers.vault.v1.GetSecretFieldsResponse.FieldsEntry
-	nil,                                             // 231: sneakers.vault.v1.CreateSecretForPrincipalRequest.FieldsEntry
-	nil,                                             // 232: sneakers.vault.v1.GenerateSecretForPrincipalRequest.FieldsEntry
-	nil,                                             // 233: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldMappingEntry
-	nil,                                             // 234: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldsEntry
-	nil,                                             // 235: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.FieldsEntry
-	nil,                                             // 236: sneakers.vault.v1.BreakGlassSecretResponse.FieldsEntry
+	(StepUpMode)(0),                                 // 9: sneakers.vault.v1.StepUpMode
+	(PrincipalKind)(0),                              // 10: sneakers.vault.v1.PrincipalKind
+	(UnmappedFieldPolicy)(0),                        // 11: sneakers.vault.v1.UnmappedFieldPolicy
+	(SecretUseState)(0),                             // 12: sneakers.vault.v1.SecretUseState
+	(*SecretFieldDef)(nil),                          // 13: sneakers.vault.v1.SecretFieldDef
+	(*SecretType)(nil),                              // 14: sneakers.vault.v1.SecretType
+	(*Folder)(nil),                                  // 15: sneakers.vault.v1.Folder
+	(*FolderAccessRule)(nil),                        // 16: sneakers.vault.v1.FolderAccessRule
+	(*InheritedFolderRule)(nil),                     // 17: sneakers.vault.v1.InheritedFolderRule
+	(*RaciRule)(nil),                                // 18: sneakers.vault.v1.RaciRule
+	(*FolderAccess)(nil),                            // 19: sneakers.vault.v1.FolderAccess
+	(*GetFolderRulesetRequest)(nil),                 // 20: sneakers.vault.v1.GetFolderRulesetRequest
+	(*GetFolderRulesetResponse)(nil),                // 21: sneakers.vault.v1.GetFolderRulesetResponse
+	(*SetFolderRulesetRequest)(nil),                 // 22: sneakers.vault.v1.SetFolderRulesetRequest
+	(*SetFolderRulesetResponse)(nil),                // 23: sneakers.vault.v1.SetFolderRulesetResponse
+	(*GetMyAccessRequest)(nil),                      // 24: sneakers.vault.v1.GetMyAccessRequest
+	(*GetMyAccessResponse)(nil),                     // 25: sneakers.vault.v1.GetMyAccessResponse
+	(*RaciDecision)(nil),                            // 26: sneakers.vault.v1.RaciDecision
+	(*SimulateFolderRequest)(nil),                   // 27: sneakers.vault.v1.SimulateFolderRequest
+	(*SimulateFolderResponse)(nil),                  // 28: sneakers.vault.v1.SimulateFolderResponse
+	(*SimulateSecretRequest)(nil),                   // 29: sneakers.vault.v1.SimulateSecretRequest
+	(*SimulateSecretResponse)(nil),                  // 30: sneakers.vault.v1.SimulateSecretResponse
+	(*Secret)(nil),                                  // 31: sneakers.vault.v1.Secret
+	(*ActorContext)(nil),                            // 32: sneakers.vault.v1.ActorContext
+	(*ListSecretTypesRequest)(nil),                  // 33: sneakers.vault.v1.ListSecretTypesRequest
+	(*ListSecretTypesResponse)(nil),                 // 34: sneakers.vault.v1.ListSecretTypesResponse
+	(*CreateSecretTypeRequest)(nil),                 // 35: sneakers.vault.v1.CreateSecretTypeRequest
+	(*CreateSecretTypeResponse)(nil),                // 36: sneakers.vault.v1.CreateSecretTypeResponse
+	(*UpdateSecretTypeRequest)(nil),                 // 37: sneakers.vault.v1.UpdateSecretTypeRequest
+	(*UpdateSecretTypeResponse)(nil),                // 38: sneakers.vault.v1.UpdateSecretTypeResponse
+	(*DeleteSecretTypeRequest)(nil),                 // 39: sneakers.vault.v1.DeleteSecretTypeRequest
+	(*DeleteSecretTypeResponse)(nil),                // 40: sneakers.vault.v1.DeleteSecretTypeResponse
+	(*CloneSecretTypeRequest)(nil),                  // 41: sneakers.vault.v1.CloneSecretTypeRequest
+	(*CloneSecretTypeResponse)(nil),                 // 42: sneakers.vault.v1.CloneSecretTypeResponse
+	(*ListAvailableExtensionsRequest)(nil),          // 43: sneakers.vault.v1.ListAvailableExtensionsRequest
+	(*ListAvailableExtensionsResponse)(nil),         // 44: sneakers.vault.v1.ListAvailableExtensionsResponse
+	(*ImportExtensionRequest)(nil),                  // 45: sneakers.vault.v1.ImportExtensionRequest
+	(*ImportExtensionResponse)(nil),                 // 46: sneakers.vault.v1.ImportExtensionResponse
+	(*ImportExtensionFromJsonRequest)(nil),          // 47: sneakers.vault.v1.ImportExtensionFromJsonRequest
+	(*ImportExtensionFromJsonResponse)(nil),         // 48: sneakers.vault.v1.ImportExtensionFromJsonResponse
+	(*ListFoldersRequest)(nil),                      // 49: sneakers.vault.v1.ListFoldersRequest
+	(*ListFoldersResponse)(nil),                     // 50: sneakers.vault.v1.ListFoldersResponse
+	(*CreateFolderRequest)(nil),                     // 51: sneakers.vault.v1.CreateFolderRequest
+	(*CreateFolderResponse)(nil),                    // 52: sneakers.vault.v1.CreateFolderResponse
+	(*RenameFolderRequest)(nil),                     // 53: sneakers.vault.v1.RenameFolderRequest
+	(*RenameFolderResponse)(nil),                    // 54: sneakers.vault.v1.RenameFolderResponse
+	(*MoveFolderRequest)(nil),                       // 55: sneakers.vault.v1.MoveFolderRequest
+	(*MoveFolderResponse)(nil),                      // 56: sneakers.vault.v1.MoveFolderResponse
+	(*DeleteFolderRequest)(nil),                     // 57: sneakers.vault.v1.DeleteFolderRequest
+	(*DeleteFolderResponse)(nil),                    // 58: sneakers.vault.v1.DeleteFolderResponse
+	(*ReorderFoldersRequest)(nil),                   // 59: sneakers.vault.v1.ReorderFoldersRequest
+	(*ReorderFoldersResponse)(nil),                  // 60: sneakers.vault.v1.ReorderFoldersResponse
+	(*ListFolderRulesRequest)(nil),                  // 61: sneakers.vault.v1.ListFolderRulesRequest
+	(*ListFolderRulesResponse)(nil),                 // 62: sneakers.vault.v1.ListFolderRulesResponse
+	(*GetInheritedFolderRulesRequest)(nil),          // 63: sneakers.vault.v1.GetInheritedFolderRulesRequest
+	(*GetInheritedFolderRulesResponse)(nil),         // 64: sneakers.vault.v1.GetInheritedFolderRulesResponse
+	(*AddFolderRuleRequest)(nil),                    // 65: sneakers.vault.v1.AddFolderRuleRequest
+	(*AddFolderRuleResponse)(nil),                   // 66: sneakers.vault.v1.AddFolderRuleResponse
+	(*RemoveFolderRuleRequest)(nil),                 // 67: sneakers.vault.v1.RemoveFolderRuleRequest
+	(*RemoveFolderRuleResponse)(nil),                // 68: sneakers.vault.v1.RemoveFolderRuleResponse
+	(*ListSecretsInFolderRequest)(nil),              // 69: sneakers.vault.v1.ListSecretsInFolderRequest
+	(*ListSecretsInFolderResponse)(nil),             // 70: sneakers.vault.v1.ListSecretsInFolderResponse
+	(*GetSecretRequest)(nil),                        // 71: sneakers.vault.v1.GetSecretRequest
+	(*GetSecretResponse)(nil),                       // 72: sneakers.vault.v1.GetSecretResponse
+	(*CreateSecretRequest)(nil),                     // 73: sneakers.vault.v1.CreateSecretRequest
+	(*CreateSecretResponse)(nil),                    // 74: sneakers.vault.v1.CreateSecretResponse
+	(*UpdateSecretRequest)(nil),                     // 75: sneakers.vault.v1.UpdateSecretRequest
+	(*UpdateSecretResponse)(nil),                    // 76: sneakers.vault.v1.UpdateSecretResponse
+	(*SetSecretAutomationRequest)(nil),              // 77: sneakers.vault.v1.SetSecretAutomationRequest
+	(*SetSecretAutomationResponse)(nil),             // 78: sneakers.vault.v1.SetSecretAutomationResponse
+	(*GetSecretFieldsRequest)(nil),                  // 79: sneakers.vault.v1.GetSecretFieldsRequest
+	(*GetSecretFieldsResponse)(nil),                 // 80: sneakers.vault.v1.GetSecretFieldsResponse
+	(*RevealSecretFieldRequest)(nil),                // 81: sneakers.vault.v1.RevealSecretFieldRequest
+	(*RevealSecretFieldResponse)(nil),               // 82: sneakers.vault.v1.RevealSecretFieldResponse
+	(*RevealSecretFieldForPrincipalRequest)(nil),    // 83: sneakers.vault.v1.RevealSecretFieldForPrincipalRequest
+	(*RevealSecretFieldForPrincipalResponse)(nil),   // 84: sneakers.vault.v1.RevealSecretFieldForPrincipalResponse
+	(*ListSecretsForPrincipalRequest)(nil),          // 85: sneakers.vault.v1.ListSecretsForPrincipalRequest
+	(*ListSecretsForPrincipalResponse)(nil),         // 86: sneakers.vault.v1.ListSecretsForPrincipalResponse
+	(*CreateSecretForPrincipalRequest)(nil),         // 87: sneakers.vault.v1.CreateSecretForPrincipalRequest
+	(*CreateSecretForPrincipalResponse)(nil),        // 88: sneakers.vault.v1.CreateSecretForPrincipalResponse
+	(*GenerateSecretForPrincipalRequest)(nil),       // 89: sneakers.vault.v1.GenerateSecretForPrincipalRequest
+	(*GenerateSecretForPrincipalResponse)(nil),      // 90: sneakers.vault.v1.GenerateSecretForPrincipalResponse
+	(*MoveSecretForPrincipalRequest)(nil),           // 91: sneakers.vault.v1.MoveSecretForPrincipalRequest
+	(*MoveSecretForPrincipalResponse)(nil),          // 92: sneakers.vault.v1.MoveSecretForPrincipalResponse
+	(*ChangeSecretTypeForPrincipalRequest)(nil),     // 93: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest
+	(*ChangeSecretTypeForPrincipalResponse)(nil),    // 94: sneakers.vault.v1.ChangeSecretTypeForPrincipalResponse
+	(*RenameSecretForPrincipalRequest)(nil),         // 95: sneakers.vault.v1.RenameSecretForPrincipalRequest
+	(*RenameSecretForPrincipalResponse)(nil),        // 96: sneakers.vault.v1.RenameSecretForPrincipalResponse
+	(*UpdateSecretFieldsForPrincipalRequest)(nil),   // 97: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest
+	(*UpdateSecretFieldsForPrincipalResponse)(nil),  // 98: sneakers.vault.v1.UpdateSecretFieldsForPrincipalResponse
+	(*ListFoldersForPrincipalRequest)(nil),          // 99: sneakers.vault.v1.ListFoldersForPrincipalRequest
+	(*ListFoldersForPrincipalResponse)(nil),         // 100: sneakers.vault.v1.ListFoldersForPrincipalResponse
+	(*CreateFolderForPrincipalRequest)(nil),         // 101: sneakers.vault.v1.CreateFolderForPrincipalRequest
+	(*CreateFolderForPrincipalResponse)(nil),        // 102: sneakers.vault.v1.CreateFolderForPrincipalResponse
+	(*RenameFolderForPrincipalRequest)(nil),         // 103: sneakers.vault.v1.RenameFolderForPrincipalRequest
+	(*RenameFolderForPrincipalResponse)(nil),        // 104: sneakers.vault.v1.RenameFolderForPrincipalResponse
+	(*MoveFolderForPrincipalRequest)(nil),           // 105: sneakers.vault.v1.MoveFolderForPrincipalRequest
+	(*MoveFolderForPrincipalResponse)(nil),          // 106: sneakers.vault.v1.MoveFolderForPrincipalResponse
+	(*GenerateKeyPairRequest)(nil),                  // 107: sneakers.vault.v1.GenerateKeyPairRequest
+	(*GenerateKeyPairResponse)(nil),                 // 108: sneakers.vault.v1.GenerateKeyPairResponse
+	(*RotateKekRequest)(nil),                        // 109: sneakers.vault.v1.RotateKekRequest
+	(*RotateKekResponse)(nil),                       // 110: sneakers.vault.v1.RotateKekResponse
+	(*SecretVersion)(nil),                           // 111: sneakers.vault.v1.SecretVersion
+	(*ListSecretVersionsRequest)(nil),               // 112: sneakers.vault.v1.ListSecretVersionsRequest
+	(*ListSecretVersionsResponse)(nil),              // 113: sneakers.vault.v1.ListSecretVersionsResponse
+	(*RevealSecretVersionFieldRequest)(nil),         // 114: sneakers.vault.v1.RevealSecretVersionFieldRequest
+	(*RevealSecretVersionFieldResponse)(nil),        // 115: sneakers.vault.v1.RevealSecretVersionFieldResponse
+	(*RestoreSecretVersionRequest)(nil),             // 116: sneakers.vault.v1.RestoreSecretVersionRequest
+	(*RestoreSecretVersionResponse)(nil),            // 117: sneakers.vault.v1.RestoreSecretVersionResponse
+	(*SetFolderRevealStepUpRequest)(nil),            // 118: sneakers.vault.v1.SetFolderRevealStepUpRequest
+	(*SetFolderRevealStepUpResponse)(nil),           // 119: sneakers.vault.v1.SetFolderRevealStepUpResponse
+	(*BreakGlassSecretRequest)(nil),                 // 120: sneakers.vault.v1.BreakGlassSecretRequest
+	(*BreakGlassSecretResponse)(nil),                // 121: sneakers.vault.v1.BreakGlassSecretResponse
+	(*CopySecretRequest)(nil),                       // 122: sneakers.vault.v1.CopySecretRequest
+	(*CopySecretResponse)(nil),                      // 123: sneakers.vault.v1.CopySecretResponse
+	(*RetireSecretRequest)(nil),                     // 124: sneakers.vault.v1.RetireSecretRequest
+	(*RetireSecretResponse)(nil),                    // 125: sneakers.vault.v1.RetireSecretResponse
+	(*RestoreSecretRequest)(nil),                    // 126: sneakers.vault.v1.RestoreSecretRequest
+	(*RestoreSecretResponse)(nil),                   // 127: sneakers.vault.v1.RestoreSecretResponse
+	(*DeleteSecretRequest)(nil),                     // 128: sneakers.vault.v1.DeleteSecretRequest
+	(*DeleteSecretResponse)(nil),                    // 129: sneakers.vault.v1.DeleteSecretResponse
+	(*SecretStats)(nil),                             // 130: sneakers.vault.v1.SecretStats
+	(*GetSecretStatsRequest)(nil),                   // 131: sneakers.vault.v1.GetSecretStatsRequest
+	(*GetSecretStatsResponse)(nil),                  // 132: sneakers.vault.v1.GetSecretStatsResponse
+	(*GetTopAccessedSecretsRequest)(nil),            // 133: sneakers.vault.v1.GetTopAccessedSecretsRequest
+	(*GetTopAccessedSecretsResponse)(nil),           // 134: sneakers.vault.v1.GetTopAccessedSecretsResponse
+	(*ListSecretsByStatusRequest)(nil),              // 135: sneakers.vault.v1.ListSecretsByStatusRequest
+	(*ListSecretsByStatusResponse)(nil),             // 136: sneakers.vault.v1.ListSecretsByStatusResponse
+	(*FindSecretsByPublicKeyRequest)(nil),           // 137: sneakers.vault.v1.FindSecretsByPublicKeyRequest
+	(*FindSecretsByPublicKeyResponse)(nil),          // 138: sneakers.vault.v1.FindSecretsByPublicKeyResponse
+	(*GetSecretRulesetRequest)(nil),                 // 139: sneakers.vault.v1.GetSecretRulesetRequest
+	(*GetSecretRulesetResponse)(nil),                // 140: sneakers.vault.v1.GetSecretRulesetResponse
+	(*SetSecretRulesetRequest)(nil),                 // 141: sneakers.vault.v1.SetSecretRulesetRequest
+	(*SetSecretRulesetResponse)(nil),                // 142: sneakers.vault.v1.SetSecretRulesetResponse
+	(*GetMySecretAccessRequest)(nil),                // 143: sneakers.vault.v1.GetMySecretAccessRequest
+	(*GetMySecretAccessResponse)(nil),               // 144: sneakers.vault.v1.GetMySecretAccessResponse
+	(*CertMeta)(nil),                                // 145: sneakers.vault.v1.CertMeta
+	(*ImportCertificateRequest)(nil),                // 146: sneakers.vault.v1.ImportCertificateRequest
+	(*ImportCertificateResponse)(nil),               // 147: sneakers.vault.v1.ImportCertificateResponse
+	(*ExportCertificateRequest)(nil),                // 148: sneakers.vault.v1.ExportCertificateRequest
+	(*ExportCertificateResponse)(nil),               // 149: sneakers.vault.v1.ExportCertificateResponse
+	(*ReplaceCertificateRequest)(nil),               // 150: sneakers.vault.v1.ReplaceCertificateRequest
+	(*ReplaceCertificateResponse)(nil),              // 151: sneakers.vault.v1.ReplaceCertificateResponse
+	(*Connection)(nil),                              // 152: sneakers.vault.v1.Connection
+	(*Target)(nil),                                  // 153: sneakers.vault.v1.Target
+	(*ListConnectionsRequest)(nil),                  // 154: sneakers.vault.v1.ListConnectionsRequest
+	(*ListConnectionsResponse)(nil),                 // 155: sneakers.vault.v1.ListConnectionsResponse
+	(*SaveConnectionRequest)(nil),                   // 156: sneakers.vault.v1.SaveConnectionRequest
+	(*SaveConnectionResponse)(nil),                  // 157: sneakers.vault.v1.SaveConnectionResponse
+	(*DeleteConnectionRequest)(nil),                 // 158: sneakers.vault.v1.DeleteConnectionRequest
+	(*DeleteConnectionResponse)(nil),                // 159: sneakers.vault.v1.DeleteConnectionResponse
+	(*ListTargetsRequest)(nil),                      // 160: sneakers.vault.v1.ListTargetsRequest
+	(*ListTargetsResponse)(nil),                     // 161: sneakers.vault.v1.ListTargetsResponse
+	(*SaveTargetRequest)(nil),                       // 162: sneakers.vault.v1.SaveTargetRequest
+	(*SaveTargetResponse)(nil),                      // 163: sneakers.vault.v1.SaveTargetResponse
+	(*DeleteTargetRequest)(nil),                     // 164: sneakers.vault.v1.DeleteTargetRequest
+	(*DeleteTargetResponse)(nil),                    // 165: sneakers.vault.v1.DeleteTargetResponse
+	(*GetTargetRulesetRequest)(nil),                 // 166: sneakers.vault.v1.GetTargetRulesetRequest
+	(*GetTargetRulesetResponse)(nil),                // 167: sneakers.vault.v1.GetTargetRulesetResponse
+	(*SetTargetRulesetRequest)(nil),                 // 168: sneakers.vault.v1.SetTargetRulesetRequest
+	(*SetTargetRulesetResponse)(nil),                // 169: sneakers.vault.v1.SetTargetRulesetResponse
+	(*WorkerIdentity)(nil),                          // 170: sneakers.vault.v1.WorkerIdentity
+	(*HeartbeatConn)(nil),                           // 171: sneakers.vault.v1.HeartbeatConn
+	(*HeartbeatTarget)(nil),                         // 172: sneakers.vault.v1.HeartbeatTarget
+	(*HeartbeatJob)(nil),                            // 173: sneakers.vault.v1.HeartbeatJob
+	(*ClaimDueHeartbeatsRequest)(nil),               // 174: sneakers.vault.v1.ClaimDueHeartbeatsRequest
+	(*ClaimDueHeartbeatsResponse)(nil),              // 175: sneakers.vault.v1.ClaimDueHeartbeatsResponse
+	(*RevealForHeartbeatRequest)(nil),               // 176: sneakers.vault.v1.RevealForHeartbeatRequest
+	(*RevealForHeartbeatResponse)(nil),              // 177: sneakers.vault.v1.RevealForHeartbeatResponse
+	(*ReportHeartbeatRequest)(nil),                  // 178: sneakers.vault.v1.ReportHeartbeatRequest
+	(*ReportHeartbeatResponse)(nil),                 // 179: sneakers.vault.v1.ReportHeartbeatResponse
+	(*RotationJob)(nil),                             // 180: sneakers.vault.v1.RotationJob
+	(*EnqueueRotationRequest)(nil),                  // 181: sneakers.vault.v1.EnqueueRotationRequest
+	(*EnqueueRotationResponse)(nil),                 // 182: sneakers.vault.v1.EnqueueRotationResponse
+	(*ClaimDueRotationsRequest)(nil),                // 183: sneakers.vault.v1.ClaimDueRotationsRequest
+	(*ClaimDueRotationsResponse)(nil),               // 184: sneakers.vault.v1.ClaimDueRotationsResponse
+	(*RevealForRotationRequest)(nil),                // 185: sneakers.vault.v1.RevealForRotationRequest
+	(*RevealForRotationResponse)(nil),               // 186: sneakers.vault.v1.RevealForRotationResponse
+	(*ReportRotationRequest)(nil),                   // 187: sneakers.vault.v1.ReportRotationRequest
+	(*ReportRotationResponse)(nil),                  // 188: sneakers.vault.v1.ReportRotationResponse
+	(*SecretUse)(nil),                               // 189: sneakers.vault.v1.SecretUse
+	(*PrepareSecretUseRequest)(nil),                 // 190: sneakers.vault.v1.PrepareSecretUseRequest
+	(*PrepareSecretUseResponse)(nil),                // 191: sneakers.vault.v1.PrepareSecretUseResponse
+	(*GetSecretUseRequest)(nil),                     // 192: sneakers.vault.v1.GetSecretUseRequest
+	(*GetSecretUseResponse)(nil),                    // 193: sneakers.vault.v1.GetSecretUseResponse
+	(*ListPendingSecretUsesRequest)(nil),            // 194: sneakers.vault.v1.ListPendingSecretUsesRequest
+	(*ListPendingSecretUsesResponse)(nil),           // 195: sneakers.vault.v1.ListPendingSecretUsesResponse
+	(*DecideSecretUseRequest)(nil),                  // 196: sneakers.vault.v1.DecideSecretUseRequest
+	(*DecideSecretUseResponse)(nil),                 // 197: sneakers.vault.v1.DecideSecretUseResponse
+	(*RedeemSecretUseRequest)(nil),                  // 198: sneakers.vault.v1.RedeemSecretUseRequest
+	(*RedeemSecretUseResponse)(nil),                 // 199: sneakers.vault.v1.RedeemSecretUseResponse
+	(*UseGrantProgram)(nil),                         // 200: sneakers.vault.v1.UseGrantProgram
+	(*UseGrant)(nil),                                // 201: sneakers.vault.v1.UseGrant
+	(*SetSecretAutomationForPrincipalRequest)(nil),  // 202: sneakers.vault.v1.SetSecretAutomationForPrincipalRequest
+	(*SetSecretAutomationForPrincipalResponse)(nil), // 203: sneakers.vault.v1.SetSecretAutomationForPrincipalResponse
+	(*SetSecretTargetForPrincipalRequest)(nil),      // 204: sneakers.vault.v1.SetSecretTargetForPrincipalRequest
+	(*SetSecretTargetForPrincipalResponse)(nil),     // 205: sneakers.vault.v1.SetSecretTargetForPrincipalResponse
+	(*RequestHeartbeatForPrincipalRequest)(nil),     // 206: sneakers.vault.v1.RequestHeartbeatForPrincipalRequest
+	(*RequestHeartbeatForPrincipalResponse)(nil),    // 207: sneakers.vault.v1.RequestHeartbeatForPrincipalResponse
+	(*GetHeartbeatStatusForPrincipalRequest)(nil),   // 208: sneakers.vault.v1.GetHeartbeatStatusForPrincipalRequest
+	(*GetHeartbeatStatusForPrincipalResponse)(nil),  // 209: sneakers.vault.v1.GetHeartbeatStatusForPrincipalResponse
+	(*SetSecretTokenApprovalRequest)(nil),           // 210: sneakers.vault.v1.SetSecretTokenApprovalRequest
+	(*SetSecretTokenApprovalResponse)(nil),          // 211: sneakers.vault.v1.SetSecretTokenApprovalResponse
+	(*CreateUseGrantRequest)(nil),                   // 212: sneakers.vault.v1.CreateUseGrantRequest
+	(*CreateUseGrantResponse)(nil),                  // 213: sneakers.vault.v1.CreateUseGrantResponse
+	(*ListUseGrantsRequest)(nil),                    // 214: sneakers.vault.v1.ListUseGrantsRequest
+	(*ListUseGrantsResponse)(nil),                   // 215: sneakers.vault.v1.ListUseGrantsResponse
+	(*RevokeUseGrantRequest)(nil),                   // 216: sneakers.vault.v1.RevokeUseGrantRequest
+	(*RevokeUseGrantResponse)(nil),                  // 217: sneakers.vault.v1.RevokeUseGrantResponse
+	(*PasswordPolicy)(nil),                          // 218: sneakers.vault.v1.PasswordPolicy
+	(*SecuritySettings)(nil),                        // 219: sneakers.vault.v1.SecuritySettings
+	(*ListPasswordPoliciesRequest)(nil),             // 220: sneakers.vault.v1.ListPasswordPoliciesRequest
+	(*ListPasswordPoliciesResponse)(nil),            // 221: sneakers.vault.v1.ListPasswordPoliciesResponse
+	(*SavePasswordPolicyRequest)(nil),               // 222: sneakers.vault.v1.SavePasswordPolicyRequest
+	(*SavePasswordPolicyResponse)(nil),              // 223: sneakers.vault.v1.SavePasswordPolicyResponse
+	(*DeletePasswordPolicyRequest)(nil),             // 224: sneakers.vault.v1.DeletePasswordPolicyRequest
+	(*DeletePasswordPolicyResponse)(nil),            // 225: sneakers.vault.v1.DeletePasswordPolicyResponse
+	(*GetSecuritySettingsRequest)(nil),              // 226: sneakers.vault.v1.GetSecuritySettingsRequest
+	(*GetSecuritySettingsResponse)(nil),             // 227: sneakers.vault.v1.GetSecuritySettingsResponse
+	(*UpdateSecuritySettingsRequest)(nil),           // 228: sneakers.vault.v1.UpdateSecuritySettingsRequest
+	(*UpdateSecuritySettingsResponse)(nil),          // 229: sneakers.vault.v1.UpdateSecuritySettingsResponse
+	(*SeedBuiltinsRequest)(nil),                     // 230: sneakers.vault.v1.SeedBuiltinsRequest
+	(*SeedBuiltinsResponse)(nil),                    // 231: sneakers.vault.v1.SeedBuiltinsResponse
+	nil,                                             // 232: sneakers.vault.v1.RaciRule.GrantsEntry
+	nil,                                             // 233: sneakers.vault.v1.CreateSecretRequest.FieldsEntry
+	nil,                                             // 234: sneakers.vault.v1.UpdateSecretRequest.FieldsEntry
+	nil,                                             // 235: sneakers.vault.v1.GetSecretFieldsResponse.FieldsEntry
+	nil,                                             // 236: sneakers.vault.v1.CreateSecretForPrincipalRequest.FieldsEntry
+	nil,                                             // 237: sneakers.vault.v1.GenerateSecretForPrincipalRequest.FieldsEntry
+	nil,                                             // 238: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldMappingEntry
+	nil,                                             // 239: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldsEntry
+	nil,                                             // 240: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.FieldsEntry
+	nil,                                             // 241: sneakers.vault.v1.BreakGlassSecretResponse.FieldsEntry
 }
 var file_sneakers_vault_v1_vault_proto_depIdxs = []int32{
 	0,   // 0: sneakers.vault.v1.SecretFieldDef.kind:type_name -> sneakers.vault.v1.FieldKind
 	1,   // 1: sneakers.vault.v1.SecretFieldDef.policy_enforcement:type_name -> sneakers.vault.v1.PolicyEnforcement
-	12,  // 2: sneakers.vault.v1.SecretType.fields:type_name -> sneakers.vault.v1.SecretFieldDef
+	13,  // 2: sneakers.vault.v1.SecretType.fields:type_name -> sneakers.vault.v1.SecretFieldDef
 	2,   // 3: sneakers.vault.v1.SecretType.origin:type_name -> sneakers.vault.v1.TypeOrigin
 	3,   // 4: sneakers.vault.v1.Folder.scope:type_name -> sneakers.vault.v1.FolderScope
-	5,   // 5: sneakers.vault.v1.FolderAccessRule.subject_kind:type_name -> sneakers.vault.v1.SubjectKind
-	4,   // 6: sneakers.vault.v1.FolderAccessRule.role:type_name -> sneakers.vault.v1.FolderRole
-	15,  // 7: sneakers.vault.v1.InheritedFolderRule.rule:type_name -> sneakers.vault.v1.FolderAccessRule
-	5,   // 8: sneakers.vault.v1.RaciRule.subject_kind:type_name -> sneakers.vault.v1.SubjectKind
-	227, // 9: sneakers.vault.v1.RaciRule.grants:type_name -> sneakers.vault.v1.RaciRule.GrantsEntry
-	31,  // 10: sneakers.vault.v1.GetFolderRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	17,  // 11: sneakers.vault.v1.GetFolderRulesetResponse.rules:type_name -> sneakers.vault.v1.RaciRule
-	31,  // 12: sneakers.vault.v1.SetFolderRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	17,  // 13: sneakers.vault.v1.SetFolderRulesetRequest.rules:type_name -> sneakers.vault.v1.RaciRule
-	31,  // 14: sneakers.vault.v1.GetMyAccessRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	18,  // 15: sneakers.vault.v1.GetMyAccessResponse.access:type_name -> sneakers.vault.v1.FolderAccess
-	31,  // 16: sneakers.vault.v1.SimulateFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	17,  // 17: sneakers.vault.v1.SimulateFolderRequest.draft_rules:type_name -> sneakers.vault.v1.RaciRule
-	25,  // 18: sneakers.vault.v1.SimulateFolderResponse.decision:type_name -> sneakers.vault.v1.RaciDecision
-	31,  // 19: sneakers.vault.v1.SimulateSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	17,  // 20: sneakers.vault.v1.SimulateSecretRequest.draft_rules:type_name -> sneakers.vault.v1.RaciRule
-	25,  // 21: sneakers.vault.v1.SimulateSecretResponse.decision:type_name -> sneakers.vault.v1.RaciDecision
-	8,   // 22: sneakers.vault.v1.Secret.last_rotation_result:type_name -> sneakers.vault.v1.RotationState
-	6,   // 23: sneakers.vault.v1.Secret.last_heartbeat_result:type_name -> sneakers.vault.v1.HeartbeatResult
-	17,  // 24: sneakers.vault.v1.Secret.ruleset:type_name -> sneakers.vault.v1.RaciRule
-	9,   // 25: sneakers.vault.v1.ActorContext.principal_kind:type_name -> sneakers.vault.v1.PrincipalKind
-	13,  // 26: sneakers.vault.v1.ListSecretTypesResponse.types:type_name -> sneakers.vault.v1.SecretType
-	31,  // 27: sneakers.vault.v1.CreateSecretTypeRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	13,  // 28: sneakers.vault.v1.CreateSecretTypeRequest.type:type_name -> sneakers.vault.v1.SecretType
-	13,  // 29: sneakers.vault.v1.CreateSecretTypeResponse.type:type_name -> sneakers.vault.v1.SecretType
-	31,  // 30: sneakers.vault.v1.UpdateSecretTypeRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	13,  // 31: sneakers.vault.v1.UpdateSecretTypeRequest.type:type_name -> sneakers.vault.v1.SecretType
-	13,  // 32: sneakers.vault.v1.UpdateSecretTypeResponse.type:type_name -> sneakers.vault.v1.SecretType
-	31,  // 33: sneakers.vault.v1.DeleteSecretTypeRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 34: sneakers.vault.v1.CloneSecretTypeRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	13,  // 35: sneakers.vault.v1.CloneSecretTypeResponse.type:type_name -> sneakers.vault.v1.SecretType
-	13,  // 36: sneakers.vault.v1.ListAvailableExtensionsResponse.extensions:type_name -> sneakers.vault.v1.SecretType
-	31,  // 37: sneakers.vault.v1.ImportExtensionRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	13,  // 38: sneakers.vault.v1.ImportExtensionResponse.type:type_name -> sneakers.vault.v1.SecretType
-	31,  // 39: sneakers.vault.v1.ImportExtensionFromJsonRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	13,  // 40: sneakers.vault.v1.ImportExtensionFromJsonResponse.type:type_name -> sneakers.vault.v1.SecretType
-	31,  // 41: sneakers.vault.v1.ListFoldersRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	14,  // 42: sneakers.vault.v1.ListFoldersResponse.folders:type_name -> sneakers.vault.v1.Folder
-	31,  // 43: sneakers.vault.v1.CreateFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	14,  // 44: sneakers.vault.v1.CreateFolderResponse.folder:type_name -> sneakers.vault.v1.Folder
-	31,  // 45: sneakers.vault.v1.RenameFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	14,  // 46: sneakers.vault.v1.RenameFolderResponse.folder:type_name -> sneakers.vault.v1.Folder
-	31,  // 47: sneakers.vault.v1.MoveFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	14,  // 48: sneakers.vault.v1.MoveFolderResponse.folder:type_name -> sneakers.vault.v1.Folder
-	31,  // 49: sneakers.vault.v1.DeleteFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 50: sneakers.vault.v1.ReorderFoldersRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	15,  // 51: sneakers.vault.v1.ListFolderRulesResponse.rules:type_name -> sneakers.vault.v1.FolderAccessRule
-	16,  // 52: sneakers.vault.v1.GetInheritedFolderRulesResponse.rules:type_name -> sneakers.vault.v1.InheritedFolderRule
-	31,  // 53: sneakers.vault.v1.AddFolderRuleRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	15,  // 54: sneakers.vault.v1.AddFolderRuleRequest.rule:type_name -> sneakers.vault.v1.FolderAccessRule
-	15,  // 55: sneakers.vault.v1.AddFolderRuleResponse.rule:type_name -> sneakers.vault.v1.FolderAccessRule
-	31,  // 56: sneakers.vault.v1.RemoveFolderRuleRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 57: sneakers.vault.v1.ListSecretsInFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 58: sneakers.vault.v1.ListSecretsInFolderResponse.secrets:type_name -> sneakers.vault.v1.Secret
-	31,  // 59: sneakers.vault.v1.GetSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 60: sneakers.vault.v1.GetSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 61: sneakers.vault.v1.CreateSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	228, // 62: sneakers.vault.v1.CreateSecretRequest.fields:type_name -> sneakers.vault.v1.CreateSecretRequest.FieldsEntry
-	30,  // 63: sneakers.vault.v1.CreateSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 64: sneakers.vault.v1.UpdateSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	229, // 65: sneakers.vault.v1.UpdateSecretRequest.fields:type_name -> sneakers.vault.v1.UpdateSecretRequest.FieldsEntry
-	30,  // 66: sneakers.vault.v1.UpdateSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 67: sneakers.vault.v1.SetSecretAutomationRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 68: sneakers.vault.v1.SetSecretAutomationResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 69: sneakers.vault.v1.GetSecretFieldsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	230, // 70: sneakers.vault.v1.GetSecretFieldsResponse.fields:type_name -> sneakers.vault.v1.GetSecretFieldsResponse.FieldsEntry
-	31,  // 71: sneakers.vault.v1.RevealSecretFieldRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 72: sneakers.vault.v1.RevealSecretFieldForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 73: sneakers.vault.v1.ListSecretsForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 74: sneakers.vault.v1.ListSecretsForPrincipalResponse.secrets:type_name -> sneakers.vault.v1.Secret
-	31,  // 75: sneakers.vault.v1.CreateSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	231, // 76: sneakers.vault.v1.CreateSecretForPrincipalRequest.fields:type_name -> sneakers.vault.v1.CreateSecretForPrincipalRequest.FieldsEntry
-	30,  // 77: sneakers.vault.v1.CreateSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 78: sneakers.vault.v1.GenerateSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	232, // 79: sneakers.vault.v1.GenerateSecretForPrincipalRequest.fields:type_name -> sneakers.vault.v1.GenerateSecretForPrincipalRequest.FieldsEntry
-	30,  // 80: sneakers.vault.v1.GenerateSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 81: sneakers.vault.v1.MoveSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 82: sneakers.vault.v1.MoveSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
-	14,  // 83: sneakers.vault.v1.MoveSecretForPrincipalResponse.destination:type_name -> sneakers.vault.v1.Folder
-	31,  // 84: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	233, // 85: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.field_mapping:type_name -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldMappingEntry
-	234, // 86: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.fields:type_name -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldsEntry
-	10,  // 87: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.unmapped_fields:type_name -> sneakers.vault.v1.UnmappedFieldPolicy
-	30,  // 88: sneakers.vault.v1.ChangeSecretTypeForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 89: sneakers.vault.v1.RenameSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 90: sneakers.vault.v1.RenameSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 91: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	235, // 92: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.fields:type_name -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.FieldsEntry
-	30,  // 93: sneakers.vault.v1.UpdateSecretFieldsForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 94: sneakers.vault.v1.ListFoldersForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	14,  // 95: sneakers.vault.v1.ListFoldersForPrincipalResponse.folders:type_name -> sneakers.vault.v1.Folder
-	31,  // 96: sneakers.vault.v1.CreateFolderForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	14,  // 97: sneakers.vault.v1.CreateFolderForPrincipalResponse.folder:type_name -> sneakers.vault.v1.Folder
-	31,  // 98: sneakers.vault.v1.RenameFolderForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	14,  // 99: sneakers.vault.v1.RenameFolderForPrincipalResponse.folder:type_name -> sneakers.vault.v1.Folder
-	31,  // 100: sneakers.vault.v1.MoveFolderForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	14,  // 101: sneakers.vault.v1.MoveFolderForPrincipalResponse.folder:type_name -> sneakers.vault.v1.Folder
-	14,  // 102: sneakers.vault.v1.MoveFolderForPrincipalResponse.destination:type_name -> sneakers.vault.v1.Folder
-	31,  // 103: sneakers.vault.v1.GenerateKeyPairRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 104: sneakers.vault.v1.RotateKekRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 105: sneakers.vault.v1.ListSecretVersionsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	110, // 106: sneakers.vault.v1.ListSecretVersionsResponse.versions:type_name -> sneakers.vault.v1.SecretVersion
-	31,  // 107: sneakers.vault.v1.RevealSecretVersionFieldRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 108: sneakers.vault.v1.BreakGlassSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	236, // 109: sneakers.vault.v1.BreakGlassSecretResponse.fields:type_name -> sneakers.vault.v1.BreakGlassSecretResponse.FieldsEntry
-	31,  // 110: sneakers.vault.v1.CopySecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 111: sneakers.vault.v1.RetireSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 112: sneakers.vault.v1.RetireSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 113: sneakers.vault.v1.RestoreSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 114: sneakers.vault.v1.RestoreSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 115: sneakers.vault.v1.DeleteSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 116: sneakers.vault.v1.GetSecretStatsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	125, // 117: sneakers.vault.v1.GetSecretStatsResponse.stats:type_name -> sneakers.vault.v1.SecretStats
-	31,  // 118: sneakers.vault.v1.GetTopAccessedSecretsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 119: sneakers.vault.v1.GetTopAccessedSecretsResponse.secrets:type_name -> sneakers.vault.v1.Secret
-	31,  // 120: sneakers.vault.v1.ListSecretsByStatusRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 121: sneakers.vault.v1.ListSecretsByStatusResponse.secrets:type_name -> sneakers.vault.v1.Secret
-	31,  // 122: sneakers.vault.v1.FindSecretsByPublicKeyRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 123: sneakers.vault.v1.FindSecretsByPublicKeyResponse.secrets:type_name -> sneakers.vault.v1.Secret
-	31,  // 124: sneakers.vault.v1.GetSecretRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	17,  // 125: sneakers.vault.v1.GetSecretRulesetResponse.rules:type_name -> sneakers.vault.v1.RaciRule
-	31,  // 126: sneakers.vault.v1.SetSecretRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	17,  // 127: sneakers.vault.v1.SetSecretRulesetRequest.rules:type_name -> sneakers.vault.v1.RaciRule
-	17,  // 128: sneakers.vault.v1.SetSecretRulesetResponse.rules:type_name -> sneakers.vault.v1.RaciRule
-	31,  // 129: sneakers.vault.v1.GetMySecretAccessRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	18,  // 130: sneakers.vault.v1.GetMySecretAccessResponse.access:type_name -> sneakers.vault.v1.FolderAccess
-	31,  // 131: sneakers.vault.v1.ImportCertificateRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 132: sneakers.vault.v1.ImportCertificateResponse.secret:type_name -> sneakers.vault.v1.Secret
-	140, // 133: sneakers.vault.v1.ImportCertificateResponse.meta:type_name -> sneakers.vault.v1.CertMeta
-	31,  // 134: sneakers.vault.v1.ExportCertificateRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 135: sneakers.vault.v1.ReplaceCertificateRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 136: sneakers.vault.v1.ReplaceCertificateResponse.secret:type_name -> sneakers.vault.v1.Secret
-	140, // 137: sneakers.vault.v1.ReplaceCertificateResponse.meta:type_name -> sneakers.vault.v1.CertMeta
-	147, // 138: sneakers.vault.v1.ListConnectionsResponse.connections:type_name -> sneakers.vault.v1.Connection
-	31,  // 139: sneakers.vault.v1.SaveConnectionRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	147, // 140: sneakers.vault.v1.SaveConnectionRequest.connection:type_name -> sneakers.vault.v1.Connection
-	147, // 141: sneakers.vault.v1.SaveConnectionResponse.connection:type_name -> sneakers.vault.v1.Connection
-	31,  // 142: sneakers.vault.v1.DeleteConnectionRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 143: sneakers.vault.v1.ListTargetsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	148, // 144: sneakers.vault.v1.ListTargetsResponse.targets:type_name -> sneakers.vault.v1.Target
-	31,  // 145: sneakers.vault.v1.SaveTargetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	148, // 146: sneakers.vault.v1.SaveTargetRequest.target:type_name -> sneakers.vault.v1.Target
-	148, // 147: sneakers.vault.v1.SaveTargetResponse.target:type_name -> sneakers.vault.v1.Target
-	31,  // 148: sneakers.vault.v1.DeleteTargetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 149: sneakers.vault.v1.GetTargetRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	17,  // 150: sneakers.vault.v1.GetTargetRulesetResponse.ruleset:type_name -> sneakers.vault.v1.RaciRule
-	31,  // 151: sneakers.vault.v1.SetTargetRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	17,  // 152: sneakers.vault.v1.SetTargetRulesetRequest.ruleset:type_name -> sneakers.vault.v1.RaciRule
-	166, // 153: sneakers.vault.v1.HeartbeatJob.connection:type_name -> sneakers.vault.v1.HeartbeatConn
-	167, // 154: sneakers.vault.v1.HeartbeatJob.target:type_name -> sneakers.vault.v1.HeartbeatTarget
-	165, // 155: sneakers.vault.v1.ClaimDueHeartbeatsRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
-	168, // 156: sneakers.vault.v1.ClaimDueHeartbeatsResponse.jobs:type_name -> sneakers.vault.v1.HeartbeatJob
-	165, // 157: sneakers.vault.v1.RevealForHeartbeatRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
-	165, // 158: sneakers.vault.v1.ReportHeartbeatRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
-	6,   // 159: sneakers.vault.v1.ReportHeartbeatRequest.result:type_name -> sneakers.vault.v1.HeartbeatResult
-	166, // 160: sneakers.vault.v1.RotationJob.connection:type_name -> sneakers.vault.v1.HeartbeatConn
-	167, // 161: sneakers.vault.v1.RotationJob.target:type_name -> sneakers.vault.v1.HeartbeatTarget
-	31,  // 162: sneakers.vault.v1.EnqueueRotationRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	165, // 163: sneakers.vault.v1.ClaimDueRotationsRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
-	175, // 164: sneakers.vault.v1.ClaimDueRotationsResponse.jobs:type_name -> sneakers.vault.v1.RotationJob
-	165, // 165: sneakers.vault.v1.RevealForRotationRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
-	165, // 166: sneakers.vault.v1.ReportRotationRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
-	7,   // 167: sneakers.vault.v1.ReportRotationRequest.change:type_name -> sneakers.vault.v1.RotationPhase
-	7,   // 168: sneakers.vault.v1.ReportRotationRequest.validate:type_name -> sneakers.vault.v1.RotationPhase
-	11,  // 169: sneakers.vault.v1.SecretUse.state:type_name -> sneakers.vault.v1.SecretUseState
-	31,  // 170: sneakers.vault.v1.PrepareSecretUseRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	184, // 171: sneakers.vault.v1.PrepareSecretUseResponse.use:type_name -> sneakers.vault.v1.SecretUse
-	31,  // 172: sneakers.vault.v1.GetSecretUseRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	184, // 173: sneakers.vault.v1.GetSecretUseResponse.use:type_name -> sneakers.vault.v1.SecretUse
-	31,  // 174: sneakers.vault.v1.ListPendingSecretUsesRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	184, // 175: sneakers.vault.v1.ListPendingSecretUsesResponse.uses:type_name -> sneakers.vault.v1.SecretUse
-	31,  // 176: sneakers.vault.v1.DecideSecretUseRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	184, // 177: sneakers.vault.v1.DecideSecretUseResponse.use:type_name -> sneakers.vault.v1.SecretUse
-	31,  // 178: sneakers.vault.v1.RedeemSecretUseRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	184, // 179: sneakers.vault.v1.RedeemSecretUseResponse.use:type_name -> sneakers.vault.v1.SecretUse
-	195, // 180: sneakers.vault.v1.UseGrant.programs:type_name -> sneakers.vault.v1.UseGrantProgram
-	31,  // 181: sneakers.vault.v1.SetSecretAutomationForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 182: sneakers.vault.v1.SetSecretAutomationForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 183: sneakers.vault.v1.SetSecretTargetForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 184: sneakers.vault.v1.SetSecretTargetForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 185: sneakers.vault.v1.RequestHeartbeatForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	31,  // 186: sneakers.vault.v1.GetHeartbeatStatusForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	6,   // 187: sneakers.vault.v1.GetHeartbeatStatusForPrincipalResponse.result:type_name -> sneakers.vault.v1.HeartbeatResult
-	31,  // 188: sneakers.vault.v1.SetSecretTokenApprovalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	30,  // 189: sneakers.vault.v1.SetSecretTokenApprovalResponse.secret:type_name -> sneakers.vault.v1.Secret
-	31,  // 190: sneakers.vault.v1.CreateUseGrantRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	196, // 191: sneakers.vault.v1.CreateUseGrantRequest.grant:type_name -> sneakers.vault.v1.UseGrant
-	196, // 192: sneakers.vault.v1.CreateUseGrantResponse.grant:type_name -> sneakers.vault.v1.UseGrant
-	31,  // 193: sneakers.vault.v1.ListUseGrantsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	196, // 194: sneakers.vault.v1.ListUseGrantsResponse.grants:type_name -> sneakers.vault.v1.UseGrant
-	31,  // 195: sneakers.vault.v1.RevokeUseGrantRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	196, // 196: sneakers.vault.v1.RevokeUseGrantResponse.grant:type_name -> sneakers.vault.v1.UseGrant
-	213, // 197: sneakers.vault.v1.ListPasswordPoliciesResponse.policies:type_name -> sneakers.vault.v1.PasswordPolicy
-	31,  // 198: sneakers.vault.v1.SavePasswordPolicyRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	213, // 199: sneakers.vault.v1.SavePasswordPolicyRequest.policy:type_name -> sneakers.vault.v1.PasswordPolicy
-	213, // 200: sneakers.vault.v1.SavePasswordPolicyResponse.policy:type_name -> sneakers.vault.v1.PasswordPolicy
-	31,  // 201: sneakers.vault.v1.DeletePasswordPolicyRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	214, // 202: sneakers.vault.v1.GetSecuritySettingsResponse.settings:type_name -> sneakers.vault.v1.SecuritySettings
-	31,  // 203: sneakers.vault.v1.UpdateSecuritySettingsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	214, // 204: sneakers.vault.v1.UpdateSecuritySettingsResponse.settings:type_name -> sneakers.vault.v1.SecuritySettings
-	31,  // 205: sneakers.vault.v1.SeedBuiltinsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	149, // 206: sneakers.vault.v1.VaultService.ListConnections:input_type -> sneakers.vault.v1.ListConnectionsRequest
-	151, // 207: sneakers.vault.v1.VaultService.SaveConnection:input_type -> sneakers.vault.v1.SaveConnectionRequest
-	153, // 208: sneakers.vault.v1.VaultService.DeleteConnection:input_type -> sneakers.vault.v1.DeleteConnectionRequest
-	155, // 209: sneakers.vault.v1.VaultService.ListTargets:input_type -> sneakers.vault.v1.ListTargetsRequest
-	157, // 210: sneakers.vault.v1.VaultService.SaveTarget:input_type -> sneakers.vault.v1.SaveTargetRequest
-	159, // 211: sneakers.vault.v1.VaultService.DeleteTarget:input_type -> sneakers.vault.v1.DeleteTargetRequest
-	161, // 212: sneakers.vault.v1.VaultService.GetTargetRuleset:input_type -> sneakers.vault.v1.GetTargetRulesetRequest
-	163, // 213: sneakers.vault.v1.VaultService.SetTargetRuleset:input_type -> sneakers.vault.v1.SetTargetRulesetRequest
-	141, // 214: sneakers.vault.v1.VaultService.ImportCertificate:input_type -> sneakers.vault.v1.ImportCertificateRequest
-	143, // 215: sneakers.vault.v1.VaultService.ExportCertificate:input_type -> sneakers.vault.v1.ExportCertificateRequest
-	145, // 216: sneakers.vault.v1.VaultService.ReplaceCertificate:input_type -> sneakers.vault.v1.ReplaceCertificateRequest
-	32,  // 217: sneakers.vault.v1.VaultService.ListSecretTypes:input_type -> sneakers.vault.v1.ListSecretTypesRequest
-	34,  // 218: sneakers.vault.v1.VaultService.CreateSecretType:input_type -> sneakers.vault.v1.CreateSecretTypeRequest
-	36,  // 219: sneakers.vault.v1.VaultService.UpdateSecretType:input_type -> sneakers.vault.v1.UpdateSecretTypeRequest
-	38,  // 220: sneakers.vault.v1.VaultService.DeleteSecretType:input_type -> sneakers.vault.v1.DeleteSecretTypeRequest
-	40,  // 221: sneakers.vault.v1.VaultService.CloneSecretType:input_type -> sneakers.vault.v1.CloneSecretTypeRequest
-	42,  // 222: sneakers.vault.v1.VaultService.ListAvailableExtensions:input_type -> sneakers.vault.v1.ListAvailableExtensionsRequest
-	44,  // 223: sneakers.vault.v1.VaultService.ImportExtension:input_type -> sneakers.vault.v1.ImportExtensionRequest
-	46,  // 224: sneakers.vault.v1.VaultService.ImportExtensionFromJson:input_type -> sneakers.vault.v1.ImportExtensionFromJsonRequest
-	48,  // 225: sneakers.vault.v1.VaultService.ListFolders:input_type -> sneakers.vault.v1.ListFoldersRequest
-	50,  // 226: sneakers.vault.v1.VaultService.CreateFolder:input_type -> sneakers.vault.v1.CreateFolderRequest
-	52,  // 227: sneakers.vault.v1.VaultService.RenameFolder:input_type -> sneakers.vault.v1.RenameFolderRequest
-	54,  // 228: sneakers.vault.v1.VaultService.MoveFolder:input_type -> sneakers.vault.v1.MoveFolderRequest
-	56,  // 229: sneakers.vault.v1.VaultService.DeleteFolder:input_type -> sneakers.vault.v1.DeleteFolderRequest
-	58,  // 230: sneakers.vault.v1.VaultService.ReorderFolders:input_type -> sneakers.vault.v1.ReorderFoldersRequest
-	60,  // 231: sneakers.vault.v1.VaultService.ListFolderRules:input_type -> sneakers.vault.v1.ListFolderRulesRequest
-	62,  // 232: sneakers.vault.v1.VaultService.GetInheritedFolderRules:input_type -> sneakers.vault.v1.GetInheritedFolderRulesRequest
-	64,  // 233: sneakers.vault.v1.VaultService.AddFolderRule:input_type -> sneakers.vault.v1.AddFolderRuleRequest
-	66,  // 234: sneakers.vault.v1.VaultService.RemoveFolderRule:input_type -> sneakers.vault.v1.RemoveFolderRuleRequest
-	19,  // 235: sneakers.vault.v1.VaultService.GetFolderRuleset:input_type -> sneakers.vault.v1.GetFolderRulesetRequest
-	21,  // 236: sneakers.vault.v1.VaultService.SetFolderRuleset:input_type -> sneakers.vault.v1.SetFolderRulesetRequest
-	23,  // 237: sneakers.vault.v1.VaultService.GetMyAccess:input_type -> sneakers.vault.v1.GetMyAccessRequest
-	26,  // 238: sneakers.vault.v1.VaultService.SimulateFolder:input_type -> sneakers.vault.v1.SimulateFolderRequest
-	28,  // 239: sneakers.vault.v1.VaultService.SimulateSecret:input_type -> sneakers.vault.v1.SimulateSecretRequest
-	68,  // 240: sneakers.vault.v1.VaultService.ListSecretsInFolder:input_type -> sneakers.vault.v1.ListSecretsInFolderRequest
-	70,  // 241: sneakers.vault.v1.VaultService.GetSecret:input_type -> sneakers.vault.v1.GetSecretRequest
-	72,  // 242: sneakers.vault.v1.VaultService.CreateSecret:input_type -> sneakers.vault.v1.CreateSecretRequest
-	74,  // 243: sneakers.vault.v1.VaultService.UpdateSecret:input_type -> sneakers.vault.v1.UpdateSecretRequest
-	76,  // 244: sneakers.vault.v1.VaultService.SetSecretAutomation:input_type -> sneakers.vault.v1.SetSecretAutomationRequest
-	78,  // 245: sneakers.vault.v1.VaultService.GetSecretFields:input_type -> sneakers.vault.v1.GetSecretFieldsRequest
-	80,  // 246: sneakers.vault.v1.VaultService.RevealSecretField:input_type -> sneakers.vault.v1.RevealSecretFieldRequest
-	82,  // 247: sneakers.vault.v1.VaultService.RevealSecretFieldForPrincipal:input_type -> sneakers.vault.v1.RevealSecretFieldForPrincipalRequest
-	84,  // 248: sneakers.vault.v1.VaultService.ListSecretsForPrincipal:input_type -> sneakers.vault.v1.ListSecretsForPrincipalRequest
-	86,  // 249: sneakers.vault.v1.VaultService.CreateSecretForPrincipal:input_type -> sneakers.vault.v1.CreateSecretForPrincipalRequest
-	88,  // 250: sneakers.vault.v1.VaultService.GenerateSecretForPrincipal:input_type -> sneakers.vault.v1.GenerateSecretForPrincipalRequest
-	90,  // 251: sneakers.vault.v1.VaultService.MoveSecretForPrincipal:input_type -> sneakers.vault.v1.MoveSecretForPrincipalRequest
-	92,  // 252: sneakers.vault.v1.VaultService.ChangeSecretTypeForPrincipal:input_type -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest
-	94,  // 253: sneakers.vault.v1.VaultService.RenameSecretForPrincipal:input_type -> sneakers.vault.v1.RenameSecretForPrincipalRequest
-	96,  // 254: sneakers.vault.v1.VaultService.UpdateSecretFieldsForPrincipal:input_type -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest
-	98,  // 255: sneakers.vault.v1.VaultService.ListFoldersForPrincipal:input_type -> sneakers.vault.v1.ListFoldersForPrincipalRequest
-	100, // 256: sneakers.vault.v1.VaultService.CreateFolderForPrincipal:input_type -> sneakers.vault.v1.CreateFolderForPrincipalRequest
-	102, // 257: sneakers.vault.v1.VaultService.RenameFolderForPrincipal:input_type -> sneakers.vault.v1.RenameFolderForPrincipalRequest
-	104, // 258: sneakers.vault.v1.VaultService.MoveFolderForPrincipal:input_type -> sneakers.vault.v1.MoveFolderForPrincipalRequest
-	111, // 259: sneakers.vault.v1.VaultService.ListSecretVersions:input_type -> sneakers.vault.v1.ListSecretVersionsRequest
-	113, // 260: sneakers.vault.v1.VaultService.RevealSecretVersionField:input_type -> sneakers.vault.v1.RevealSecretVersionFieldRequest
-	115, // 261: sneakers.vault.v1.VaultService.BreakGlassSecret:input_type -> sneakers.vault.v1.BreakGlassSecretRequest
-	117, // 262: sneakers.vault.v1.VaultService.CopySecret:input_type -> sneakers.vault.v1.CopySecretRequest
-	119, // 263: sneakers.vault.v1.VaultService.RetireSecret:input_type -> sneakers.vault.v1.RetireSecretRequest
-	121, // 264: sneakers.vault.v1.VaultService.RestoreSecret:input_type -> sneakers.vault.v1.RestoreSecretRequest
-	123, // 265: sneakers.vault.v1.VaultService.DeleteSecret:input_type -> sneakers.vault.v1.DeleteSecretRequest
-	126, // 266: sneakers.vault.v1.VaultService.GetSecretStats:input_type -> sneakers.vault.v1.GetSecretStatsRequest
-	128, // 267: sneakers.vault.v1.VaultService.GetTopAccessedSecrets:input_type -> sneakers.vault.v1.GetTopAccessedSecretsRequest
-	130, // 268: sneakers.vault.v1.VaultService.ListSecretsByStatus:input_type -> sneakers.vault.v1.ListSecretsByStatusRequest
-	132, // 269: sneakers.vault.v1.VaultService.FindSecretsByPublicKey:input_type -> sneakers.vault.v1.FindSecretsByPublicKeyRequest
-	134, // 270: sneakers.vault.v1.VaultService.GetSecretRuleset:input_type -> sneakers.vault.v1.GetSecretRulesetRequest
-	136, // 271: sneakers.vault.v1.VaultService.SetSecretRuleset:input_type -> sneakers.vault.v1.SetSecretRulesetRequest
-	138, // 272: sneakers.vault.v1.VaultService.GetMySecretAccess:input_type -> sneakers.vault.v1.GetMySecretAccessRequest
-	169, // 273: sneakers.vault.v1.VaultService.ClaimDueHeartbeats:input_type -> sneakers.vault.v1.ClaimDueHeartbeatsRequest
-	171, // 274: sneakers.vault.v1.VaultService.RevealForHeartbeat:input_type -> sneakers.vault.v1.RevealForHeartbeatRequest
-	173, // 275: sneakers.vault.v1.VaultService.ReportHeartbeat:input_type -> sneakers.vault.v1.ReportHeartbeatRequest
-	176, // 276: sneakers.vault.v1.VaultService.EnqueueRotation:input_type -> sneakers.vault.v1.EnqueueRotationRequest
-	178, // 277: sneakers.vault.v1.VaultService.ClaimDueRotations:input_type -> sneakers.vault.v1.ClaimDueRotationsRequest
-	180, // 278: sneakers.vault.v1.VaultService.RevealForRotation:input_type -> sneakers.vault.v1.RevealForRotationRequest
-	182, // 279: sneakers.vault.v1.VaultService.ReportRotation:input_type -> sneakers.vault.v1.ReportRotationRequest
-	215, // 280: sneakers.vault.v1.VaultService.ListPasswordPolicies:input_type -> sneakers.vault.v1.ListPasswordPoliciesRequest
-	217, // 281: sneakers.vault.v1.VaultService.SavePasswordPolicy:input_type -> sneakers.vault.v1.SavePasswordPolicyRequest
-	219, // 282: sneakers.vault.v1.VaultService.DeletePasswordPolicy:input_type -> sneakers.vault.v1.DeletePasswordPolicyRequest
-	221, // 283: sneakers.vault.v1.VaultService.GetSecuritySettings:input_type -> sneakers.vault.v1.GetSecuritySettingsRequest
-	223, // 284: sneakers.vault.v1.VaultService.UpdateSecuritySettings:input_type -> sneakers.vault.v1.UpdateSecuritySettingsRequest
-	225, // 285: sneakers.vault.v1.VaultService.SeedBuiltins:input_type -> sneakers.vault.v1.SeedBuiltinsRequest
-	106, // 286: sneakers.vault.v1.VaultService.GenerateKeyPair:input_type -> sneakers.vault.v1.GenerateKeyPairRequest
-	108, // 287: sneakers.vault.v1.VaultService.RotateKek:input_type -> sneakers.vault.v1.RotateKekRequest
-	185, // 288: sneakers.vault.v1.VaultService.PrepareSecretUse:input_type -> sneakers.vault.v1.PrepareSecretUseRequest
-	187, // 289: sneakers.vault.v1.VaultService.GetSecretUse:input_type -> sneakers.vault.v1.GetSecretUseRequest
-	189, // 290: sneakers.vault.v1.VaultService.ListPendingSecretUses:input_type -> sneakers.vault.v1.ListPendingSecretUsesRequest
-	191, // 291: sneakers.vault.v1.VaultService.DecideSecretUse:input_type -> sneakers.vault.v1.DecideSecretUseRequest
-	193, // 292: sneakers.vault.v1.VaultService.RedeemSecretUse:input_type -> sneakers.vault.v1.RedeemSecretUseRequest
-	207, // 293: sneakers.vault.v1.VaultService.CreateUseGrant:input_type -> sneakers.vault.v1.CreateUseGrantRequest
-	209, // 294: sneakers.vault.v1.VaultService.ListUseGrants:input_type -> sneakers.vault.v1.ListUseGrantsRequest
-	211, // 295: sneakers.vault.v1.VaultService.RevokeUseGrant:input_type -> sneakers.vault.v1.RevokeUseGrantRequest
-	205, // 296: sneakers.vault.v1.VaultService.SetSecretTokenApproval:input_type -> sneakers.vault.v1.SetSecretTokenApprovalRequest
-	199, // 297: sneakers.vault.v1.VaultService.SetSecretTargetForPrincipal:input_type -> sneakers.vault.v1.SetSecretTargetForPrincipalRequest
-	197, // 298: sneakers.vault.v1.VaultService.SetSecretAutomationForPrincipal:input_type -> sneakers.vault.v1.SetSecretAutomationForPrincipalRequest
-	201, // 299: sneakers.vault.v1.VaultService.RequestHeartbeatForPrincipal:input_type -> sneakers.vault.v1.RequestHeartbeatForPrincipalRequest
-	203, // 300: sneakers.vault.v1.VaultService.GetHeartbeatStatusForPrincipal:input_type -> sneakers.vault.v1.GetHeartbeatStatusForPrincipalRequest
-	150, // 301: sneakers.vault.v1.VaultService.ListConnections:output_type -> sneakers.vault.v1.ListConnectionsResponse
-	152, // 302: sneakers.vault.v1.VaultService.SaveConnection:output_type -> sneakers.vault.v1.SaveConnectionResponse
-	154, // 303: sneakers.vault.v1.VaultService.DeleteConnection:output_type -> sneakers.vault.v1.DeleteConnectionResponse
-	156, // 304: sneakers.vault.v1.VaultService.ListTargets:output_type -> sneakers.vault.v1.ListTargetsResponse
-	158, // 305: sneakers.vault.v1.VaultService.SaveTarget:output_type -> sneakers.vault.v1.SaveTargetResponse
-	160, // 306: sneakers.vault.v1.VaultService.DeleteTarget:output_type -> sneakers.vault.v1.DeleteTargetResponse
-	162, // 307: sneakers.vault.v1.VaultService.GetTargetRuleset:output_type -> sneakers.vault.v1.GetTargetRulesetResponse
-	164, // 308: sneakers.vault.v1.VaultService.SetTargetRuleset:output_type -> sneakers.vault.v1.SetTargetRulesetResponse
-	142, // 309: sneakers.vault.v1.VaultService.ImportCertificate:output_type -> sneakers.vault.v1.ImportCertificateResponse
-	144, // 310: sneakers.vault.v1.VaultService.ExportCertificate:output_type -> sneakers.vault.v1.ExportCertificateResponse
-	146, // 311: sneakers.vault.v1.VaultService.ReplaceCertificate:output_type -> sneakers.vault.v1.ReplaceCertificateResponse
-	33,  // 312: sneakers.vault.v1.VaultService.ListSecretTypes:output_type -> sneakers.vault.v1.ListSecretTypesResponse
-	35,  // 313: sneakers.vault.v1.VaultService.CreateSecretType:output_type -> sneakers.vault.v1.CreateSecretTypeResponse
-	37,  // 314: sneakers.vault.v1.VaultService.UpdateSecretType:output_type -> sneakers.vault.v1.UpdateSecretTypeResponse
-	39,  // 315: sneakers.vault.v1.VaultService.DeleteSecretType:output_type -> sneakers.vault.v1.DeleteSecretTypeResponse
-	41,  // 316: sneakers.vault.v1.VaultService.CloneSecretType:output_type -> sneakers.vault.v1.CloneSecretTypeResponse
-	43,  // 317: sneakers.vault.v1.VaultService.ListAvailableExtensions:output_type -> sneakers.vault.v1.ListAvailableExtensionsResponse
-	45,  // 318: sneakers.vault.v1.VaultService.ImportExtension:output_type -> sneakers.vault.v1.ImportExtensionResponse
-	47,  // 319: sneakers.vault.v1.VaultService.ImportExtensionFromJson:output_type -> sneakers.vault.v1.ImportExtensionFromJsonResponse
-	49,  // 320: sneakers.vault.v1.VaultService.ListFolders:output_type -> sneakers.vault.v1.ListFoldersResponse
-	51,  // 321: sneakers.vault.v1.VaultService.CreateFolder:output_type -> sneakers.vault.v1.CreateFolderResponse
-	53,  // 322: sneakers.vault.v1.VaultService.RenameFolder:output_type -> sneakers.vault.v1.RenameFolderResponse
-	55,  // 323: sneakers.vault.v1.VaultService.MoveFolder:output_type -> sneakers.vault.v1.MoveFolderResponse
-	57,  // 324: sneakers.vault.v1.VaultService.DeleteFolder:output_type -> sneakers.vault.v1.DeleteFolderResponse
-	59,  // 325: sneakers.vault.v1.VaultService.ReorderFolders:output_type -> sneakers.vault.v1.ReorderFoldersResponse
-	61,  // 326: sneakers.vault.v1.VaultService.ListFolderRules:output_type -> sneakers.vault.v1.ListFolderRulesResponse
-	63,  // 327: sneakers.vault.v1.VaultService.GetInheritedFolderRules:output_type -> sneakers.vault.v1.GetInheritedFolderRulesResponse
-	65,  // 328: sneakers.vault.v1.VaultService.AddFolderRule:output_type -> sneakers.vault.v1.AddFolderRuleResponse
-	67,  // 329: sneakers.vault.v1.VaultService.RemoveFolderRule:output_type -> sneakers.vault.v1.RemoveFolderRuleResponse
-	20,  // 330: sneakers.vault.v1.VaultService.GetFolderRuleset:output_type -> sneakers.vault.v1.GetFolderRulesetResponse
-	22,  // 331: sneakers.vault.v1.VaultService.SetFolderRuleset:output_type -> sneakers.vault.v1.SetFolderRulesetResponse
-	24,  // 332: sneakers.vault.v1.VaultService.GetMyAccess:output_type -> sneakers.vault.v1.GetMyAccessResponse
-	27,  // 333: sneakers.vault.v1.VaultService.SimulateFolder:output_type -> sneakers.vault.v1.SimulateFolderResponse
-	29,  // 334: sneakers.vault.v1.VaultService.SimulateSecret:output_type -> sneakers.vault.v1.SimulateSecretResponse
-	69,  // 335: sneakers.vault.v1.VaultService.ListSecretsInFolder:output_type -> sneakers.vault.v1.ListSecretsInFolderResponse
-	71,  // 336: sneakers.vault.v1.VaultService.GetSecret:output_type -> sneakers.vault.v1.GetSecretResponse
-	73,  // 337: sneakers.vault.v1.VaultService.CreateSecret:output_type -> sneakers.vault.v1.CreateSecretResponse
-	75,  // 338: sneakers.vault.v1.VaultService.UpdateSecret:output_type -> sneakers.vault.v1.UpdateSecretResponse
-	77,  // 339: sneakers.vault.v1.VaultService.SetSecretAutomation:output_type -> sneakers.vault.v1.SetSecretAutomationResponse
-	79,  // 340: sneakers.vault.v1.VaultService.GetSecretFields:output_type -> sneakers.vault.v1.GetSecretFieldsResponse
-	81,  // 341: sneakers.vault.v1.VaultService.RevealSecretField:output_type -> sneakers.vault.v1.RevealSecretFieldResponse
-	83,  // 342: sneakers.vault.v1.VaultService.RevealSecretFieldForPrincipal:output_type -> sneakers.vault.v1.RevealSecretFieldForPrincipalResponse
-	85,  // 343: sneakers.vault.v1.VaultService.ListSecretsForPrincipal:output_type -> sneakers.vault.v1.ListSecretsForPrincipalResponse
-	87,  // 344: sneakers.vault.v1.VaultService.CreateSecretForPrincipal:output_type -> sneakers.vault.v1.CreateSecretForPrincipalResponse
-	89,  // 345: sneakers.vault.v1.VaultService.GenerateSecretForPrincipal:output_type -> sneakers.vault.v1.GenerateSecretForPrincipalResponse
-	91,  // 346: sneakers.vault.v1.VaultService.MoveSecretForPrincipal:output_type -> sneakers.vault.v1.MoveSecretForPrincipalResponse
-	93,  // 347: sneakers.vault.v1.VaultService.ChangeSecretTypeForPrincipal:output_type -> sneakers.vault.v1.ChangeSecretTypeForPrincipalResponse
-	95,  // 348: sneakers.vault.v1.VaultService.RenameSecretForPrincipal:output_type -> sneakers.vault.v1.RenameSecretForPrincipalResponse
-	97,  // 349: sneakers.vault.v1.VaultService.UpdateSecretFieldsForPrincipal:output_type -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalResponse
-	99,  // 350: sneakers.vault.v1.VaultService.ListFoldersForPrincipal:output_type -> sneakers.vault.v1.ListFoldersForPrincipalResponse
-	101, // 351: sneakers.vault.v1.VaultService.CreateFolderForPrincipal:output_type -> sneakers.vault.v1.CreateFolderForPrincipalResponse
-	103, // 352: sneakers.vault.v1.VaultService.RenameFolderForPrincipal:output_type -> sneakers.vault.v1.RenameFolderForPrincipalResponse
-	105, // 353: sneakers.vault.v1.VaultService.MoveFolderForPrincipal:output_type -> sneakers.vault.v1.MoveFolderForPrincipalResponse
-	112, // 354: sneakers.vault.v1.VaultService.ListSecretVersions:output_type -> sneakers.vault.v1.ListSecretVersionsResponse
-	114, // 355: sneakers.vault.v1.VaultService.RevealSecretVersionField:output_type -> sneakers.vault.v1.RevealSecretVersionFieldResponse
-	116, // 356: sneakers.vault.v1.VaultService.BreakGlassSecret:output_type -> sneakers.vault.v1.BreakGlassSecretResponse
-	118, // 357: sneakers.vault.v1.VaultService.CopySecret:output_type -> sneakers.vault.v1.CopySecretResponse
-	120, // 358: sneakers.vault.v1.VaultService.RetireSecret:output_type -> sneakers.vault.v1.RetireSecretResponse
-	122, // 359: sneakers.vault.v1.VaultService.RestoreSecret:output_type -> sneakers.vault.v1.RestoreSecretResponse
-	124, // 360: sneakers.vault.v1.VaultService.DeleteSecret:output_type -> sneakers.vault.v1.DeleteSecretResponse
-	127, // 361: sneakers.vault.v1.VaultService.GetSecretStats:output_type -> sneakers.vault.v1.GetSecretStatsResponse
-	129, // 362: sneakers.vault.v1.VaultService.GetTopAccessedSecrets:output_type -> sneakers.vault.v1.GetTopAccessedSecretsResponse
-	131, // 363: sneakers.vault.v1.VaultService.ListSecretsByStatus:output_type -> sneakers.vault.v1.ListSecretsByStatusResponse
-	133, // 364: sneakers.vault.v1.VaultService.FindSecretsByPublicKey:output_type -> sneakers.vault.v1.FindSecretsByPublicKeyResponse
-	135, // 365: sneakers.vault.v1.VaultService.GetSecretRuleset:output_type -> sneakers.vault.v1.GetSecretRulesetResponse
-	137, // 366: sneakers.vault.v1.VaultService.SetSecretRuleset:output_type -> sneakers.vault.v1.SetSecretRulesetResponse
-	139, // 367: sneakers.vault.v1.VaultService.GetMySecretAccess:output_type -> sneakers.vault.v1.GetMySecretAccessResponse
-	170, // 368: sneakers.vault.v1.VaultService.ClaimDueHeartbeats:output_type -> sneakers.vault.v1.ClaimDueHeartbeatsResponse
-	172, // 369: sneakers.vault.v1.VaultService.RevealForHeartbeat:output_type -> sneakers.vault.v1.RevealForHeartbeatResponse
-	174, // 370: sneakers.vault.v1.VaultService.ReportHeartbeat:output_type -> sneakers.vault.v1.ReportHeartbeatResponse
-	177, // 371: sneakers.vault.v1.VaultService.EnqueueRotation:output_type -> sneakers.vault.v1.EnqueueRotationResponse
-	179, // 372: sneakers.vault.v1.VaultService.ClaimDueRotations:output_type -> sneakers.vault.v1.ClaimDueRotationsResponse
-	181, // 373: sneakers.vault.v1.VaultService.RevealForRotation:output_type -> sneakers.vault.v1.RevealForRotationResponse
-	183, // 374: sneakers.vault.v1.VaultService.ReportRotation:output_type -> sneakers.vault.v1.ReportRotationResponse
-	216, // 375: sneakers.vault.v1.VaultService.ListPasswordPolicies:output_type -> sneakers.vault.v1.ListPasswordPoliciesResponse
-	218, // 376: sneakers.vault.v1.VaultService.SavePasswordPolicy:output_type -> sneakers.vault.v1.SavePasswordPolicyResponse
-	220, // 377: sneakers.vault.v1.VaultService.DeletePasswordPolicy:output_type -> sneakers.vault.v1.DeletePasswordPolicyResponse
-	222, // 378: sneakers.vault.v1.VaultService.GetSecuritySettings:output_type -> sneakers.vault.v1.GetSecuritySettingsResponse
-	224, // 379: sneakers.vault.v1.VaultService.UpdateSecuritySettings:output_type -> sneakers.vault.v1.UpdateSecuritySettingsResponse
-	226, // 380: sneakers.vault.v1.VaultService.SeedBuiltins:output_type -> sneakers.vault.v1.SeedBuiltinsResponse
-	107, // 381: sneakers.vault.v1.VaultService.GenerateKeyPair:output_type -> sneakers.vault.v1.GenerateKeyPairResponse
-	109, // 382: sneakers.vault.v1.VaultService.RotateKek:output_type -> sneakers.vault.v1.RotateKekResponse
-	186, // 383: sneakers.vault.v1.VaultService.PrepareSecretUse:output_type -> sneakers.vault.v1.PrepareSecretUseResponse
-	188, // 384: sneakers.vault.v1.VaultService.GetSecretUse:output_type -> sneakers.vault.v1.GetSecretUseResponse
-	190, // 385: sneakers.vault.v1.VaultService.ListPendingSecretUses:output_type -> sneakers.vault.v1.ListPendingSecretUsesResponse
-	192, // 386: sneakers.vault.v1.VaultService.DecideSecretUse:output_type -> sneakers.vault.v1.DecideSecretUseResponse
-	194, // 387: sneakers.vault.v1.VaultService.RedeemSecretUse:output_type -> sneakers.vault.v1.RedeemSecretUseResponse
-	208, // 388: sneakers.vault.v1.VaultService.CreateUseGrant:output_type -> sneakers.vault.v1.CreateUseGrantResponse
-	210, // 389: sneakers.vault.v1.VaultService.ListUseGrants:output_type -> sneakers.vault.v1.ListUseGrantsResponse
-	212, // 390: sneakers.vault.v1.VaultService.RevokeUseGrant:output_type -> sneakers.vault.v1.RevokeUseGrantResponse
-	206, // 391: sneakers.vault.v1.VaultService.SetSecretTokenApproval:output_type -> sneakers.vault.v1.SetSecretTokenApprovalResponse
-	200, // 392: sneakers.vault.v1.VaultService.SetSecretTargetForPrincipal:output_type -> sneakers.vault.v1.SetSecretTargetForPrincipalResponse
-	198, // 393: sneakers.vault.v1.VaultService.SetSecretAutomationForPrincipal:output_type -> sneakers.vault.v1.SetSecretAutomationForPrincipalResponse
-	202, // 394: sneakers.vault.v1.VaultService.RequestHeartbeatForPrincipal:output_type -> sneakers.vault.v1.RequestHeartbeatForPrincipalResponse
-	204, // 395: sneakers.vault.v1.VaultService.GetHeartbeatStatusForPrincipal:output_type -> sneakers.vault.v1.GetHeartbeatStatusForPrincipalResponse
-	301, // [301:396] is the sub-list for method output_type
-	206, // [206:301] is the sub-list for method input_type
-	206, // [206:206] is the sub-list for extension type_name
-	206, // [206:206] is the sub-list for extension extendee
-	0,   // [0:206] is the sub-list for field type_name
+	9,   // 5: sneakers.vault.v1.Folder.reveal_step_up:type_name -> sneakers.vault.v1.StepUpMode
+	5,   // 6: sneakers.vault.v1.FolderAccessRule.subject_kind:type_name -> sneakers.vault.v1.SubjectKind
+	4,   // 7: sneakers.vault.v1.FolderAccessRule.role:type_name -> sneakers.vault.v1.FolderRole
+	16,  // 8: sneakers.vault.v1.InheritedFolderRule.rule:type_name -> sneakers.vault.v1.FolderAccessRule
+	5,   // 9: sneakers.vault.v1.RaciRule.subject_kind:type_name -> sneakers.vault.v1.SubjectKind
+	232, // 10: sneakers.vault.v1.RaciRule.grants:type_name -> sneakers.vault.v1.RaciRule.GrantsEntry
+	32,  // 11: sneakers.vault.v1.GetFolderRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	18,  // 12: sneakers.vault.v1.GetFolderRulesetResponse.rules:type_name -> sneakers.vault.v1.RaciRule
+	32,  // 13: sneakers.vault.v1.SetFolderRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	18,  // 14: sneakers.vault.v1.SetFolderRulesetRequest.rules:type_name -> sneakers.vault.v1.RaciRule
+	32,  // 15: sneakers.vault.v1.GetMyAccessRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	19,  // 16: sneakers.vault.v1.GetMyAccessResponse.access:type_name -> sneakers.vault.v1.FolderAccess
+	32,  // 17: sneakers.vault.v1.SimulateFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	18,  // 18: sneakers.vault.v1.SimulateFolderRequest.draft_rules:type_name -> sneakers.vault.v1.RaciRule
+	26,  // 19: sneakers.vault.v1.SimulateFolderResponse.decision:type_name -> sneakers.vault.v1.RaciDecision
+	32,  // 20: sneakers.vault.v1.SimulateSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	18,  // 21: sneakers.vault.v1.SimulateSecretRequest.draft_rules:type_name -> sneakers.vault.v1.RaciRule
+	26,  // 22: sneakers.vault.v1.SimulateSecretResponse.decision:type_name -> sneakers.vault.v1.RaciDecision
+	8,   // 23: sneakers.vault.v1.Secret.last_rotation_result:type_name -> sneakers.vault.v1.RotationState
+	6,   // 24: sneakers.vault.v1.Secret.last_heartbeat_result:type_name -> sneakers.vault.v1.HeartbeatResult
+	18,  // 25: sneakers.vault.v1.Secret.ruleset:type_name -> sneakers.vault.v1.RaciRule
+	10,  // 26: sneakers.vault.v1.ActorContext.principal_kind:type_name -> sneakers.vault.v1.PrincipalKind
+	14,  // 27: sneakers.vault.v1.ListSecretTypesResponse.types:type_name -> sneakers.vault.v1.SecretType
+	32,  // 28: sneakers.vault.v1.CreateSecretTypeRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	14,  // 29: sneakers.vault.v1.CreateSecretTypeRequest.type:type_name -> sneakers.vault.v1.SecretType
+	14,  // 30: sneakers.vault.v1.CreateSecretTypeResponse.type:type_name -> sneakers.vault.v1.SecretType
+	32,  // 31: sneakers.vault.v1.UpdateSecretTypeRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	14,  // 32: sneakers.vault.v1.UpdateSecretTypeRequest.type:type_name -> sneakers.vault.v1.SecretType
+	14,  // 33: sneakers.vault.v1.UpdateSecretTypeResponse.type:type_name -> sneakers.vault.v1.SecretType
+	32,  // 34: sneakers.vault.v1.DeleteSecretTypeRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 35: sneakers.vault.v1.CloneSecretTypeRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	14,  // 36: sneakers.vault.v1.CloneSecretTypeResponse.type:type_name -> sneakers.vault.v1.SecretType
+	14,  // 37: sneakers.vault.v1.ListAvailableExtensionsResponse.extensions:type_name -> sneakers.vault.v1.SecretType
+	32,  // 38: sneakers.vault.v1.ImportExtensionRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	14,  // 39: sneakers.vault.v1.ImportExtensionResponse.type:type_name -> sneakers.vault.v1.SecretType
+	32,  // 40: sneakers.vault.v1.ImportExtensionFromJsonRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	14,  // 41: sneakers.vault.v1.ImportExtensionFromJsonResponse.type:type_name -> sneakers.vault.v1.SecretType
+	32,  // 42: sneakers.vault.v1.ListFoldersRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	15,  // 43: sneakers.vault.v1.ListFoldersResponse.folders:type_name -> sneakers.vault.v1.Folder
+	32,  // 44: sneakers.vault.v1.CreateFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	15,  // 45: sneakers.vault.v1.CreateFolderResponse.folder:type_name -> sneakers.vault.v1.Folder
+	32,  // 46: sneakers.vault.v1.RenameFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	15,  // 47: sneakers.vault.v1.RenameFolderResponse.folder:type_name -> sneakers.vault.v1.Folder
+	32,  // 48: sneakers.vault.v1.MoveFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	15,  // 49: sneakers.vault.v1.MoveFolderResponse.folder:type_name -> sneakers.vault.v1.Folder
+	32,  // 50: sneakers.vault.v1.DeleteFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 51: sneakers.vault.v1.ReorderFoldersRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	16,  // 52: sneakers.vault.v1.ListFolderRulesResponse.rules:type_name -> sneakers.vault.v1.FolderAccessRule
+	17,  // 53: sneakers.vault.v1.GetInheritedFolderRulesResponse.rules:type_name -> sneakers.vault.v1.InheritedFolderRule
+	32,  // 54: sneakers.vault.v1.AddFolderRuleRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	16,  // 55: sneakers.vault.v1.AddFolderRuleRequest.rule:type_name -> sneakers.vault.v1.FolderAccessRule
+	16,  // 56: sneakers.vault.v1.AddFolderRuleResponse.rule:type_name -> sneakers.vault.v1.FolderAccessRule
+	32,  // 57: sneakers.vault.v1.RemoveFolderRuleRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 58: sneakers.vault.v1.ListSecretsInFolderRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 59: sneakers.vault.v1.ListSecretsInFolderResponse.secrets:type_name -> sneakers.vault.v1.Secret
+	32,  // 60: sneakers.vault.v1.GetSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 61: sneakers.vault.v1.GetSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 62: sneakers.vault.v1.CreateSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	233, // 63: sneakers.vault.v1.CreateSecretRequest.fields:type_name -> sneakers.vault.v1.CreateSecretRequest.FieldsEntry
+	31,  // 64: sneakers.vault.v1.CreateSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 65: sneakers.vault.v1.UpdateSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	234, // 66: sneakers.vault.v1.UpdateSecretRequest.fields:type_name -> sneakers.vault.v1.UpdateSecretRequest.FieldsEntry
+	31,  // 67: sneakers.vault.v1.UpdateSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 68: sneakers.vault.v1.SetSecretAutomationRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 69: sneakers.vault.v1.SetSecretAutomationResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 70: sneakers.vault.v1.GetSecretFieldsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	235, // 71: sneakers.vault.v1.GetSecretFieldsResponse.fields:type_name -> sneakers.vault.v1.GetSecretFieldsResponse.FieldsEntry
+	32,  // 72: sneakers.vault.v1.RevealSecretFieldRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 73: sneakers.vault.v1.RevealSecretFieldForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 74: sneakers.vault.v1.ListSecretsForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 75: sneakers.vault.v1.ListSecretsForPrincipalResponse.secrets:type_name -> sneakers.vault.v1.Secret
+	32,  // 76: sneakers.vault.v1.CreateSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	236, // 77: sneakers.vault.v1.CreateSecretForPrincipalRequest.fields:type_name -> sneakers.vault.v1.CreateSecretForPrincipalRequest.FieldsEntry
+	31,  // 78: sneakers.vault.v1.CreateSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 79: sneakers.vault.v1.GenerateSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	237, // 80: sneakers.vault.v1.GenerateSecretForPrincipalRequest.fields:type_name -> sneakers.vault.v1.GenerateSecretForPrincipalRequest.FieldsEntry
+	31,  // 81: sneakers.vault.v1.GenerateSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 82: sneakers.vault.v1.MoveSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 83: sneakers.vault.v1.MoveSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
+	15,  // 84: sneakers.vault.v1.MoveSecretForPrincipalResponse.destination:type_name -> sneakers.vault.v1.Folder
+	32,  // 85: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	238, // 86: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.field_mapping:type_name -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldMappingEntry
+	239, // 87: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.fields:type_name -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldsEntry
+	11,  // 88: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.unmapped_fields:type_name -> sneakers.vault.v1.UnmappedFieldPolicy
+	31,  // 89: sneakers.vault.v1.ChangeSecretTypeForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 90: sneakers.vault.v1.RenameSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 91: sneakers.vault.v1.RenameSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 92: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	240, // 93: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.fields:type_name -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.FieldsEntry
+	31,  // 94: sneakers.vault.v1.UpdateSecretFieldsForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 95: sneakers.vault.v1.ListFoldersForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	15,  // 96: sneakers.vault.v1.ListFoldersForPrincipalResponse.folders:type_name -> sneakers.vault.v1.Folder
+	32,  // 97: sneakers.vault.v1.CreateFolderForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	15,  // 98: sneakers.vault.v1.CreateFolderForPrincipalResponse.folder:type_name -> sneakers.vault.v1.Folder
+	32,  // 99: sneakers.vault.v1.RenameFolderForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	15,  // 100: sneakers.vault.v1.RenameFolderForPrincipalResponse.folder:type_name -> sneakers.vault.v1.Folder
+	32,  // 101: sneakers.vault.v1.MoveFolderForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	15,  // 102: sneakers.vault.v1.MoveFolderForPrincipalResponse.folder:type_name -> sneakers.vault.v1.Folder
+	15,  // 103: sneakers.vault.v1.MoveFolderForPrincipalResponse.destination:type_name -> sneakers.vault.v1.Folder
+	32,  // 104: sneakers.vault.v1.GenerateKeyPairRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 105: sneakers.vault.v1.RotateKekRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 106: sneakers.vault.v1.ListSecretVersionsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	111, // 107: sneakers.vault.v1.ListSecretVersionsResponse.versions:type_name -> sneakers.vault.v1.SecretVersion
+	32,  // 108: sneakers.vault.v1.RevealSecretVersionFieldRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 109: sneakers.vault.v1.RestoreSecretVersionRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 110: sneakers.vault.v1.RestoreSecretVersionResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 111: sneakers.vault.v1.SetFolderRevealStepUpRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	9,   // 112: sneakers.vault.v1.SetFolderRevealStepUpRequest.mode:type_name -> sneakers.vault.v1.StepUpMode
+	15,  // 113: sneakers.vault.v1.SetFolderRevealStepUpResponse.folder:type_name -> sneakers.vault.v1.Folder
+	32,  // 114: sneakers.vault.v1.BreakGlassSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	241, // 115: sneakers.vault.v1.BreakGlassSecretResponse.fields:type_name -> sneakers.vault.v1.BreakGlassSecretResponse.FieldsEntry
+	32,  // 116: sneakers.vault.v1.CopySecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 117: sneakers.vault.v1.RetireSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 118: sneakers.vault.v1.RetireSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 119: sneakers.vault.v1.RestoreSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 120: sneakers.vault.v1.RestoreSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 121: sneakers.vault.v1.DeleteSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 122: sneakers.vault.v1.GetSecretStatsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	130, // 123: sneakers.vault.v1.GetSecretStatsResponse.stats:type_name -> sneakers.vault.v1.SecretStats
+	32,  // 124: sneakers.vault.v1.GetTopAccessedSecretsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 125: sneakers.vault.v1.GetTopAccessedSecretsResponse.secrets:type_name -> sneakers.vault.v1.Secret
+	32,  // 126: sneakers.vault.v1.ListSecretsByStatusRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 127: sneakers.vault.v1.ListSecretsByStatusResponse.secrets:type_name -> sneakers.vault.v1.Secret
+	32,  // 128: sneakers.vault.v1.FindSecretsByPublicKeyRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 129: sneakers.vault.v1.FindSecretsByPublicKeyResponse.secrets:type_name -> sneakers.vault.v1.Secret
+	32,  // 130: sneakers.vault.v1.GetSecretRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	18,  // 131: sneakers.vault.v1.GetSecretRulesetResponse.rules:type_name -> sneakers.vault.v1.RaciRule
+	32,  // 132: sneakers.vault.v1.SetSecretRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	18,  // 133: sneakers.vault.v1.SetSecretRulesetRequest.rules:type_name -> sneakers.vault.v1.RaciRule
+	18,  // 134: sneakers.vault.v1.SetSecretRulesetResponse.rules:type_name -> sneakers.vault.v1.RaciRule
+	32,  // 135: sneakers.vault.v1.GetMySecretAccessRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	19,  // 136: sneakers.vault.v1.GetMySecretAccessResponse.access:type_name -> sneakers.vault.v1.FolderAccess
+	32,  // 137: sneakers.vault.v1.ImportCertificateRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 138: sneakers.vault.v1.ImportCertificateResponse.secret:type_name -> sneakers.vault.v1.Secret
+	145, // 139: sneakers.vault.v1.ImportCertificateResponse.meta:type_name -> sneakers.vault.v1.CertMeta
+	32,  // 140: sneakers.vault.v1.ExportCertificateRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 141: sneakers.vault.v1.ReplaceCertificateRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 142: sneakers.vault.v1.ReplaceCertificateResponse.secret:type_name -> sneakers.vault.v1.Secret
+	145, // 143: sneakers.vault.v1.ReplaceCertificateResponse.meta:type_name -> sneakers.vault.v1.CertMeta
+	152, // 144: sneakers.vault.v1.ListConnectionsResponse.connections:type_name -> sneakers.vault.v1.Connection
+	32,  // 145: sneakers.vault.v1.SaveConnectionRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	152, // 146: sneakers.vault.v1.SaveConnectionRequest.connection:type_name -> sneakers.vault.v1.Connection
+	152, // 147: sneakers.vault.v1.SaveConnectionResponse.connection:type_name -> sneakers.vault.v1.Connection
+	32,  // 148: sneakers.vault.v1.DeleteConnectionRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 149: sneakers.vault.v1.ListTargetsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	153, // 150: sneakers.vault.v1.ListTargetsResponse.targets:type_name -> sneakers.vault.v1.Target
+	32,  // 151: sneakers.vault.v1.SaveTargetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	153, // 152: sneakers.vault.v1.SaveTargetRequest.target:type_name -> sneakers.vault.v1.Target
+	153, // 153: sneakers.vault.v1.SaveTargetResponse.target:type_name -> sneakers.vault.v1.Target
+	32,  // 154: sneakers.vault.v1.DeleteTargetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 155: sneakers.vault.v1.GetTargetRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	18,  // 156: sneakers.vault.v1.GetTargetRulesetResponse.ruleset:type_name -> sneakers.vault.v1.RaciRule
+	32,  // 157: sneakers.vault.v1.SetTargetRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	18,  // 158: sneakers.vault.v1.SetTargetRulesetRequest.ruleset:type_name -> sneakers.vault.v1.RaciRule
+	171, // 159: sneakers.vault.v1.HeartbeatJob.connection:type_name -> sneakers.vault.v1.HeartbeatConn
+	172, // 160: sneakers.vault.v1.HeartbeatJob.target:type_name -> sneakers.vault.v1.HeartbeatTarget
+	170, // 161: sneakers.vault.v1.ClaimDueHeartbeatsRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
+	173, // 162: sneakers.vault.v1.ClaimDueHeartbeatsResponse.jobs:type_name -> sneakers.vault.v1.HeartbeatJob
+	170, // 163: sneakers.vault.v1.RevealForHeartbeatRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
+	170, // 164: sneakers.vault.v1.ReportHeartbeatRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
+	6,   // 165: sneakers.vault.v1.ReportHeartbeatRequest.result:type_name -> sneakers.vault.v1.HeartbeatResult
+	171, // 166: sneakers.vault.v1.RotationJob.connection:type_name -> sneakers.vault.v1.HeartbeatConn
+	172, // 167: sneakers.vault.v1.RotationJob.target:type_name -> sneakers.vault.v1.HeartbeatTarget
+	32,  // 168: sneakers.vault.v1.EnqueueRotationRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	170, // 169: sneakers.vault.v1.ClaimDueRotationsRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
+	180, // 170: sneakers.vault.v1.ClaimDueRotationsResponse.jobs:type_name -> sneakers.vault.v1.RotationJob
+	170, // 171: sneakers.vault.v1.RevealForRotationRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
+	170, // 172: sneakers.vault.v1.ReportRotationRequest.identity:type_name -> sneakers.vault.v1.WorkerIdentity
+	7,   // 173: sneakers.vault.v1.ReportRotationRequest.change:type_name -> sneakers.vault.v1.RotationPhase
+	7,   // 174: sneakers.vault.v1.ReportRotationRequest.validate:type_name -> sneakers.vault.v1.RotationPhase
+	12,  // 175: sneakers.vault.v1.SecretUse.state:type_name -> sneakers.vault.v1.SecretUseState
+	32,  // 176: sneakers.vault.v1.PrepareSecretUseRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	189, // 177: sneakers.vault.v1.PrepareSecretUseResponse.use:type_name -> sneakers.vault.v1.SecretUse
+	32,  // 178: sneakers.vault.v1.GetSecretUseRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	189, // 179: sneakers.vault.v1.GetSecretUseResponse.use:type_name -> sneakers.vault.v1.SecretUse
+	32,  // 180: sneakers.vault.v1.ListPendingSecretUsesRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	189, // 181: sneakers.vault.v1.ListPendingSecretUsesResponse.uses:type_name -> sneakers.vault.v1.SecretUse
+	32,  // 182: sneakers.vault.v1.DecideSecretUseRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	189, // 183: sneakers.vault.v1.DecideSecretUseResponse.use:type_name -> sneakers.vault.v1.SecretUse
+	32,  // 184: sneakers.vault.v1.RedeemSecretUseRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	189, // 185: sneakers.vault.v1.RedeemSecretUseResponse.use:type_name -> sneakers.vault.v1.SecretUse
+	200, // 186: sneakers.vault.v1.UseGrant.programs:type_name -> sneakers.vault.v1.UseGrantProgram
+	32,  // 187: sneakers.vault.v1.SetSecretAutomationForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 188: sneakers.vault.v1.SetSecretAutomationForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 189: sneakers.vault.v1.SetSecretTargetForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 190: sneakers.vault.v1.SetSecretTargetForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 191: sneakers.vault.v1.RequestHeartbeatForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	32,  // 192: sneakers.vault.v1.GetHeartbeatStatusForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	6,   // 193: sneakers.vault.v1.GetHeartbeatStatusForPrincipalResponse.result:type_name -> sneakers.vault.v1.HeartbeatResult
+	32,  // 194: sneakers.vault.v1.SetSecretTokenApprovalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	31,  // 195: sneakers.vault.v1.SetSecretTokenApprovalResponse.secret:type_name -> sneakers.vault.v1.Secret
+	32,  // 196: sneakers.vault.v1.CreateUseGrantRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	201, // 197: sneakers.vault.v1.CreateUseGrantRequest.grant:type_name -> sneakers.vault.v1.UseGrant
+	201, // 198: sneakers.vault.v1.CreateUseGrantResponse.grant:type_name -> sneakers.vault.v1.UseGrant
+	32,  // 199: sneakers.vault.v1.ListUseGrantsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	201, // 200: sneakers.vault.v1.ListUseGrantsResponse.grants:type_name -> sneakers.vault.v1.UseGrant
+	32,  // 201: sneakers.vault.v1.RevokeUseGrantRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	201, // 202: sneakers.vault.v1.RevokeUseGrantResponse.grant:type_name -> sneakers.vault.v1.UseGrant
+	218, // 203: sneakers.vault.v1.ListPasswordPoliciesResponse.policies:type_name -> sneakers.vault.v1.PasswordPolicy
+	32,  // 204: sneakers.vault.v1.SavePasswordPolicyRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	218, // 205: sneakers.vault.v1.SavePasswordPolicyRequest.policy:type_name -> sneakers.vault.v1.PasswordPolicy
+	218, // 206: sneakers.vault.v1.SavePasswordPolicyResponse.policy:type_name -> sneakers.vault.v1.PasswordPolicy
+	32,  // 207: sneakers.vault.v1.DeletePasswordPolicyRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	219, // 208: sneakers.vault.v1.GetSecuritySettingsResponse.settings:type_name -> sneakers.vault.v1.SecuritySettings
+	32,  // 209: sneakers.vault.v1.UpdateSecuritySettingsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	219, // 210: sneakers.vault.v1.UpdateSecuritySettingsResponse.settings:type_name -> sneakers.vault.v1.SecuritySettings
+	32,  // 211: sneakers.vault.v1.SeedBuiltinsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	154, // 212: sneakers.vault.v1.VaultService.ListConnections:input_type -> sneakers.vault.v1.ListConnectionsRequest
+	156, // 213: sneakers.vault.v1.VaultService.SaveConnection:input_type -> sneakers.vault.v1.SaveConnectionRequest
+	158, // 214: sneakers.vault.v1.VaultService.DeleteConnection:input_type -> sneakers.vault.v1.DeleteConnectionRequest
+	160, // 215: sneakers.vault.v1.VaultService.ListTargets:input_type -> sneakers.vault.v1.ListTargetsRequest
+	162, // 216: sneakers.vault.v1.VaultService.SaveTarget:input_type -> sneakers.vault.v1.SaveTargetRequest
+	164, // 217: sneakers.vault.v1.VaultService.DeleteTarget:input_type -> sneakers.vault.v1.DeleteTargetRequest
+	166, // 218: sneakers.vault.v1.VaultService.GetTargetRuleset:input_type -> sneakers.vault.v1.GetTargetRulesetRequest
+	168, // 219: sneakers.vault.v1.VaultService.SetTargetRuleset:input_type -> sneakers.vault.v1.SetTargetRulesetRequest
+	146, // 220: sneakers.vault.v1.VaultService.ImportCertificate:input_type -> sneakers.vault.v1.ImportCertificateRequest
+	148, // 221: sneakers.vault.v1.VaultService.ExportCertificate:input_type -> sneakers.vault.v1.ExportCertificateRequest
+	150, // 222: sneakers.vault.v1.VaultService.ReplaceCertificate:input_type -> sneakers.vault.v1.ReplaceCertificateRequest
+	33,  // 223: sneakers.vault.v1.VaultService.ListSecretTypes:input_type -> sneakers.vault.v1.ListSecretTypesRequest
+	35,  // 224: sneakers.vault.v1.VaultService.CreateSecretType:input_type -> sneakers.vault.v1.CreateSecretTypeRequest
+	37,  // 225: sneakers.vault.v1.VaultService.UpdateSecretType:input_type -> sneakers.vault.v1.UpdateSecretTypeRequest
+	39,  // 226: sneakers.vault.v1.VaultService.DeleteSecretType:input_type -> sneakers.vault.v1.DeleteSecretTypeRequest
+	41,  // 227: sneakers.vault.v1.VaultService.CloneSecretType:input_type -> sneakers.vault.v1.CloneSecretTypeRequest
+	43,  // 228: sneakers.vault.v1.VaultService.ListAvailableExtensions:input_type -> sneakers.vault.v1.ListAvailableExtensionsRequest
+	45,  // 229: sneakers.vault.v1.VaultService.ImportExtension:input_type -> sneakers.vault.v1.ImportExtensionRequest
+	47,  // 230: sneakers.vault.v1.VaultService.ImportExtensionFromJson:input_type -> sneakers.vault.v1.ImportExtensionFromJsonRequest
+	49,  // 231: sneakers.vault.v1.VaultService.ListFolders:input_type -> sneakers.vault.v1.ListFoldersRequest
+	51,  // 232: sneakers.vault.v1.VaultService.CreateFolder:input_type -> sneakers.vault.v1.CreateFolderRequest
+	53,  // 233: sneakers.vault.v1.VaultService.RenameFolder:input_type -> sneakers.vault.v1.RenameFolderRequest
+	55,  // 234: sneakers.vault.v1.VaultService.MoveFolder:input_type -> sneakers.vault.v1.MoveFolderRequest
+	57,  // 235: sneakers.vault.v1.VaultService.DeleteFolder:input_type -> sneakers.vault.v1.DeleteFolderRequest
+	59,  // 236: sneakers.vault.v1.VaultService.ReorderFolders:input_type -> sneakers.vault.v1.ReorderFoldersRequest
+	61,  // 237: sneakers.vault.v1.VaultService.ListFolderRules:input_type -> sneakers.vault.v1.ListFolderRulesRequest
+	63,  // 238: sneakers.vault.v1.VaultService.GetInheritedFolderRules:input_type -> sneakers.vault.v1.GetInheritedFolderRulesRequest
+	65,  // 239: sneakers.vault.v1.VaultService.AddFolderRule:input_type -> sneakers.vault.v1.AddFolderRuleRequest
+	67,  // 240: sneakers.vault.v1.VaultService.RemoveFolderRule:input_type -> sneakers.vault.v1.RemoveFolderRuleRequest
+	20,  // 241: sneakers.vault.v1.VaultService.GetFolderRuleset:input_type -> sneakers.vault.v1.GetFolderRulesetRequest
+	22,  // 242: sneakers.vault.v1.VaultService.SetFolderRuleset:input_type -> sneakers.vault.v1.SetFolderRulesetRequest
+	118, // 243: sneakers.vault.v1.VaultService.SetFolderRevealStepUp:input_type -> sneakers.vault.v1.SetFolderRevealStepUpRequest
+	24,  // 244: sneakers.vault.v1.VaultService.GetMyAccess:input_type -> sneakers.vault.v1.GetMyAccessRequest
+	27,  // 245: sneakers.vault.v1.VaultService.SimulateFolder:input_type -> sneakers.vault.v1.SimulateFolderRequest
+	29,  // 246: sneakers.vault.v1.VaultService.SimulateSecret:input_type -> sneakers.vault.v1.SimulateSecretRequest
+	69,  // 247: sneakers.vault.v1.VaultService.ListSecretsInFolder:input_type -> sneakers.vault.v1.ListSecretsInFolderRequest
+	71,  // 248: sneakers.vault.v1.VaultService.GetSecret:input_type -> sneakers.vault.v1.GetSecretRequest
+	73,  // 249: sneakers.vault.v1.VaultService.CreateSecret:input_type -> sneakers.vault.v1.CreateSecretRequest
+	75,  // 250: sneakers.vault.v1.VaultService.UpdateSecret:input_type -> sneakers.vault.v1.UpdateSecretRequest
+	77,  // 251: sneakers.vault.v1.VaultService.SetSecretAutomation:input_type -> sneakers.vault.v1.SetSecretAutomationRequest
+	79,  // 252: sneakers.vault.v1.VaultService.GetSecretFields:input_type -> sneakers.vault.v1.GetSecretFieldsRequest
+	81,  // 253: sneakers.vault.v1.VaultService.RevealSecretField:input_type -> sneakers.vault.v1.RevealSecretFieldRequest
+	83,  // 254: sneakers.vault.v1.VaultService.RevealSecretFieldForPrincipal:input_type -> sneakers.vault.v1.RevealSecretFieldForPrincipalRequest
+	85,  // 255: sneakers.vault.v1.VaultService.ListSecretsForPrincipal:input_type -> sneakers.vault.v1.ListSecretsForPrincipalRequest
+	87,  // 256: sneakers.vault.v1.VaultService.CreateSecretForPrincipal:input_type -> sneakers.vault.v1.CreateSecretForPrincipalRequest
+	89,  // 257: sneakers.vault.v1.VaultService.GenerateSecretForPrincipal:input_type -> sneakers.vault.v1.GenerateSecretForPrincipalRequest
+	91,  // 258: sneakers.vault.v1.VaultService.MoveSecretForPrincipal:input_type -> sneakers.vault.v1.MoveSecretForPrincipalRequest
+	93,  // 259: sneakers.vault.v1.VaultService.ChangeSecretTypeForPrincipal:input_type -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest
+	95,  // 260: sneakers.vault.v1.VaultService.RenameSecretForPrincipal:input_type -> sneakers.vault.v1.RenameSecretForPrincipalRequest
+	97,  // 261: sneakers.vault.v1.VaultService.UpdateSecretFieldsForPrincipal:input_type -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest
+	99,  // 262: sneakers.vault.v1.VaultService.ListFoldersForPrincipal:input_type -> sneakers.vault.v1.ListFoldersForPrincipalRequest
+	101, // 263: sneakers.vault.v1.VaultService.CreateFolderForPrincipal:input_type -> sneakers.vault.v1.CreateFolderForPrincipalRequest
+	103, // 264: sneakers.vault.v1.VaultService.RenameFolderForPrincipal:input_type -> sneakers.vault.v1.RenameFolderForPrincipalRequest
+	105, // 265: sneakers.vault.v1.VaultService.MoveFolderForPrincipal:input_type -> sneakers.vault.v1.MoveFolderForPrincipalRequest
+	112, // 266: sneakers.vault.v1.VaultService.ListSecretVersions:input_type -> sneakers.vault.v1.ListSecretVersionsRequest
+	114, // 267: sneakers.vault.v1.VaultService.RevealSecretVersionField:input_type -> sneakers.vault.v1.RevealSecretVersionFieldRequest
+	116, // 268: sneakers.vault.v1.VaultService.RestoreSecretVersion:input_type -> sneakers.vault.v1.RestoreSecretVersionRequest
+	120, // 269: sneakers.vault.v1.VaultService.BreakGlassSecret:input_type -> sneakers.vault.v1.BreakGlassSecretRequest
+	122, // 270: sneakers.vault.v1.VaultService.CopySecret:input_type -> sneakers.vault.v1.CopySecretRequest
+	124, // 271: sneakers.vault.v1.VaultService.RetireSecret:input_type -> sneakers.vault.v1.RetireSecretRequest
+	126, // 272: sneakers.vault.v1.VaultService.RestoreSecret:input_type -> sneakers.vault.v1.RestoreSecretRequest
+	128, // 273: sneakers.vault.v1.VaultService.DeleteSecret:input_type -> sneakers.vault.v1.DeleteSecretRequest
+	131, // 274: sneakers.vault.v1.VaultService.GetSecretStats:input_type -> sneakers.vault.v1.GetSecretStatsRequest
+	133, // 275: sneakers.vault.v1.VaultService.GetTopAccessedSecrets:input_type -> sneakers.vault.v1.GetTopAccessedSecretsRequest
+	135, // 276: sneakers.vault.v1.VaultService.ListSecretsByStatus:input_type -> sneakers.vault.v1.ListSecretsByStatusRequest
+	137, // 277: sneakers.vault.v1.VaultService.FindSecretsByPublicKey:input_type -> sneakers.vault.v1.FindSecretsByPublicKeyRequest
+	139, // 278: sneakers.vault.v1.VaultService.GetSecretRuleset:input_type -> sneakers.vault.v1.GetSecretRulesetRequest
+	141, // 279: sneakers.vault.v1.VaultService.SetSecretRuleset:input_type -> sneakers.vault.v1.SetSecretRulesetRequest
+	143, // 280: sneakers.vault.v1.VaultService.GetMySecretAccess:input_type -> sneakers.vault.v1.GetMySecretAccessRequest
+	174, // 281: sneakers.vault.v1.VaultService.ClaimDueHeartbeats:input_type -> sneakers.vault.v1.ClaimDueHeartbeatsRequest
+	176, // 282: sneakers.vault.v1.VaultService.RevealForHeartbeat:input_type -> sneakers.vault.v1.RevealForHeartbeatRequest
+	178, // 283: sneakers.vault.v1.VaultService.ReportHeartbeat:input_type -> sneakers.vault.v1.ReportHeartbeatRequest
+	181, // 284: sneakers.vault.v1.VaultService.EnqueueRotation:input_type -> sneakers.vault.v1.EnqueueRotationRequest
+	183, // 285: sneakers.vault.v1.VaultService.ClaimDueRotations:input_type -> sneakers.vault.v1.ClaimDueRotationsRequest
+	185, // 286: sneakers.vault.v1.VaultService.RevealForRotation:input_type -> sneakers.vault.v1.RevealForRotationRequest
+	187, // 287: sneakers.vault.v1.VaultService.ReportRotation:input_type -> sneakers.vault.v1.ReportRotationRequest
+	220, // 288: sneakers.vault.v1.VaultService.ListPasswordPolicies:input_type -> sneakers.vault.v1.ListPasswordPoliciesRequest
+	222, // 289: sneakers.vault.v1.VaultService.SavePasswordPolicy:input_type -> sneakers.vault.v1.SavePasswordPolicyRequest
+	224, // 290: sneakers.vault.v1.VaultService.DeletePasswordPolicy:input_type -> sneakers.vault.v1.DeletePasswordPolicyRequest
+	226, // 291: sneakers.vault.v1.VaultService.GetSecuritySettings:input_type -> sneakers.vault.v1.GetSecuritySettingsRequest
+	228, // 292: sneakers.vault.v1.VaultService.UpdateSecuritySettings:input_type -> sneakers.vault.v1.UpdateSecuritySettingsRequest
+	230, // 293: sneakers.vault.v1.VaultService.SeedBuiltins:input_type -> sneakers.vault.v1.SeedBuiltinsRequest
+	107, // 294: sneakers.vault.v1.VaultService.GenerateKeyPair:input_type -> sneakers.vault.v1.GenerateKeyPairRequest
+	109, // 295: sneakers.vault.v1.VaultService.RotateKek:input_type -> sneakers.vault.v1.RotateKekRequest
+	190, // 296: sneakers.vault.v1.VaultService.PrepareSecretUse:input_type -> sneakers.vault.v1.PrepareSecretUseRequest
+	192, // 297: sneakers.vault.v1.VaultService.GetSecretUse:input_type -> sneakers.vault.v1.GetSecretUseRequest
+	194, // 298: sneakers.vault.v1.VaultService.ListPendingSecretUses:input_type -> sneakers.vault.v1.ListPendingSecretUsesRequest
+	196, // 299: sneakers.vault.v1.VaultService.DecideSecretUse:input_type -> sneakers.vault.v1.DecideSecretUseRequest
+	198, // 300: sneakers.vault.v1.VaultService.RedeemSecretUse:input_type -> sneakers.vault.v1.RedeemSecretUseRequest
+	212, // 301: sneakers.vault.v1.VaultService.CreateUseGrant:input_type -> sneakers.vault.v1.CreateUseGrantRequest
+	214, // 302: sneakers.vault.v1.VaultService.ListUseGrants:input_type -> sneakers.vault.v1.ListUseGrantsRequest
+	216, // 303: sneakers.vault.v1.VaultService.RevokeUseGrant:input_type -> sneakers.vault.v1.RevokeUseGrantRequest
+	210, // 304: sneakers.vault.v1.VaultService.SetSecretTokenApproval:input_type -> sneakers.vault.v1.SetSecretTokenApprovalRequest
+	204, // 305: sneakers.vault.v1.VaultService.SetSecretTargetForPrincipal:input_type -> sneakers.vault.v1.SetSecretTargetForPrincipalRequest
+	202, // 306: sneakers.vault.v1.VaultService.SetSecretAutomationForPrincipal:input_type -> sneakers.vault.v1.SetSecretAutomationForPrincipalRequest
+	206, // 307: sneakers.vault.v1.VaultService.RequestHeartbeatForPrincipal:input_type -> sneakers.vault.v1.RequestHeartbeatForPrincipalRequest
+	208, // 308: sneakers.vault.v1.VaultService.GetHeartbeatStatusForPrincipal:input_type -> sneakers.vault.v1.GetHeartbeatStatusForPrincipalRequest
+	155, // 309: sneakers.vault.v1.VaultService.ListConnections:output_type -> sneakers.vault.v1.ListConnectionsResponse
+	157, // 310: sneakers.vault.v1.VaultService.SaveConnection:output_type -> sneakers.vault.v1.SaveConnectionResponse
+	159, // 311: sneakers.vault.v1.VaultService.DeleteConnection:output_type -> sneakers.vault.v1.DeleteConnectionResponse
+	161, // 312: sneakers.vault.v1.VaultService.ListTargets:output_type -> sneakers.vault.v1.ListTargetsResponse
+	163, // 313: sneakers.vault.v1.VaultService.SaveTarget:output_type -> sneakers.vault.v1.SaveTargetResponse
+	165, // 314: sneakers.vault.v1.VaultService.DeleteTarget:output_type -> sneakers.vault.v1.DeleteTargetResponse
+	167, // 315: sneakers.vault.v1.VaultService.GetTargetRuleset:output_type -> sneakers.vault.v1.GetTargetRulesetResponse
+	169, // 316: sneakers.vault.v1.VaultService.SetTargetRuleset:output_type -> sneakers.vault.v1.SetTargetRulesetResponse
+	147, // 317: sneakers.vault.v1.VaultService.ImportCertificate:output_type -> sneakers.vault.v1.ImportCertificateResponse
+	149, // 318: sneakers.vault.v1.VaultService.ExportCertificate:output_type -> sneakers.vault.v1.ExportCertificateResponse
+	151, // 319: sneakers.vault.v1.VaultService.ReplaceCertificate:output_type -> sneakers.vault.v1.ReplaceCertificateResponse
+	34,  // 320: sneakers.vault.v1.VaultService.ListSecretTypes:output_type -> sneakers.vault.v1.ListSecretTypesResponse
+	36,  // 321: sneakers.vault.v1.VaultService.CreateSecretType:output_type -> sneakers.vault.v1.CreateSecretTypeResponse
+	38,  // 322: sneakers.vault.v1.VaultService.UpdateSecretType:output_type -> sneakers.vault.v1.UpdateSecretTypeResponse
+	40,  // 323: sneakers.vault.v1.VaultService.DeleteSecretType:output_type -> sneakers.vault.v1.DeleteSecretTypeResponse
+	42,  // 324: sneakers.vault.v1.VaultService.CloneSecretType:output_type -> sneakers.vault.v1.CloneSecretTypeResponse
+	44,  // 325: sneakers.vault.v1.VaultService.ListAvailableExtensions:output_type -> sneakers.vault.v1.ListAvailableExtensionsResponse
+	46,  // 326: sneakers.vault.v1.VaultService.ImportExtension:output_type -> sneakers.vault.v1.ImportExtensionResponse
+	48,  // 327: sneakers.vault.v1.VaultService.ImportExtensionFromJson:output_type -> sneakers.vault.v1.ImportExtensionFromJsonResponse
+	50,  // 328: sneakers.vault.v1.VaultService.ListFolders:output_type -> sneakers.vault.v1.ListFoldersResponse
+	52,  // 329: sneakers.vault.v1.VaultService.CreateFolder:output_type -> sneakers.vault.v1.CreateFolderResponse
+	54,  // 330: sneakers.vault.v1.VaultService.RenameFolder:output_type -> sneakers.vault.v1.RenameFolderResponse
+	56,  // 331: sneakers.vault.v1.VaultService.MoveFolder:output_type -> sneakers.vault.v1.MoveFolderResponse
+	58,  // 332: sneakers.vault.v1.VaultService.DeleteFolder:output_type -> sneakers.vault.v1.DeleteFolderResponse
+	60,  // 333: sneakers.vault.v1.VaultService.ReorderFolders:output_type -> sneakers.vault.v1.ReorderFoldersResponse
+	62,  // 334: sneakers.vault.v1.VaultService.ListFolderRules:output_type -> sneakers.vault.v1.ListFolderRulesResponse
+	64,  // 335: sneakers.vault.v1.VaultService.GetInheritedFolderRules:output_type -> sneakers.vault.v1.GetInheritedFolderRulesResponse
+	66,  // 336: sneakers.vault.v1.VaultService.AddFolderRule:output_type -> sneakers.vault.v1.AddFolderRuleResponse
+	68,  // 337: sneakers.vault.v1.VaultService.RemoveFolderRule:output_type -> sneakers.vault.v1.RemoveFolderRuleResponse
+	21,  // 338: sneakers.vault.v1.VaultService.GetFolderRuleset:output_type -> sneakers.vault.v1.GetFolderRulesetResponse
+	23,  // 339: sneakers.vault.v1.VaultService.SetFolderRuleset:output_type -> sneakers.vault.v1.SetFolderRulesetResponse
+	119, // 340: sneakers.vault.v1.VaultService.SetFolderRevealStepUp:output_type -> sneakers.vault.v1.SetFolderRevealStepUpResponse
+	25,  // 341: sneakers.vault.v1.VaultService.GetMyAccess:output_type -> sneakers.vault.v1.GetMyAccessResponse
+	28,  // 342: sneakers.vault.v1.VaultService.SimulateFolder:output_type -> sneakers.vault.v1.SimulateFolderResponse
+	30,  // 343: sneakers.vault.v1.VaultService.SimulateSecret:output_type -> sneakers.vault.v1.SimulateSecretResponse
+	70,  // 344: sneakers.vault.v1.VaultService.ListSecretsInFolder:output_type -> sneakers.vault.v1.ListSecretsInFolderResponse
+	72,  // 345: sneakers.vault.v1.VaultService.GetSecret:output_type -> sneakers.vault.v1.GetSecretResponse
+	74,  // 346: sneakers.vault.v1.VaultService.CreateSecret:output_type -> sneakers.vault.v1.CreateSecretResponse
+	76,  // 347: sneakers.vault.v1.VaultService.UpdateSecret:output_type -> sneakers.vault.v1.UpdateSecretResponse
+	78,  // 348: sneakers.vault.v1.VaultService.SetSecretAutomation:output_type -> sneakers.vault.v1.SetSecretAutomationResponse
+	80,  // 349: sneakers.vault.v1.VaultService.GetSecretFields:output_type -> sneakers.vault.v1.GetSecretFieldsResponse
+	82,  // 350: sneakers.vault.v1.VaultService.RevealSecretField:output_type -> sneakers.vault.v1.RevealSecretFieldResponse
+	84,  // 351: sneakers.vault.v1.VaultService.RevealSecretFieldForPrincipal:output_type -> sneakers.vault.v1.RevealSecretFieldForPrincipalResponse
+	86,  // 352: sneakers.vault.v1.VaultService.ListSecretsForPrincipal:output_type -> sneakers.vault.v1.ListSecretsForPrincipalResponse
+	88,  // 353: sneakers.vault.v1.VaultService.CreateSecretForPrincipal:output_type -> sneakers.vault.v1.CreateSecretForPrincipalResponse
+	90,  // 354: sneakers.vault.v1.VaultService.GenerateSecretForPrincipal:output_type -> sneakers.vault.v1.GenerateSecretForPrincipalResponse
+	92,  // 355: sneakers.vault.v1.VaultService.MoveSecretForPrincipal:output_type -> sneakers.vault.v1.MoveSecretForPrincipalResponse
+	94,  // 356: sneakers.vault.v1.VaultService.ChangeSecretTypeForPrincipal:output_type -> sneakers.vault.v1.ChangeSecretTypeForPrincipalResponse
+	96,  // 357: sneakers.vault.v1.VaultService.RenameSecretForPrincipal:output_type -> sneakers.vault.v1.RenameSecretForPrincipalResponse
+	98,  // 358: sneakers.vault.v1.VaultService.UpdateSecretFieldsForPrincipal:output_type -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalResponse
+	100, // 359: sneakers.vault.v1.VaultService.ListFoldersForPrincipal:output_type -> sneakers.vault.v1.ListFoldersForPrincipalResponse
+	102, // 360: sneakers.vault.v1.VaultService.CreateFolderForPrincipal:output_type -> sneakers.vault.v1.CreateFolderForPrincipalResponse
+	104, // 361: sneakers.vault.v1.VaultService.RenameFolderForPrincipal:output_type -> sneakers.vault.v1.RenameFolderForPrincipalResponse
+	106, // 362: sneakers.vault.v1.VaultService.MoveFolderForPrincipal:output_type -> sneakers.vault.v1.MoveFolderForPrincipalResponse
+	113, // 363: sneakers.vault.v1.VaultService.ListSecretVersions:output_type -> sneakers.vault.v1.ListSecretVersionsResponse
+	115, // 364: sneakers.vault.v1.VaultService.RevealSecretVersionField:output_type -> sneakers.vault.v1.RevealSecretVersionFieldResponse
+	117, // 365: sneakers.vault.v1.VaultService.RestoreSecretVersion:output_type -> sneakers.vault.v1.RestoreSecretVersionResponse
+	121, // 366: sneakers.vault.v1.VaultService.BreakGlassSecret:output_type -> sneakers.vault.v1.BreakGlassSecretResponse
+	123, // 367: sneakers.vault.v1.VaultService.CopySecret:output_type -> sneakers.vault.v1.CopySecretResponse
+	125, // 368: sneakers.vault.v1.VaultService.RetireSecret:output_type -> sneakers.vault.v1.RetireSecretResponse
+	127, // 369: sneakers.vault.v1.VaultService.RestoreSecret:output_type -> sneakers.vault.v1.RestoreSecretResponse
+	129, // 370: sneakers.vault.v1.VaultService.DeleteSecret:output_type -> sneakers.vault.v1.DeleteSecretResponse
+	132, // 371: sneakers.vault.v1.VaultService.GetSecretStats:output_type -> sneakers.vault.v1.GetSecretStatsResponse
+	134, // 372: sneakers.vault.v1.VaultService.GetTopAccessedSecrets:output_type -> sneakers.vault.v1.GetTopAccessedSecretsResponse
+	136, // 373: sneakers.vault.v1.VaultService.ListSecretsByStatus:output_type -> sneakers.vault.v1.ListSecretsByStatusResponse
+	138, // 374: sneakers.vault.v1.VaultService.FindSecretsByPublicKey:output_type -> sneakers.vault.v1.FindSecretsByPublicKeyResponse
+	140, // 375: sneakers.vault.v1.VaultService.GetSecretRuleset:output_type -> sneakers.vault.v1.GetSecretRulesetResponse
+	142, // 376: sneakers.vault.v1.VaultService.SetSecretRuleset:output_type -> sneakers.vault.v1.SetSecretRulesetResponse
+	144, // 377: sneakers.vault.v1.VaultService.GetMySecretAccess:output_type -> sneakers.vault.v1.GetMySecretAccessResponse
+	175, // 378: sneakers.vault.v1.VaultService.ClaimDueHeartbeats:output_type -> sneakers.vault.v1.ClaimDueHeartbeatsResponse
+	177, // 379: sneakers.vault.v1.VaultService.RevealForHeartbeat:output_type -> sneakers.vault.v1.RevealForHeartbeatResponse
+	179, // 380: sneakers.vault.v1.VaultService.ReportHeartbeat:output_type -> sneakers.vault.v1.ReportHeartbeatResponse
+	182, // 381: sneakers.vault.v1.VaultService.EnqueueRotation:output_type -> sneakers.vault.v1.EnqueueRotationResponse
+	184, // 382: sneakers.vault.v1.VaultService.ClaimDueRotations:output_type -> sneakers.vault.v1.ClaimDueRotationsResponse
+	186, // 383: sneakers.vault.v1.VaultService.RevealForRotation:output_type -> sneakers.vault.v1.RevealForRotationResponse
+	188, // 384: sneakers.vault.v1.VaultService.ReportRotation:output_type -> sneakers.vault.v1.ReportRotationResponse
+	221, // 385: sneakers.vault.v1.VaultService.ListPasswordPolicies:output_type -> sneakers.vault.v1.ListPasswordPoliciesResponse
+	223, // 386: sneakers.vault.v1.VaultService.SavePasswordPolicy:output_type -> sneakers.vault.v1.SavePasswordPolicyResponse
+	225, // 387: sneakers.vault.v1.VaultService.DeletePasswordPolicy:output_type -> sneakers.vault.v1.DeletePasswordPolicyResponse
+	227, // 388: sneakers.vault.v1.VaultService.GetSecuritySettings:output_type -> sneakers.vault.v1.GetSecuritySettingsResponse
+	229, // 389: sneakers.vault.v1.VaultService.UpdateSecuritySettings:output_type -> sneakers.vault.v1.UpdateSecuritySettingsResponse
+	231, // 390: sneakers.vault.v1.VaultService.SeedBuiltins:output_type -> sneakers.vault.v1.SeedBuiltinsResponse
+	108, // 391: sneakers.vault.v1.VaultService.GenerateKeyPair:output_type -> sneakers.vault.v1.GenerateKeyPairResponse
+	110, // 392: sneakers.vault.v1.VaultService.RotateKek:output_type -> sneakers.vault.v1.RotateKekResponse
+	191, // 393: sneakers.vault.v1.VaultService.PrepareSecretUse:output_type -> sneakers.vault.v1.PrepareSecretUseResponse
+	193, // 394: sneakers.vault.v1.VaultService.GetSecretUse:output_type -> sneakers.vault.v1.GetSecretUseResponse
+	195, // 395: sneakers.vault.v1.VaultService.ListPendingSecretUses:output_type -> sneakers.vault.v1.ListPendingSecretUsesResponse
+	197, // 396: sneakers.vault.v1.VaultService.DecideSecretUse:output_type -> sneakers.vault.v1.DecideSecretUseResponse
+	199, // 397: sneakers.vault.v1.VaultService.RedeemSecretUse:output_type -> sneakers.vault.v1.RedeemSecretUseResponse
+	213, // 398: sneakers.vault.v1.VaultService.CreateUseGrant:output_type -> sneakers.vault.v1.CreateUseGrantResponse
+	215, // 399: sneakers.vault.v1.VaultService.ListUseGrants:output_type -> sneakers.vault.v1.ListUseGrantsResponse
+	217, // 400: sneakers.vault.v1.VaultService.RevokeUseGrant:output_type -> sneakers.vault.v1.RevokeUseGrantResponse
+	211, // 401: sneakers.vault.v1.VaultService.SetSecretTokenApproval:output_type -> sneakers.vault.v1.SetSecretTokenApprovalResponse
+	205, // 402: sneakers.vault.v1.VaultService.SetSecretTargetForPrincipal:output_type -> sneakers.vault.v1.SetSecretTargetForPrincipalResponse
+	203, // 403: sneakers.vault.v1.VaultService.SetSecretAutomationForPrincipal:output_type -> sneakers.vault.v1.SetSecretAutomationForPrincipalResponse
+	207, // 404: sneakers.vault.v1.VaultService.RequestHeartbeatForPrincipal:output_type -> sneakers.vault.v1.RequestHeartbeatForPrincipalResponse
+	209, // 405: sneakers.vault.v1.VaultService.GetHeartbeatStatusForPrincipal:output_type -> sneakers.vault.v1.GetHeartbeatStatusForPrincipalResponse
+	309, // [309:406] is the sub-list for method output_type
+	212, // [212:309] is the sub-list for method input_type
+	212, // [212:212] is the sub-list for extension type_name
+	212, // [212:212] is the sub-list for extension extendee
+	0,   // [0:212] is the sub-list for field type_name
 }
 
 func init() { file_sneakers_vault_v1_vault_proto_init() }
@@ -15208,17 +15609,17 @@ func file_sneakers_vault_v1_vault_proto_init() {
 	if File_sneakers_vault_v1_vault_proto != nil {
 		return
 	}
-	file_sneakers_vault_v1_vault_proto_msgTypes[161].OneofWrappers = []any{}
-	file_sneakers_vault_v1_vault_proto_msgTypes[170].OneofWrappers = []any{}
-	file_sneakers_vault_v1_vault_proto_msgTypes[201].OneofWrappers = []any{}
-	file_sneakers_vault_v1_vault_proto_msgTypes[211].OneofWrappers = []any{}
+	file_sneakers_vault_v1_vault_proto_msgTypes[165].OneofWrappers = []any{}
+	file_sneakers_vault_v1_vault_proto_msgTypes[174].OneofWrappers = []any{}
+	file_sneakers_vault_v1_vault_proto_msgTypes[205].OneofWrappers = []any{}
+	file_sneakers_vault_v1_vault_proto_msgTypes[215].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sneakers_vault_v1_vault_proto_rawDesc), len(file_sneakers_vault_v1_vault_proto_rawDesc)),
-			NumEnums:      12,
-			NumMessages:   225,
+			NumEnums:      13,
+			NumMessages:   229,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

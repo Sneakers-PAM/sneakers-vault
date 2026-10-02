@@ -12,7 +12,16 @@ option go_package = "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/work
 // engine (request -> approval -> lease -> rotate-on-checkin / break-glass). The
 // surface here is intentionally the minimal set the UI drives today.
 
-message ActorContext { string user_id = 1; }
+// The signed-in user, set by the gateway (the only caller allowed to pass
+// one). The access fields feed the vault's RACI decision on check-out.
+message ActorContext {
+  string user_id = 1;
+  int64 mfa_verified_at_unix = 2;       // last MFA (Unix seconds); 0 = unknown
+  repeated string group_names = 3;
+  bool is_site_admin = 4;
+  bool is_root = 5;
+  repeated string group_ids = 6;
+}
 
 message Lease {
   string id = 1;

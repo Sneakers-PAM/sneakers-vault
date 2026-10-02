@@ -130,11 +130,18 @@ func (RequestKind) EnumDescriptor() ([]byte, []int) {
 	return file_sneakers_workflow_v1_workflow_proto_rawDescGZIP(), []int{1}
 }
 
+// The signed-in user, set by the gateway (the only caller allowed to pass
+// one). The access fields feed the vault's RACI decision on check-out.
 type ActorContext struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	UserId            string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	MfaVerifiedAtUnix int64                  `protobuf:"varint,2,opt,name=mfa_verified_at_unix,json=mfaVerifiedAtUnix,proto3" json:"mfa_verified_at_unix,omitempty"` // last MFA (Unix seconds); 0 = unknown
+	GroupNames        []string               `protobuf:"bytes,3,rep,name=group_names,json=groupNames,proto3" json:"group_names,omitempty"`
+	IsSiteAdmin       bool                   `protobuf:"varint,4,opt,name=is_site_admin,json=isSiteAdmin,proto3" json:"is_site_admin,omitempty"`
+	IsRoot            bool                   `protobuf:"varint,5,opt,name=is_root,json=isRoot,proto3" json:"is_root,omitempty"`
+	GroupIds          []string               `protobuf:"bytes,6,rep,name=group_ids,json=groupIds,proto3" json:"group_ids,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ActorContext) Reset() {
@@ -172,6 +179,41 @@ func (x *ActorContext) GetUserId() string {
 		return x.UserId
 	}
 	return ""
+}
+
+func (x *ActorContext) GetMfaVerifiedAtUnix() int64 {
+	if x != nil {
+		return x.MfaVerifiedAtUnix
+	}
+	return 0
+}
+
+func (x *ActorContext) GetGroupNames() []string {
+	if x != nil {
+		return x.GroupNames
+	}
+	return nil
+}
+
+func (x *ActorContext) GetIsSiteAdmin() bool {
+	if x != nil {
+		return x.IsSiteAdmin
+	}
+	return false
+}
+
+func (x *ActorContext) GetIsRoot() bool {
+	if x != nil {
+		return x.IsRoot
+	}
+	return false
+}
+
+func (x *ActorContext) GetGroupIds() []string {
+	if x != nil {
+		return x.GroupIds
+	}
+	return nil
 }
 
 type Lease struct {
@@ -1612,9 +1654,15 @@ var File_sneakers_workflow_v1_workflow_proto protoreflect.FileDescriptor
 
 const file_sneakers_workflow_v1_workflow_proto_rawDesc = "" +
 	"\n" +
-	"#sneakers/workflow/v1/workflow.proto\x12\x14sneakers.workflow.v1\"'\n" +
+	"#sneakers/workflow/v1/workflow.proto\x12\x14sneakers.workflow.v1\"\xd3\x01\n" +
 	"\fActorContext\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xa5\x01\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12/\n" +
+	"\x14mfa_verified_at_unix\x18\x02 \x01(\x03R\x11mfaVerifiedAtUnix\x12\x1f\n" +
+	"\vgroup_names\x18\x03 \x03(\tR\n" +
+	"groupNames\x12\"\n" +
+	"\ris_site_admin\x18\x04 \x01(\bR\visSiteAdmin\x12\x17\n" +
+	"\ais_root\x18\x05 \x01(\bR\x06isRoot\x12\x1b\n" +
+	"\tgroup_ids\x18\x06 \x03(\tR\bgroupIds\"\xa5\x01\n" +
 	"\x05Lease\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsecret_id\x18\x02 \x01(\tR\bsecretId\x12\x17\n" +
