@@ -8,6 +8,8 @@ import (
 	"maps"
 
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/authz"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/safeconv"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -87,10 +89,9 @@ func (s *Server) SetFolderRuleset(ctx context.Context, req *vaultv1.SetFolderRul
 	}
 	s.raciRules = kept
 	for i, in := range req.GetRules() {
-		s.raciRules = append(s.raciRules, &vaultv1.RaciRule{
-			Id: s.nextID("raci"), FolderId: f.GetId(), Order: int32(i),
-			SubjectKind: in.GetSubjectKind(), SubjectName: in.GetSubjectName(), Grants: in.GetGrants(),
-		})
+		r := s.newRaciRule(in, i)
+		r.FolderId = f.GetId()
+		s.raciRules = append(s.raciRules, r)
 	}
 	f.Owners = append([]string(nil), req.GetOwners()...)
 	s.emit(ctx, req.GetActor().GetUserId(), "folder.ruleset.set", f.GetId(), false)
@@ -135,10 +136,7 @@ func (s *Server) SetTargetRuleset(ctx context.Context, req *vaultv1.SetTargetRul
 	}
 	rules := make([]*vaultv1.RaciRule, 0, len(req.GetRuleset()))
 	for i, in := range req.GetRuleset() {
-		rules = append(rules, &vaultv1.RaciRule{
-			Id: s.nextID("raci"), Order: int32(i),
-			SubjectKind: in.GetSubjectKind(), SubjectName: in.GetSubjectName(), Grants: in.GetGrants(),
-		})
+		rules = append(rules, s.newRaciRule(in, i))
 	}
 	if s.targetRulesets == nil {
 		s.targetRulesets = map[string][]*vaultv1.RaciRule{}
@@ -204,10 +202,7 @@ func (s *Server) SetSecretRuleset(ctx context.Context, req *vaultv1.SetSecretRul
 	}
 	rules := make([]*vaultv1.RaciRule, 0, len(req.GetRules()))
 	for i, in := range req.GetRules() {
-		rules = append(rules, &vaultv1.RaciRule{
-			Id: s.nextID("raci"), Order: int32(i),
-			SubjectKind: in.GetSubjectKind(), SubjectName: in.GetSubjectName(), Grants: in.GetGrants(),
-		})
+		rules = append(rules, s.newRaciRule(in, i))
 	}
 	sec.Ruleset = rules
 	s.emit(ctx, req.GetActor().GetUserId(), "secret.ruleset.set", sec.GetId(), false)
@@ -237,4 +232,23 @@ func (s *Server) GetMySecretAccess(_ context.Context, req *vaultv1.GetMySecretAc
 		Informed:      res.Ack.Allowed,
 		ManageRuleset: manageRuleset,
 	}}, nil
+}
+
+// newRaciRule stores one submitted rule at position order. A GROUP rule keeps
+// its subject_id (the directory group id it matches on); other kinds never
+// carry one.
+func (s *Server) newRaciRule(in *vaultv1.RaciRule, order int) *vaultv1.RaciRule {
+	r := &vaultv1.RaciRule{
+		Id: s.nextID("raci"), Order: safeconv.Int32(order),
+		SubjectKind: in.GetSubjectKind(), SubjectName: in.GetSubjectName(), Grants: in.GetGrants(),
+	}
+	if in.GetSubjectKind() == vaultv1.SubjectKind_SUBJECT_KIND_GROUP {
+		r.SubjectId = in.GetSubjectId()
+	}
+	return r
+}
+
+// ruleSubjectOf maps a stored rule's subject to the authz form.
+func ruleSubjectOf(r *vaultv1.RaciRule) authz.RuleSubject {
+	return authz.RuleSubject{Kind: subjKindToAuthz(r.GetSubjectKind()), Name: r.GetSubjectName(), ID: r.GetSubjectId()}
 }

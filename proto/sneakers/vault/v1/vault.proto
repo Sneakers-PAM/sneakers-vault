@@ -228,6 +228,7 @@ message SimulateFolderRequest {
   bool sim_is_root = 5;
   repeated string sim_group_names = 6;
   repeated RaciRule draft_rules = 7;
+  repeated string sim_group_ids = 8;    // matched by GROUP rules that carry a subject_id
 }
 message SimulateFolderResponse { RaciDecision decision = 1; }
 
@@ -239,6 +240,7 @@ message SimulateSecretRequest {
   bool sim_is_root = 5;
   repeated string sim_group_names = 6;
   repeated RaciRule draft_rules = 7;
+  repeated string sim_group_ids = 8;    // matched by GROUP rules that carry a subject_id
 }
 message SimulateSecretResponse { RaciDecision decision = 1; }
 

@@ -35,6 +35,12 @@ audit and notify are covered in [Calling other services](#calling-other-services
   I informed) on folders, secrets and targets, evaluated target first and then up the folder
   chain. Folder owners get read, approve and author. Site admins and root read everything but are
   never automatic approvers or authors.
+- **Group rules:** a GROUP rule saved with a `subject_id` (the directory group id) matches the
+  caller's `group_ids` exactly, for people, personal tokens and service accounts alike;
+  `subject_name` is then only the display name, so renaming a group changes nothing and another
+  group that takes the old name gains nothing. A rule with only a `subject_name` (older rules)
+  still matches the caller's `group_names`, ignoring case. `SimulateFolder` and `SimulateSecret`
+  take `sim_group_ids` for the same matching.
 - **Admin authority:** the vault checks it itself and doesn't rely on the gateway. Security
   settings, password policies, secret types, extensions, connections and `SeedBuiltins` need a
   human site admin or root whose actor names a real user (an empty or `system` user id never

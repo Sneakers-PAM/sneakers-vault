@@ -573,12 +573,13 @@ func (s *Server) ancestorsInclusive(id string) []*vaultv1.Folder {
 // RACI/Target grants, never from a spoofed admin flag.
 func evalOf(a *vaultv1.ActorContext) authz.EvalSubject {
 	if isUserToken(a) {
-		return authz.EvalSubject{UserID: a.GetUserId(), GroupNames: a.GetGroupNames()}
+		return authz.EvalSubject{UserID: a.GetUserId(), GroupNames: a.GetGroupNames(), GroupIDs: a.GetGroupIds()}
 	}
 	if a.GetPrincipalKind() != vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN {
 		return authz.EvalSubject{
 			UserID:     machineSubjectID(a.GetPrincipalId()),
 			GroupNames: a.GetGroupNames(),
+			GroupIDs:   a.GetGroupIds(),
 		}
 	}
 	return authz.EvalSubject{
@@ -586,6 +587,7 @@ func evalOf(a *vaultv1.ActorContext) authz.EvalSubject {
 		IsSiteAdmin: a.GetIsSiteAdmin(),
 		IsRoot:      a.GetIsRoot(),
 		GroupNames:  a.GetGroupNames(),
+		GroupIDs:    a.GetGroupIds(),
 	}
 }
 
@@ -701,7 +703,7 @@ func (s *Server) rulesetOf(f *vaultv1.Folder) authz.CategoryRuleset {
 			grants[authz.Action(k)] = authz.Grant(v)
 		}
 		rules = append(rules, authz.Rule{
-			Subject: authz.RuleSubject{Kind: subjKindToAuthz(r.GetSubjectKind()), Name: r.GetSubjectName()},
+			Subject: ruleSubjectOf(r),
 			Grants:  grants,
 		})
 	}
@@ -732,7 +734,7 @@ func (s *Server) rulesetOfSecret(sec *vaultv1.Secret) authz.CategoryRuleset {
 			grants[authz.Action(k)] = authz.Grant(v)
 		}
 		rules = append(rules, authz.Rule{
-			Subject: authz.RuleSubject{Kind: subjKindToAuthz(r.GetSubjectKind()), Name: r.GetSubjectName()},
+			Subject: ruleSubjectOf(r),
 			Grants:  grants,
 		})
 	}
@@ -761,7 +763,7 @@ func (s *Server) rulesetOfTarget(t *vaultv1.Target) authz.CategoryRuleset {
 			grants[authz.Action(k)] = authz.Grant(v)
 		}
 		rules = append(rules, authz.Rule{
-			Subject: authz.RuleSubject{Kind: subjKindToAuthz(r.GetSubjectKind()), Name: r.GetSubjectName()},
+			Subject: ruleSubjectOf(r),
 			Grants:  grants,
 		})
 	}

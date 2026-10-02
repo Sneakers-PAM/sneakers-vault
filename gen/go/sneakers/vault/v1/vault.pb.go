@@ -1896,6 +1896,7 @@ type SimulateFolderRequest struct {
 	SimIsRoot      bool                   `protobuf:"varint,5,opt,name=sim_is_root,json=simIsRoot,proto3" json:"sim_is_root,omitempty"`
 	SimGroupNames  []string               `protobuf:"bytes,6,rep,name=sim_group_names,json=simGroupNames,proto3" json:"sim_group_names,omitempty"`
 	DraftRules     []*RaciRule            `protobuf:"bytes,7,rep,name=draft_rules,json=draftRules,proto3" json:"draft_rules,omitempty"`
+	SimGroupIds    []string               `protobuf:"bytes,8,rep,name=sim_group_ids,json=simGroupIds,proto3" json:"sim_group_ids,omitempty"` // matched by GROUP rules that carry a subject_id
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1979,6 +1980,13 @@ func (x *SimulateFolderRequest) GetDraftRules() []*RaciRule {
 	return nil
 }
 
+func (x *SimulateFolderRequest) GetSimGroupIds() []string {
+	if x != nil {
+		return x.SimGroupIds
+	}
+	return nil
+}
+
 type SimulateFolderResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Decision      *RaciDecision          `protobuf:"bytes,1,opt,name=decision,proto3" json:"decision,omitempty"`
@@ -2032,6 +2040,7 @@ type SimulateSecretRequest struct {
 	SimIsRoot      bool                   `protobuf:"varint,5,opt,name=sim_is_root,json=simIsRoot,proto3" json:"sim_is_root,omitempty"`
 	SimGroupNames  []string               `protobuf:"bytes,6,rep,name=sim_group_names,json=simGroupNames,proto3" json:"sim_group_names,omitempty"`
 	DraftRules     []*RaciRule            `protobuf:"bytes,7,rep,name=draft_rules,json=draftRules,proto3" json:"draft_rules,omitempty"`
+	SimGroupIds    []string               `protobuf:"bytes,8,rep,name=sim_group_ids,json=simGroupIds,proto3" json:"sim_group_ids,omitempty"` // matched by GROUP rules that carry a subject_id
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -2111,6 +2120,13 @@ func (x *SimulateSecretRequest) GetSimGroupNames() []string {
 func (x *SimulateSecretRequest) GetDraftRules() []*RaciRule {
 	if x != nil {
 		return x.DraftRules
+	}
+	return nil
+}
+
+func (x *SimulateSecretRequest) GetSimGroupIds() []string {
+	if x != nil {
+		return x.SimGroupIds
 	}
 	return nil
 }
@@ -13924,7 +13940,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x0eapprove_reason\x18\b \x01(\tR\rapproveReason\x12\x1a\n" +
 	"\binformed\x18\t \x01(\bR\binformed\x12'\n" +
 	"\x0finformed_reason\x18\n" +
-	" \x01(\tR\x0einformedReason\"\xbc\x02\n" +
+	" \x01(\tR\x0einformedReason\"\xe0\x02\n" +
 	"\x15SimulateFolderRequest\x125\n" +
 	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12\x1b\n" +
 	"\tfolder_id\x18\x02 \x01(\tR\bfolderId\x12\x1e\n" +
@@ -13933,9 +13949,10 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\vsim_is_root\x18\x05 \x01(\bR\tsimIsRoot\x12&\n" +
 	"\x0fsim_group_names\x18\x06 \x03(\tR\rsimGroupNames\x12<\n" +
 	"\vdraft_rules\x18\a \x03(\v2\x1b.sneakers.vault.v1.RaciRuleR\n" +
-	"draftRules\"U\n" +
+	"draftRules\x12\"\n" +
+	"\rsim_group_ids\x18\b \x03(\tR\vsimGroupIds\"U\n" +
 	"\x16SimulateFolderResponse\x12;\n" +
-	"\bdecision\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.RaciDecisionR\bdecision\"\xbc\x02\n" +
+	"\bdecision\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.RaciDecisionR\bdecision\"\xe0\x02\n" +
 	"\x15SimulateSecretRequest\x125\n" +
 	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12\x1b\n" +
 	"\tsecret_id\x18\x02 \x01(\tR\bsecretId\x12\x1e\n" +
@@ -13944,7 +13961,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\vsim_is_root\x18\x05 \x01(\bR\tsimIsRoot\x12&\n" +
 	"\x0fsim_group_names\x18\x06 \x03(\tR\rsimGroupNames\x12<\n" +
 	"\vdraft_rules\x18\a \x03(\v2\x1b.sneakers.vault.v1.RaciRuleR\n" +
-	"draftRules\"U\n" +
+	"draftRules\x12\"\n" +
+	"\rsim_group_ids\x18\b \x03(\tR\vsimGroupIds\"U\n" +
 	"\x16SimulateSecretResponse\x12;\n" +
 	"\bdecision\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.RaciDecisionR\bdecision\"\xa3\b\n" +
 	"\x06Secret\x12\x0e\n" +

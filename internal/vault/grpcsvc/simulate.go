@@ -20,6 +20,7 @@ type simRequest interface {
 	GetSimIsSiteAdmin() bool
 	GetSimIsRoot() bool
 	GetSimGroupNames() []string
+	GetSimGroupIds() []string
 }
 
 // simSubject builds the authz subject for the simulated user a Simulate*
@@ -30,6 +31,7 @@ func simSubject(req simRequest) authz.EvalSubject {
 		IsSiteAdmin: req.GetSimIsSiteAdmin(),
 		IsRoot:      req.GetSimIsRoot(),
 		GroupNames:  req.GetSimGroupNames(),
+		GroupIDs:    req.GetSimGroupIds(),
 	}
 }
 
@@ -45,7 +47,7 @@ func draftRulesToAuthz(draft []*vaultv1.RaciRule) []authz.Rule {
 			grants[authz.Action(k)] = authz.Grant(v)
 		}
 		rules = append(rules, authz.Rule{
-			Subject: authz.RuleSubject{Kind: subjKindToAuthz(r.GetSubjectKind()), Name: r.GetSubjectName()},
+			Subject: ruleSubjectOf(r),
 			Grants:  grants,
 		})
 	}

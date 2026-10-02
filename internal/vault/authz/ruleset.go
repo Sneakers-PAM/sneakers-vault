@@ -37,6 +37,9 @@ const (
 type RuleSubject struct {
 	Kind SubjectKind
 	Name string // group name or user id; empty for Everyone
+	// ID is a GROUP rule's directory group id. When set, the rule matches on
+	// it alone, so a rename doesn't change who the rule covers.
+	ID string
 }
 
 // Rule is one ordered firewall row: a subject with a tri-state grant per action.
@@ -60,6 +63,7 @@ type EvalSubject struct {
 	IsSiteAdmin bool
 	IsRoot      bool
 	GroupNames  []string
+	GroupIDs    []string // directory group ids, matched by GROUP rules with an ID
 }
 
 func subjectMatches(u EvalSubject, s RuleSubject) bool {
@@ -69,7 +73,15 @@ func subjectMatches(u EvalSubject, s RuleSubject) bool {
 	case SubjUser:
 		return s.Name == u.UserID
 	case SubjGroup:
-		// Group names are human directory names: rule subjects come from the
+		if s.ID != "" {
+			for _, id := range u.GroupIDs {
+				if id == s.ID {
+					return true
+				}
+			}
+			return false
+		}
+		// Legacy name-only rule. Group names are human directory names: rule subjects come from the
 		// admin picker and memberships from the directory, so casing drift must
 		// not silently drop a user from a rule, so group names compare
 		// case-insensitively. User IDs above stay exact — they are opaque.
