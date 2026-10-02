@@ -202,14 +202,9 @@ func (s *Server) retireUnreferenced(ctx context.Context) error {
 // RotateKek mints a new working-KEK generation, makes it active, and eagerly
 // re-wraps every secret_records and secret_versions row onto it. This is
 // how operators move data sealed with the static dev key (dev-static-v1) onto
-// a working key before dropping it from the keyring. Two callers
-// are allowed:
-//
-//   - a human site-admin/root (isHumanAdmin; admin authority is human-only);
-//   - an allowlisted SYSTEM principal: PrincipalKind WORKLOAD with a user_id
-//     exactly in VAULT_KEK_ROTATION_PRINCIPALS (isKekRotationPrincipal). This
-//     lets rotation run under a system account that is not tied to a person's
-//     identity. It grants RotateKek only, and SERVICE_ACCOUNT is never accepted.
+// a working key before dropping it from the keyring. Only a human site admin
+// or root may call it (requireSiteAdmin); the in-process scheduler rotates
+// without going through this RPC.
 //
 // It persists its own outcome synchronously and is NOT in mutatingMethods:
 // PersistUnary only logs a persist failure, which would report a re-wrap that
@@ -219,15 +214,10 @@ func (s *Server) retireUnreferenced(ctx context.Context) error {
 // counts and the outcome. It never records key material.
 func (s *Server) RotateKek(ctx context.Context, req *vaultv1.RotateKekRequest) (*vaultv1.RotateKekResponse, error) {
 	actor := req.GetActor()
-	var principalKind, rotatedBy string
-	switch {
-	case isHumanAdmin(actor):
-		principalKind, rotatedBy = "human", "human"
-	case s.isKekRotationPrincipal(actor):
-		principalKind, rotatedBy = "workload", "system"
-	default:
-		return nil, status.Error(codes.PermissionDenied, "rotate KEK requires site-admin or an allowlisted system principal")
+	if err := s.requireSiteAdmin(ctx, actor, "RotateKek"); err != nil {
+		return nil, err
 	}
+	principalKind, rotatedBy := "human", "human"
 
 	res, err := s.rotateOnce(ctx)
 	attrs := rotationAttrs(res, err, principalKind, rotatedBy, "rpc")

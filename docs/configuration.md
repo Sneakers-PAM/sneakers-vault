@@ -41,7 +41,7 @@ Both services authenticate every caller and present their own token on outbound 
 | `VAULT_DISABLE_DEV_STATIC_KEK` | `false` | `true` drops the decrypt-only static dev key (`dev-static-v1`) from the key ring. The vault refuses to boot with it set while any stored row still uses that key. |
 | `KEK_ROTATION_DAYS` | `90` | Seeds `kek_rotation_days` on a fresh instance's security settings. `0` turns automatic rotation off. Existing instances keep their stored value. |
 | `KEK_SCHEDULER_CHECK_MINUTES` | `60` | How often the automatic rotation scheduler checks the active working key's age. |
-| `VAULT_KEK_ROTATION_PRINCIPALS` | (empty: off) | Comma list of `system:<name>` principals that may call `RotateKek` besides a human site admin. See [runbook.md](runbook.md#rotating-the-working-key). |
+| `VAULT_KEK_ROTATION_PRINCIPALS` | (removed) | Removed in v0.1.0. If it's set, the vault refuses to start: unset it. A site admin rotates the key, or the scheduler does. |
 
 Generate a root key with:
 

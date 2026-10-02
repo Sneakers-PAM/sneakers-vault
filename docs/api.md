@@ -111,10 +111,9 @@ audit and notify are covered in [Calling other services](#calling-other-services
 - **Type changes:** see [type-change.md](type-change.md).
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
   through `seed-catalog`.
-- **Key rotation:** `RotateKek` runs as a human site admin, or as a `system:<name>` principal listed
-  in `VAULT_KEK_ROTATION_PRINCIPALS`, sent with `principal_kind: PRINCIPAL_KIND_WORKLOAD`. Only the
-  gateway may call `RotateKek` and it never sends a workload actor, so with workload
-  authentication on that path is reachable only with `WORKLOAD_AUTH=disabled`. Scheduled rotations are audited as `system:kek-scheduler`.
+- **Key rotation:** `RotateKek` needs a human site admin or root (`NOT_SITE_ADMIN` otherwise),
+  called through the gateway. The in-process scheduler rotates on its own and is audited as
+  `system:kek-scheduler`.
 - **Sensitive data switches:** with `allow_api_for_sensitive` off, a service account or
   personal token is refused super-sensitive fields on `RevealSecretFieldForPrincipal`,
   `PrepareSecretUse` and `RedeemSecretUse` (`PermissionDenied`, `API_SENSITIVE_DISABLED`, audited

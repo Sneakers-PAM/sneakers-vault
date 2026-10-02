@@ -107,10 +107,6 @@ type Server struct {
 	root         crypto.KEKProvider
 	rootRef      string
 	rotating     atomic.Bool
-	// kekRotators is the SYSTEM-principal allowlist for RotateKek
-	// (VAULT_KEK_ROTATION_PRINCIPALS, see kek_principals.go). Set once at boot
-	// by SetKekRotationPrincipals and read-only after that. Empty = disabled.
-	kekRotators map[string]struct{}
 
 	// writeMu serializes state writes on this replica (see writeTx). It is
 	// taken BEFORE the store's cross-replica lock, so a replica holds at most one

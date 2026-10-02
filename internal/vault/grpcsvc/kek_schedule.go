@@ -15,6 +15,10 @@ import (
 // activeCreatedAt) has aged past rotationDays as of now. Pure so it can be
 // table-tested without a server/store. rotationDays<=0 means auto-rotation is
 // off — always false, regardless of age.
+// kekSchedulerPrincipal is the actor id the in-process KEK scheduler records
+// on its kek.rotate audit events.
+const kekSchedulerPrincipal = "system:kek-scheduler"
+
 func kekRotationDue(activeCreatedAt time.Time, rotationDays int32, now time.Time) bool {
 	if rotationDays <= 0 {
 		return false

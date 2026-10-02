@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	postgres "github.com/Bugs5382/go-postgres"
@@ -169,13 +170,21 @@ func bootKeyring(ctx context.Context, db *postgres.DB, root crypto.KEKProvider, 
 	return kb, nil
 }
 
-// kekRotationPrincipals reads VAULT_KEK_ROTATION_PRINCIPALS, the SYSTEM
-// principals allowed to call RotateKek. Unset or empty disables the path. A
-// malformed entry is a boot error, not a silent drop, so a typo never leaves
-// the operator's rotation principal unexpectedly denied or a non-system id
-// allowlisted.
-func kekRotationPrincipals() ([]string, error) {
-	return grpcsvc.ParseKekRotationPrincipals(os.Getenv(grpcsvc.KekRotationPrincipalsEnv))
+// removedSettings are settings that no longer exist. A deployment that
+// still sets one fails the boot, so a stale config is noticed instead of
+// silently doing nothing.
+var removedSettings = map[string]string{
+	"VAULT_KEK_ROTATION_PRINCIPALS": "rotate the KEK as a site admin, or let the scheduler do it (KEK_ROTATION_DAYS)",
+}
+
+// refuseRemovedSettings errors when a removed setting is set.
+func refuseRemovedSettings(getenv func(string) string) error {
+	for k, instead := range removedSettings {
+		if strings.TrimSpace(getenv(k)) != "" {
+			return fmt.Errorf("%s was removed in v0.1.0: unset it and %s", k, instead)
+		}
+	}
+	return nil
 }
 
 // mustMFAMaxAge reads MFA_MAX_AGE and stops the boot on a bad value.
