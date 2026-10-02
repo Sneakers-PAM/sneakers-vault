@@ -2191,11 +2191,15 @@ type Secret struct {
 	//	admin_count: the account has adminCount=1 (AD protected groups). It
 	//	  rotates with the self-service change only; OU-delegated admin reset
 	//	  does not apply to it.
-	BuiltinAdministrator bool   `protobuf:"varint,29,opt,name=builtin_administrator,json=builtinAdministrator,proto3" json:"builtin_administrator,omitempty"`
-	AdminCount           bool   `protobuf:"varint,30,opt,name=admin_count,json=adminCount,proto3" json:"admin_count,omitempty"`
-	HeartbeatOptOut      bool   `protobuf:"varint,21,opt,name=heartbeat_opt_out,json=heartbeatOptOut,proto3" json:"heartbeat_opt_out,omitempty"`                // per-secret override: never heartbeat this secret (audited)
-	RequireTokenApproval bool   `protobuf:"varint,22,opt,name=require_token_approval,json=requireTokenApproval,proto3" json:"require_token_approval,omitempty"` // a personal-token reveal needs the owner's per-use browser approval (or a grant with allow_reveal); set by a person only
-	LastHeartbeatDetail  string `protobuf:"bytes,23,opt,name=last_heartbeat_detail,json=lastHeartbeatDetail,proto3" json:"last_heartbeat_detail,omitempty"`     // the connector's reason for the last heartbeat result (never a value), truncated
+	BuiltinAdministrator bool `protobuf:"varint,29,opt,name=builtin_administrator,json=builtinAdministrator,proto3" json:"builtin_administrator,omitempty"`
+	AdminCount           bool `protobuf:"varint,30,opt,name=admin_count,json=adminCount,proto3" json:"admin_count,omitempty"`
+	HeartbeatOptOut      bool `protobuf:"varint,21,opt,name=heartbeat_opt_out,json=heartbeatOptOut,proto3" json:"heartbeat_opt_out,omitempty"` // per-secret override: never heartbeat this secret (audited)
+	// A personal-token reveal needs the token owner's per-use browser approval
+	// (or a grant with allow_reveal). Personal tokens only: a service account
+	// has no person to approve, so its reveals are governed by its RACI grants
+	// and allow_api_for_sensitive instead. Set by a person only.
+	RequireTokenApproval bool   `protobuf:"varint,22,opt,name=require_token_approval,json=requireTokenApproval,proto3" json:"require_token_approval,omitempty"`
+	LastHeartbeatDetail  string `protobuf:"bytes,23,opt,name=last_heartbeat_detail,json=lastHeartbeatDetail,proto3" json:"last_heartbeat_detail,omitempty"` // the connector's reason for the last heartbeat result (never a value), truncated
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -12555,8 +12559,9 @@ func (x *GetHeartbeatStatusForPrincipalResponse) GetPending() bool {
 	return false
 }
 
-// SetSecretTokenApproval turns require_token_approval on or off. A person with
-// manage rights on the secret only; never a token or other non-human principal.
+// SetSecretTokenApproval turns require_token_approval on or off. It covers
+// personal-token reveals only, never service accounts. A person with manage
+// rights on the secret only; never a token or other non-human principal.
 type SetSecretTokenApprovalRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Actor         *ActorContext          `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor,omitempty"`

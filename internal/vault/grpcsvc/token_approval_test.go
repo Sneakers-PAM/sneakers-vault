@@ -182,3 +182,21 @@ func TestARevealUseCarriesNoCommand(t *testing.T) {
 		t.Fatalf("reveal with argv: want InvalidArgument, got %v", err)
 	}
 }
+
+// Token approval covers personal tokens only. A service account with read
+// reveals directly; its reveals are governed by RACI and
+// allow_api_for_sensitive, not by this switch.
+func TestTokenApprovalDoesNotCoverServiceAccounts(t *testing.T) {
+	fx := newUseFixture(t)
+	if err := fx.setApproval(carolManager, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fx.reveal(); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("personal token with approval on: %v, want approval_required", err)
+	}
+	sa := &vaultv1.ActorContext{PrincipalKind: vaultv1.PrincipalKind_PRINCIPAL_KIND_SERVICE_ACCOUNT, PrincipalId: "sa-ci", GroupNames: []string{"g-agents"}}
+	r, err := fx.s.RevealSecretFieldForPrincipal(context.Background(), &vaultv1.RevealSecretFieldForPrincipalRequest{Actor: sa, Id: fx.secret, FieldKey: "password"})
+	if err != nil || r.GetValue() == "" {
+		t.Fatalf("service account reveal: %v %v", r, err)
+	}
+}

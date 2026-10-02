@@ -49,6 +49,12 @@ audit and notify are covered in [Calling other services](#calling-other-services
   tree only; a service account never creates inside a personal tree. Names may not contain `/` or
   `\`. `RevealSecretFieldForPrincipal` also returns non-sensitive fields, audited as
   `secret.read.principal`.
+- **Token approval** (`SetSecretTokenApproval`, `require_token_approval`) covers **personal
+  tokens only**: with it on, a personal token's reveal of a sensitive field answers
+  `approval_required` until the token's owner approves the use (or a use grant with
+  `allow_reveal` covers it). It doesn't apply to service accounts, which have no person to
+  approve: their reveals are governed by their RACI grants and by `allow_api_for_sensitive`
+  (off by default, which keeps super-sensitive fields from them).
 - **Moves:** personal to shared is free. Shared to personal needs a site admin; for anyone else the
   vault moves nothing, answers `approval_required`, and the caller files a move request with the
   workflow service.
