@@ -1,0 +1,134 @@
+// Copyright 2026 The Sneakers-PAM Authors
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package sneakers.workflow.v1;
+
+option go_package = "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/workflow/v1;workflowv1";
+
+// Access workflow: time-boxed checkout leases and access-request approvals.
+// Dev-stage in-memory implementation; the eventual home is a go-saga workflow
+// engine (request -> approval -> lease -> rotate-on-checkin / break-glass). The
+// surface here is intentionally the minimal set the UI drives today.
+
+message ActorContext { string user_id = 1; }
+
+message Lease {
+  string id = 1;
+  string secret_id = 2;
+  string user_id = 3;
+  string issued_at = 4;   // RFC3339
+  string expires_at = 5;  // RFC3339
+  bool returned = 6;
+}
+
+enum ApprovalStatus {
+  APPROVAL_STATUS_UNSPECIFIED = 0;
+  APPROVAL_STATUS_PENDING = 1;
+  APPROVAL_STATUS_APPROVED = 2;
+  APPROVAL_STATUS_DENIED = 3;
+}
+
+// What an approval request is asking for. UNSPECIFIED = secret access (the
+// original, back-compat default). FOLDER_MOVE = move a folder shared -> personal
+// (allowed directly only for a site-admin; everyone else needs one to approve).
+enum RequestKind {
+  REQUEST_KIND_UNSPECIFIED = 0;
+  REQUEST_KIND_FOLDER_MOVE = 1;
+  // Move a SECRET shared -> personal (reuses secret_id + dest_parent_id as the
+  // destination folder; folder_name/dest_parent_name carry the display labels).
+  REQUEST_KIND_SECRET_MOVE = 2;
+}
+
+// A back-and-forth message on an access request, so a requester and approver
+// can discuss it (created_at is RFC3339).
+message ApprovalComment {
+  string id = 1;
+  string author_user_id = 2;
+  string body = 3;
+  string created_at = 4;
+}
+
+message ApprovalRequest {
+  string id = 1;
+  string secret_id = 2;
+  string requested_by_user_id = 3;
+  ApprovalStatus status = 4;
+  string requested_at = 5;
+  string resolved_at = 6;              // empty until resolved
+  string resolved_by_user_id = 7;
+  string reason = 8;                   // requester's justification
+  repeated ApprovalComment comments = 9; // discussion thread, oldest first
+  // Request discriminator + FOLDER_MOVE payload. kind defaults to secret access
+  // (UNSPECIFIED) so existing rows are unchanged. For FOLDER_MOVE, secret_id is
+  // empty and folder_id/dest_parent_id carry the move; the *_name fields are the
+  // display labels captured at request time (robust if a folder is later moved).
+  RequestKind kind = 10;
+  string folder_id = 11;
+  string dest_parent_id = 12;
+  string folder_name = 13;
+  string dest_parent_name = 14;
+}
+
+message ListActiveLeasesForUserRequest { string user_id = 1; }
+message ListActiveLeasesForUserResponse { repeated Lease leases = 1; }
+message GetActiveLeaseRequest { string secret_id = 1; }
+message GetActiveLeaseResponse { Lease lease = 1; } // nil lease = none active
+message CheckoutSecretRequest { ActorContext actor = 1; string secret_id = 2; int32 hours = 3; }
+message CheckoutSecretResponse { Lease lease = 1; }
+message CheckinSecretRequest { ActorContext actor = 1; string secret_id = 2; }
+message CheckinSecretResponse {}
+
+message ListApprovalRequestsRequest {}
+message ListApprovalRequestsResponse { repeated ApprovalRequest requests = 1; }
+message CreateAccessRequestRequest { ActorContext actor = 1; string secret_id = 2; string reason = 3; }
+message CreateAccessRequestResponse { ApprovalRequest request = 1; }
+// A non-admin's request to move a folder shared -> personal; a site-admin
+// resolves it via ResolveApproval, whose effect performs the move. dest_parent_id
+// may be ANY user's personal folder, not just the requester's own.
+message CreateFolderMoveRequestRequest {
+  ActorContext actor = 1;
+  string folder_id = 2;
+  string dest_parent_id = 3;
+  string reason = 4;
+  string folder_name = 5;
+  string dest_parent_name = 6;
+}
+message CreateFolderMoveRequestResponse { ApprovalRequest request = 1; }
+// A non-admin's request to move a SECRET shared -> personal; a site-admin
+// resolves it via ResolveApproval, whose effect performs the move.
+message CreateSecretMoveRequestRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  string dest_folder_id = 3;
+  string reason = 4;
+  string secret_name = 5;
+  string dest_folder_name = 6;
+}
+message CreateSecretMoveRequestResponse { ApprovalRequest request = 1; }
+// grant_hours: approver-chosen access window for an approval; clamped
+// server-side to [1, 24]h, defaulting to the workflow's system default when
+// unset/zero.
+message ResolveApprovalRequest { ActorContext actor = 1; string id = 2; bool approve = 3; optional int32 grant_hours = 4; }
+message ResolveApprovalResponse { ApprovalRequest request = 1; }
+
+message AddApprovalCommentRequest { ActorContext actor = 1; string request_id = 2; string body = 3; }
+message AddApprovalCommentResponse { ApprovalRequest request = 1; }
+
+message RotateSecretRequest { ActorContext actor = 1; string secret_id = 2; }
+message RotateSecretResponse { bool ok = 1; }
+
+service WorkflowService {
+  rpc ListActiveLeasesForUser(ListActiveLeasesForUserRequest) returns (ListActiveLeasesForUserResponse);
+  rpc GetActiveLease(GetActiveLeaseRequest) returns (GetActiveLeaseResponse);
+  rpc CheckoutSecret(CheckoutSecretRequest) returns (CheckoutSecretResponse);
+  rpc CheckinSecret(CheckinSecretRequest) returns (CheckinSecretResponse);
+  rpc ListApprovalRequests(ListApprovalRequestsRequest) returns (ListApprovalRequestsResponse);
+  rpc CreateAccessRequest(CreateAccessRequestRequest) returns (CreateAccessRequestResponse);
+  rpc CreateFolderMoveRequest(CreateFolderMoveRequestRequest) returns (CreateFolderMoveRequestResponse);
+  rpc CreateSecretMoveRequest(CreateSecretMoveRequestRequest) returns (CreateSecretMoveRequestResponse);
+  rpc ResolveApproval(ResolveApprovalRequest) returns (ResolveApprovalResponse);
+  rpc AddApprovalComment(AddApprovalCommentRequest) returns (AddApprovalCommentResponse);
+  rpc RotateSecret(RotateSecretRequest) returns (RotateSecretResponse);
+}
