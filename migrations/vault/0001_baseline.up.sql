@@ -139,6 +139,17 @@ CREATE TABLE public.target_raci_rules (
     data jsonb NOT NULL
 );
 
+-- SSH host key pins per target: the public keys the SSH broker accepts for
+-- the target, in saved order, each with its SHA256 fingerprint. Public keys,
+-- not secrets. Replaced as a whole on every state snapshot, like
+-- target_raci_rules, so there is no foreign key to targets.
+CREATE TABLE public.target_ssh_host_keys (
+    target_id text NOT NULL,
+    ordinal integer NOT NULL,
+    public_key text NOT NULL,
+    fingerprint text NOT NULL
+);
+
 CREATE TABLE public.targets (
     id text NOT NULL,
     data jsonb NOT NULL
@@ -198,6 +209,9 @@ ALTER TABLE ONLY public.security_settings
 ALTER TABLE ONLY public.target_raci_rules
     ADD CONSTRAINT target_raci_rules_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY public.target_ssh_host_keys
+    ADD CONSTRAINT target_ssh_host_keys_pkey PRIMARY KEY (target_id, ordinal);
+
 ALTER TABLE ONLY public.targets
     ADD CONSTRAINT targets_pkey PRIMARY KEY (id);
 
@@ -218,3 +232,5 @@ CREATE INDEX secret_versions_active ON public.secret_versions USING btree (secre
 CREATE UNIQUE INDEX secret_versions_one_staged ON public.secret_versions USING btree (secret_id) WHERE staged;
 
 CREATE INDEX target_raci_rules_target_idx ON public.target_raci_rules USING btree (target_id);
+
+CREATE INDEX target_ssh_host_keys_fingerprint_idx ON public.target_ssh_host_keys USING btree (fingerprint);

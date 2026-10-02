@@ -5,7 +5,6 @@ package grpcsvc
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 
@@ -79,35 +78,5 @@ func TestTargetHostKeysPersistAcrossRestart_Postgres(t *testing.T) {
 	}
 	if n != 0 {
 		t.Fatalf("rows after clearing pins = %d", n)
-	}
-}
-
-// The 0002 migration adds only target_ssh_host_keys, and its down step drops
-// only that table.
-func TestMigration0002TargetSSHHostKeys_Postgres(t *testing.T) {
-	_, pool := organizeFreshDB(t)
-	ctx := context.Background()
-	exists := func(table string) bool {
-		var ok bool
-		if err := pool.Querier().QueryRow(ctx, "SELECT to_regclass('public.'||$1) IS NOT NULL", table).Scan(&ok); err != nil {
-			t.Fatal(err)
-		}
-		return ok
-	}
-	if !exists("target_ssh_host_keys") || !exists("targets") {
-		t.Fatal("head schema must have targets and target_ssh_host_keys")
-	}
-	down, err := os.ReadFile("../../../migrations/vault/0002_target_ssh_host_keys.down.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Querier().Exec(ctx, string(down)); err != nil {
-		t.Fatalf("down: %v", err)
-	}
-	if exists("target_ssh_host_keys") {
-		t.Fatal("down must drop target_ssh_host_keys")
-	}
-	if !exists("targets") || !exists("target_raci_rules") {
-		t.Fatal("down must leave the baseline tables alone")
 	}
 }
