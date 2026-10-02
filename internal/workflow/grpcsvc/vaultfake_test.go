@@ -29,12 +29,17 @@ type fakeVaultClient struct {
 	noRead      map[string]bool
 	noApprove   map[string]bool // "secretID|userID" without RACI A
 	checkoutOff map[string]bool
+	// sensitiveType lists secrets whose type has a super-sensitive field.
+	sensitiveType map[string]bool
+	// settings is what GetSecuritySettings returns.
+	settings *vaultv1.SecuritySettings
 	// accessActors records the actor of each GetMySecretAccess call.
 	accessActors []*vaultv1.ActorContext
 }
 
 func newFakeVaultClient() *fakeVaultClient {
-	return &fakeVaultClient{rulesets: map[string][]*vaultv1.RaciRule{}, noRead: map[string]bool{}, noApprove: map[string]bool{}, checkoutOff: map[string]bool{}}
+	return &fakeVaultClient{rulesets: map[string][]*vaultv1.RaciRule{}, noRead: map[string]bool{}, noApprove: map[string]bool{}, checkoutOff: map[string]bool{},
+		sensitiveType: map[string]bool{}, settings: &vaultv1.SecuritySettings{RequireMfaForSensitiveCheckout: true}}
 }
 
 func (f *fakeVaultClient) denyRead(secretID, userID string) {
@@ -68,8 +73,11 @@ func (f *fakeVaultClient) GetSecret(_ context.Context, in *vaultv1.GetSecretRequ
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	typeID := "type-checkout"
-	if f.checkoutOff[in.GetId()] {
+	switch {
+	case f.checkoutOff[in.GetId()]:
 		typeID = "type-no-checkout"
+	case f.sensitiveType[in.GetId()]:
+		typeID = "type-sensitive-checkout"
 	}
 	return &vaultv1.GetSecretResponse{Secret: &vaultv1.Secret{Id: in.GetId(), TypeId: typeID}}, nil
 }
@@ -78,6 +86,8 @@ func (f *fakeVaultClient) ListSecretTypes(context.Context, *vaultv1.ListSecretTy
 	return &vaultv1.ListSecretTypesResponse{Types: []*vaultv1.SecretType{
 		{Id: "type-checkout", Name: "Domain account", Checkout: true},
 		{Id: "type-no-checkout", Name: "Password", Checkout: false},
+		{Id: "type-sensitive-checkout", Name: "Card", Checkout: true, Fields: []*vaultv1.SecretFieldDef{
+			{Key: "number", Sensitive: true, SuperSensitive: true}, {Key: "holder"}}},
 	}}, nil
 }
 
@@ -132,4 +142,22 @@ func (f *fakeVaultClient) MoveFolder(_ context.Context, in *vaultv1.MoveFolderRe
 
 func (f *fakeVaultClient) UpdateSecret(_ context.Context, in *vaultv1.UpdateSecretRequest, _ ...grpc.CallOption) (*vaultv1.UpdateSecretResponse, error) {
 	return &vaultv1.UpdateSecretResponse{Secret: &vaultv1.Secret{Id: in.GetId(), FolderId: in.GetDestFolderId()}}, nil
+}
+
+func (f *fakeVaultClient) GetSecuritySettings(context.Context, *vaultv1.GetSecuritySettingsRequest, ...grpc.CallOption) (*vaultv1.GetSecuritySettingsResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return &vaultv1.GetSecuritySettingsResponse{Settings: f.settings}, nil
+}
+
+func (f *fakeVaultClient) markSensitiveType(secretID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.sensitiveType[secretID] = true
+}
+
+func (f *fakeVaultClient) setSensitiveCheckoutMFA(on bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.settings = &vaultv1.SecuritySettings{RequireMfaForSensitiveCheckout: on}
 }

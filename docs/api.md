@@ -103,6 +103,13 @@ audit and notify are covered in [Calling other services](#calling-other-services
   in `VAULT_KEK_ROTATION_PRINCIPALS`, sent with `principal_kind: PRINCIPAL_KIND_WORKLOAD`. Only the
   gateway may call `RotateKek` and it never sends a workload actor, so with workload
   authentication on that path is reachable only with `WORKLOAD_AUTH=disabled`. Scheduled rotations are audited as `system:kek-scheduler`.
+- **Sensitive data switches:** with `allow_api_for_sensitive` off, a service account or
+  personal token is refused super-sensitive fields on `RevealSecretFieldForPrincipal`,
+  `PrepareSecretUse` and `RedeemSecretUse` (`PermissionDenied`, `API_SENSITIVE_DISABLED`, audited
+  as `secret.reveal.denied`). Step-up on reveal (`require_mfa_for_reveal`, overridden per folder
+  by `SetFolderRevealStepUp`, site admin only) refuses a person's `RevealSecretField` or
+  `CopySecret` without an MFA within `MFA_MAX_AGE` (`STEP_UP_REQUIRED`, audited as
+  `secret.reveal.step_up_required`). See [configuration.md](configuration.md#security-settings).
 - **Security settings:** before first-run setup has stored any (a store outside `dev`, `local`
   and `development` starts empty), `GetSecuritySettings` returns the defaults setup installs, and
   `UpdateSecuritySettings` starts from them.
@@ -122,6 +129,9 @@ audit and notify are covered in [Calling other services](#calling-other-services
 - **Check-out** runs as a saga: issue the lease, wait for check-in, rotate through the vault, then
   close the lease. If the run fails, a compensation releases the lease. A reaper closes leases
   that pass their expiry without a check-in, once a minute.
+- **Sensitive check-out:** with `require_mfa_for_sensitive_checkout` on (the default), checking
+  out a secret whose type has a super-sensitive field needs an MFA within `MFA_MAX_AGE`, or it's
+  refused with `STEP_UP_REQUIRED` and audited as `checkout.denied`.
 - **Who may check out:** the caller needs read (RACI C) on the secret, from the vault's
   `GetMySecretAccess` with the user's full context (groups, admin flags, MFA time), and the
   secret's type must have check-out on. A secret has at most one active lease (a unique index

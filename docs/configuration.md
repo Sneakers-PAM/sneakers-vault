@@ -13,6 +13,7 @@ at start. `.env.example` holds safe local defaults.
 | `GRPC_PORT` | `9090` | The gRPC listen port. Give each service its own port when they run on one host. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `localhost:4317` | OpenTelemetry OTLP gRPC endpoint for traces and metrics. |
 | `LOG_LEVEL`, `LOG_FORMAT` | `go-log` defaults | Log level and format. Local development uses `trace` and `console`; clusters log JSON. |
+| `MFA_MAX_AGE` | `5m` | How recent a user's MFA must be for every MFA-freshness check: version history and restore, step-up on reveal and copy, and checking out a sensitive secret. A Go duration from `1m` to `1h`; anything else stops the boot. Set the same value on both services. |
 
 ### Service-to-service authentication
 
@@ -39,7 +40,6 @@ Both services authenticate every caller and present their own token on outbound 
 | `DEV_KEK_SEED` | a built-in dev seed | `dev` only, with no `VAULT_ROOT_KEK`: the root key is derived from this string, so a dev database opens across restarts with no setup. It's public in the source; never use it outside development. |
 | `VAULT_DISABLE_DEV_STATIC_KEK` | `false` | `true` drops the decrypt-only static dev key (`dev-static-v1`) from the key ring. The vault refuses to boot with it set while any stored row still uses that key. |
 | `KEK_ROTATION_DAYS` | `90` | Seeds `kek_rotation_days` on a fresh instance's security settings. `0` turns automatic rotation off. Existing instances keep their stored value. |
-| `MFA_MAX_AGE` | `5m` | How recent a user's MFA must be for every MFA-freshness check (version history and restore). A Go duration from `1m` to `1h`; anything else stops the boot. The workflow service reads the same setting. |
 | `KEK_SCHEDULER_CHECK_MINUTES` | `60` | How often the automatic rotation scheduler checks the active working key's age. |
 | `VAULT_KEK_ROTATION_PRINCIPALS` | (empty: off) | Comma list of `system:<name>` principals that may call `RotateKek` besides a human site admin. See [runbook.md](runbook.md#rotating-the-working-key). |
 
@@ -76,6 +76,18 @@ openssl rand -base64 32
 
 The workflow service keeps its own tables (`workflow_schema_migrations`) and the saga engine's
 tables in the same database.
+
+## Security settings
+
+Site admins change these in the admin app (`UpdateSecuritySettings`); they're stored in the
+vault and take effect at once. "Super-sensitive" means a field the secret type marks
+`super_sensitive`, such as a card number, PIN, SSN or a private key.
+
+| Setting | Default | What it does |
+|---|---|---|
+| Allow API access to sensitive secrets (`allow_api_for_sensitive`) | off | Off: service accounts and personal tokens can't reveal, prepare or redeem a super-sensitive field (`API_SENSITIVE_DISABLED`). Ordinary password and sensitive fields stay available to them. On: they get super-sensitive fields too, under their usual access. People are never affected. |
+| Require MFA for sensitive checkout (`require_mfa_for_sensitive_checkout`) | on | On: checking out a secret whose type has any super-sensitive field needs an MFA within `MFA_MAX_AGE`; otherwise the workflow refuses with `STEP_UP_REQUIRED`. Other types aren't affected. Off: no MFA check at check-out. |
+| Require MFA before a reveal (`require_mfa_for_reveal`) | off | On: before a person reveals or copies a sensitive field, an MFA older than `MFA_MAX_AGE` is refused with `STEP_UP_REQUIRED`, and the web app asks for MFA again. Each folder can override it (inherit, require or off) for itself and its subfolders; the nearest folder that sets one wins. Only a site admin sets a folder's override. Machine principals are exempt. |
 
 ## Tools
 

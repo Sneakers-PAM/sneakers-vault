@@ -35,6 +35,10 @@ type Server struct {
 	log log.Logger
 	// audit records workflow events; nil only logs them.
 	audit Auditor
+	// mfaMaxAge is how recent MFA must be (MFA_MAX_AGE); 0 = default.
+	mfaMaxAge time.Duration
+	// now is the clock; nil = time.Now (tests pin it).
+	now func() time.Time
 }
 
 func New(store Store, saga *sagasdk.Saga, vault vaultv1.VaultServiceClient) *Server {

@@ -6974,8 +6974,9 @@ func (x *ListSecretVersionsResponse) GetVersions() []*SecretVersion {
 	return nil
 }
 
-// Reveal ONE field from a specific prior version; audited exactly like
-// RevealSecretField (sensitive), gated by the same reveal access.
+// Reveal ONE field from a specific version. Needs read on the secret plus the
+// recovery role (is_recovery) and an MFA within MFA_MAX_AGE, else
+// RECOVERY_ROLE_REQUIRED or STEP_UP_REQUIRED. Audited at the audit tier.
 type RevealSecretVersionFieldRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Actor         *ActorContext          `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor,omitempty"`
@@ -13099,10 +13100,17 @@ func (x *PasswordPolicy) GetDeletable() bool {
 }
 
 type SecuritySettings struct {
-	state                          protoimpl.MessageState `protogen:"open.v1"`
-	DefaultPasswordPolicyId        string                 `protobuf:"bytes,1,opt,name=default_password_policy_id,json=defaultPasswordPolicyId,proto3" json:"default_password_policy_id,omitempty"`
-	RequireMfaForSensitiveCheckout bool                   `protobuf:"varint,3,opt,name=require_mfa_for_sensitive_checkout,json=requireMfaForSensitiveCheckout,proto3" json:"require_mfa_for_sensitive_checkout,omitempty"`
-	AllowApiForSensitive           bool                   `protobuf:"varint,4,opt,name=allow_api_for_sensitive,json=allowApiForSensitive,proto3" json:"allow_api_for_sensitive,omitempty"`
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	DefaultPasswordPolicyId string                 `protobuf:"bytes,1,opt,name=default_password_policy_id,json=defaultPasswordPolicyId,proto3" json:"default_password_policy_id,omitempty"`
+	// On (the default): checking out a secret whose type has any
+	// super-sensitive field needs an MFA within MFA_MAX_AGE, else the workflow
+	// refuses with STEP_UP_REQUIRED. Other types are unaffected.
+	RequireMfaForSensitiveCheckout bool `protobuf:"varint,3,opt,name=require_mfa_for_sensitive_checkout,json=requireMfaForSensitiveCheckout,proto3" json:"require_mfa_for_sensitive_checkout,omitempty"`
+	// Off (the default): service accounts and personal tokens can't reveal,
+	// prepare or redeem super-sensitive fields (API_SENSITIVE_DISABLED).
+	// Ordinary password and sensitive fields stay available to them. People
+	// are unaffected.
+	AllowApiForSensitive bool `protobuf:"varint,4,opt,name=allow_api_for_sensitive,json=allowApiForSensitive,proto3" json:"allow_api_for_sensitive,omitempty"`
 	// Days a resolved access request is retained before the daily purge job
 	// deletes it (and its comment thread) from the workflow DB. 0 = default (90).
 	RequestHistoryRetentionDays int32 `protobuf:"varint,5,opt,name=request_history_retention_days,json=requestHistoryRetentionDays,proto3" json:"request_history_retention_days,omitempty"`
@@ -13111,8 +13119,11 @@ type SecuritySettings struct {
 	// effective value to [900, 3600] (15m-60m).
 	SessionTtlSeconds int32 `protobuf:"varint,6,opt,name=session_ttl_seconds,json=sessionTtlSeconds,proto3" json:"session_ttl_seconds,omitempty"`
 	KekRotationDays   int32 `protobuf:"varint,7,opt,name=kek_rotation_days,json=kekRotationDays,proto3" json:"kek_rotation_days,omitempty"` // 0 = auto-rotation off; admin override of KEK_ROTATION_DAYS
-	// Global default for step-up MFA before a reveal; folders override it
-	// (Folder.reveal_step_up).
+	// Global default for step-up MFA before a person reveals or copies a
+	// sensitive field: when it applies, an MFA older than MFA_MAX_AGE is
+	// refused with STEP_UP_REQUIRED. The nearest folder that sets
+	// Folder.reveal_step_up overrides it. Machine principals are exempt
+	// (allow_api_for_sensitive covers them). Off by default.
 	RequireMfaForReveal bool `protobuf:"varint,8,opt,name=require_mfa_for_reveal,json=requireMfaForReveal,proto3" json:"require_mfa_for_reveal,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache

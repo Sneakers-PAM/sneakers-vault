@@ -210,6 +210,9 @@ func (s *Server) UpdateSecuritySettings(ctx context.Context, req *vaultv1.Update
 	if req.AllowApiForSensitive != nil {
 		s.settings.AllowApiForSensitive = req.GetAllowApiForSensitive()
 	}
+	if req.RequireMfaForReveal != nil {
+		s.settings.RequireMfaForReveal = req.GetRequireMfaForReveal()
+	}
 	if req.RequestHistoryRetentionDays != nil {
 		s.settings.RequestHistoryRetentionDays = req.GetRequestHistoryRetentionDays()
 	}

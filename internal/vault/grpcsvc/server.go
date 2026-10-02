@@ -324,7 +324,8 @@ var mutatingMethods = map[string]bool{
 	// too (same access accounting as RevealSecretField).
 	"RevealSecretVersionField": true,
 	// RestoreSecretVersion writes a new current record.
-	"RestoreSecretVersion": true,
+	"RestoreSecretVersion":  true,
+	"SetFolderRevealStepUp": true,
 	// Lifecycle: retire/restore flip Secret.retired; delete hard-removes the
 	// secret (and its encrypted record) from the store slice.
 	"RetireSecret": true, "RestoreSecret": true, "DeleteSecret": true,

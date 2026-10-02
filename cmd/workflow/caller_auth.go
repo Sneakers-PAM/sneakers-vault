@@ -6,8 +6,10 @@ package main
 import (
 	"context"
 	"os"
+	"time"
 
 	log "github.com/Bugs5382/go-log"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/grpcsvc"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workloadauth"
@@ -58,4 +60,13 @@ func mustDialAudit(logger zerolog.Logger) *grpc.ClientConn {
 		logger.Fatal().Err(err).Str("audit", addr).Msg("dial audit")
 	}
 	return conn
+}
+
+// mustMFAMaxAge reads MFA_MAX_AGE and stops the boot on a bad value.
+func mustMFAMaxAge(logger zerolog.Logger) time.Duration {
+	d, err := config.MFAMaxAge(os.Getenv)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("MFA freshness window")
+	}
+	return d
 }

@@ -410,6 +410,9 @@ func (s *Server) RevealSecretField(ctx context.Context, req *vaultv1.RevealSecre
 	if !s.canRead(req.GetActor(), sec) {
 		return nil, status.Error(codes.PermissionDenied, "not permitted to reveal this secret")
 	}
+	if err := s.checkRevealStepUp(ctx, req.GetActor(), sec, "reveal"); err != nil {
+		return nil, err
+	}
 	rec, ok := s.records[sec.Id]
 	if !ok {
 		return nil, errNotFound("secret value")
@@ -469,6 +472,9 @@ func (s *Server) revealForPrincipal(ctx context.Context, actor *vaultv1.ActorCon
 	sensitive := s.isSensitiveField(s.findType(sec.TypeId), fieldKey)
 	if !s.canRead(actor, sec) {
 		return nil, status.Error(codes.PermissionDenied, "not permitted to reveal this secret")
+	}
+	if err := s.checkAPIForSensitive(ctx, actor, sec, fieldKey, "reveal"); err != nil {
+		return nil, err
 	}
 	rec, ok := s.records[sec.Id]
 	if !ok {
@@ -548,6 +554,9 @@ func (s *Server) CopySecret(ctx context.Context, req *vaultv1.CopySecretRequest)
 	}
 	if !s.canRead(req.GetActor(), sec) {
 		return nil, status.Error(codes.PermissionDenied, "not permitted to copy this secret")
+	}
+	if err := s.checkRevealStepUp(ctx, req.GetActor(), sec, "copy"); err != nil {
+		return nil, err
 	}
 	t := s.findType(sec.TypeId)
 	var key string
