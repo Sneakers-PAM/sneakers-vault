@@ -1,6 +1,11 @@
+# .protos/ holds the callee protos scripts/proto-generate.sh fetches at the
+# commits pinned in proto-refs.env. Their owners maintain them; they're never
+# edited or committed here.
 version: v2
 modules:
   - path: proto
+  - path: .protos/sneakers-audit
+  - path: .protos/sneakers-notify
 lint:
   use: [STANDARD]
 breaking:

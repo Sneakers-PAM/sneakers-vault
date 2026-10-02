@@ -4,7 +4,8 @@ Both services speak gRPC with plaintext transport and trust the actor context th
 Only the gateway, which sets that context from the signed-in session, should reach them. The full
 definitions are [vault.proto](../proto/sneakers/vault/v1/vault.proto) and
 [workflow.proto](../proto/sneakers/workflow/v1/workflow.proto); the generated Go is under
-`gen/go/sneakers/`. Both servers also serve gRPC health and reflection.
+`gen/go/sneakers/`. Both servers also serve gRPC health and reflection. The vault's own calls to
+audit and notify are covered in [Calling other services](#calling-other-services).
 
 ## Vault: `sneakers.vault.v1.VaultService`
 
@@ -98,3 +99,22 @@ definitions are [vault.proto](../proto/sneakers/vault/v1/vault.proto) and
   approval performs the move.
 - **Retention:** resolved requests and their comments are purged after
   `request_history_retention_days` (vault security settings, default 90), daily and at start.
+
+## Calling other services
+
+The vault never imports another service's Go module. It generates its own client stubs from each
+callee's protos, pinned by commit:
+
+- `proto-refs.env` pins each callee: `SNEAKERS_AUDIT_REF=<commit>` for `Sneakers-PAM/sneakers-audit`
+  and `SNEAKERS_NOTIFY_REF=<commit>` for `Sneakers-PAM/sneakers-notify`.
+- `scripts/proto-generate.sh` downloads only the callee's `proto/` at that commit into `.protos/`
+  (git-ignored) and runs `buf generate`. The stubs land in `gen/go/thirdparty/audit/v1` and
+  `gen/go/thirdparty/notify/v1`, inside this module, so they can't collide with the owner's Go
+  packages. The stubs are committed, so a build needs no network; the protos never are.
+- To try an unmerged proto change, point `SNEAKERS_AUDIT_PROTO_DIR` and `SNEAKERS_NOTIFY_PROTO_DIR`
+  at a local `proto/` directory and run the script.
+- To move to a newer callee, change its ref, run the script and commit `proto-refs.env` and `gen/`
+  together. Build & Test fails when `gen/` doesn't match the pins.
+- The `proto-sync` check (from `Sneakers-PAM/.github`) fails a PR whose pin isn't on the owner's
+  `main` or that the owner's `main` breaks, and warns when `main` has moved on. On a schedule it
+  opens a PR that bumps stale pins.

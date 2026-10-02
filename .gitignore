@@ -17,3 +17,6 @@ coverage.*
 
 # local environment - copy .env.example to .env
 .env
+
+# callee protos fetched by scripts/proto-generate.sh
+/.protos/

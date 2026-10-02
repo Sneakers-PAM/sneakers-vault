@@ -56,21 +56,23 @@ jobs:
           go install "github.com/bufbuild/buf/cmd/buf@${BUF_VERSION}"
           go install "google.golang.org/protobuf/cmd/protoc-gen-go@${PROTOC_GEN_GO_VERSION}"
           go install "google.golang.org/grpc/cmd/protoc-gen-go-grpc@${PROTOC_GEN_GO_GRPC_VERSION}"
+      # Fetches the callee protos pinned in proto-refs.env, which buf lint
+      # needs too, so it runs first.
+      - name: Generated code is current
+        run: |
+          scripts/proto-generate.sh
+          git diff --exit-code -- gen
+          test -z "$(git status --porcelain -- gen)"
       - name: buf lint
         run: buf lint
       - name: buf breaking
         run: |
           if git cat-file -e origin/main:proto 2>/dev/null; then
             git worktree add -q --detach "$RUNNER_TEMP/base" origin/main
-            buf breaking --against "$RUNNER_TEMP/base"
+            buf breaking proto --against "$RUNNER_TEMP/base/proto"
           else
             echo "main has no proto yet; nothing to compare against"
           fi
-      - name: Generated code is current
-        run: |
-          buf generate
-          git diff --exit-code -- gen
-          test -z "$(git status --porcelain -- gen)"
       - name: gofmt
         run: |
           unformatted="$(gofmt -l .)"

@@ -1,8 +1,30 @@
+# Managed mode only rewrites go_package for the callee protos, so their stubs
+# land in this module's gen/go/thirdparty and can't collide with the owner's Go
+# package. The other managed options are off, which keeps the descriptors
+# identical to the owner's.
 version: v2
+managed:
+  enabled: true
+  disable:
+    - file_option: java_package
+    - file_option: java_outer_classname
+    - file_option: java_multiple_files
+    - file_option: objc_class_prefix
+    - file_option: csharp_namespace
+    - file_option: php_namespace
+    - file_option: php_metadata_namespace
+    - file_option: ruby_package
+  override:
+    - file_option: go_package
+      path: sneakers/audit/v1
+      value: github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1;auditv1
+    - file_option: go_package
+      path: sneakers/notify/v1
+      value: github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/notify/v1;notifyv1
 plugins:
   - local: protoc-gen-go
-    out: gen/go
-    opt: paths=source_relative
+    out: .
+    opt: module=github.com/Sneakers-PAM/sneakers-vault
   - local: protoc-gen-go-grpc
-    out: gen/go
-    opt: paths=source_relative
+    out: .
+    opt: module=github.com/Sneakers-PAM/sneakers-vault

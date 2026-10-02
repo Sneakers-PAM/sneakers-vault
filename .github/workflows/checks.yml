@@ -3,11 +3,17 @@ name: checks
 # commits, title and body. The ruleset on main requires its `checks / scrub`
 # status, so the caller job keeps the id `checks`. `edited` reruns it when the
 # PR title or body changes.
+#
+# proto-sync checks the callee proto pins in proto-refs.env on each PR, and on
+# the schedule opens a PR that bumps stale ones; only that job can write.
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
   push:
     branches: [main]
+  schedule:
+    - cron: "23 10 * * 1-5"
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -15,7 +21,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   checks:
-    if: github.event.pull_request.draft != true
+    if: >-
+      (github.event_name == 'pull_request' || github.event_name == 'push')
+      && github.event.pull_request.draft != true
     uses: Sneakers-PAM/.github/.github/workflows/scrub.yml@main
     with:
       # Public module hosts that appear in go.mod and go.sum: gonum.org and
@@ -31,3 +39,18 @@ jobs:
         docusign.com
         fx.ca
         x1a9.sneakers.vault.v1.getheartbeatstatusforprincipalresponsebizggithub.com
+  proto-sync:
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft != true
+    permissions:
+      contents: read
+    uses: Sneakers-PAM/.github/.github/workflows/proto-sync.yml@f73a16590cd3b7415cade0ad0068dcc3e3e05930
+    with:
+      tools-ref: f73a16590cd3b7415cade0ad0068dcc3e3e05930
+  proto-refresh:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: Sneakers-PAM/.github/.github/workflows/proto-sync.yml@f73a16590cd3b7415cade0ad0068dcc3e3e05930
+    with:
+      tools-ref: f73a16590cd3b7415cade0ad0068dcc3e3e05930

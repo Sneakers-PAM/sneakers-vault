@@ -34,9 +34,12 @@ or values.
 - Build: `task build`
 - Test: `task test`; set `TEST_DATABASE_DSN` (vault) and `WORKFLOW_PG_DSN` (workflow) to run the
   Postgres integration tests (see README.md), otherwise they are skipped.
-- Lint: `task lint`, plus `buf lint` for the protos.
-- Generated code: `buf generate` with the plugin versions pinned in
-  `.github/workflows/job-go-lang-ci.yaml`.
+- Lint: `task lint`, plus `buf lint` for the protos (after `scripts/proto-generate.sh` has
+  fetched the audit and notify protos).
+- Generated code: `scripts/proto-generate.sh`, with the plugin versions pinned in
+  `.github/workflows/job-go-lang-ci.yaml`. The audit and notify client stubs in
+  `gen/go/thirdparty/` come from the commits pinned in `proto-refs.env` (see docs/api.md,
+  "Calling other services").
 - Images: `docker build --target vault .` (or `workflow`, `seed-catalog`, `seed`).
 - License headers: `task license` (golic, the Apache-2.0 SPDX header in `.golic.yaml`).
 

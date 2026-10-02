@@ -9,7 +9,7 @@ import (
 	"context"
 	"time"
 
-	notifyv1 "github.com/Sneakers-PAM/sneakers-notify/gen/go/sneakers/notify/v1"
+	notifyv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/notify/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
 )
 

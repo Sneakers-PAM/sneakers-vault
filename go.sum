@@ -16,10 +16,6 @@ github.com/Bugs5382/go-seed v1.0.1 h1:KUQy2YOBGPWUJkD0U1t58l3d3qGl0LkUuKOrKieWAv
 github.com/Bugs5382/go-seed v1.0.1/go.mod h1:jMuXZ2RDXhz/CpdpQVEIWc7ibLQzflTmLt0ulmi0Ero=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
-github.com/Sneakers-PAM/sneakers-audit v0.0.0-20261002074856-31fe7af87c02 h1:cLzEI+rclmXdbTPTS6uQwk4uw6Vn43XbFkM/3lSAqAw=
-github.com/Sneakers-PAM/sneakers-audit v0.0.0-20261002074856-31fe7af87c02/go.mod h1:BMYyWSeooMrbrqxkVFMszV6Qzxvysz69E20Jntz0x8w=
-github.com/Sneakers-PAM/sneakers-notify v0.0.0-20261002075504-e1877c1cdb89 h1:AVaySWr5wQAZJ7gS5NRu5K9p9eFpYaLxHKXPIwPXxD0=
-github.com/Sneakers-PAM/sneakers-notify v0.0.0-20261002075504-e1877c1cdb89/go.mod h1:BGZZbVAjllu2KwS2y8qTDmHIOT2Kh+B00mkEUZ5a2Fk=
 github.com/alicebob/miniredis/v2 v2.38.0 h1:nZAzCR+Lj+Vxk4ZXzm2NuKq2O33RXj1XxJ2e2uP9jiw=
 github.com/alicebob/miniredis/v2 v2.38.0/go.mod h1:TcL7YfarKPGDAthEtl5NBeHZfeUQj6OXMm/+iu5cLMM=
 github.com/antlr4-go/antlr/v4 v4.13.0 h1:lxCg3LAv+EUK6t1i0y1V6/SLeUi0eKEKdhQAlS8TVTI=
@@ -137,8 +133,8 @@ go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0 h1:oECp5f+hN7nkwjU/8BxQ/q23bGPb8FIrD839owX222E=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0/go.mod h1:DqEFwLumhzMBDQv9PcWbyoDxHI/4lAk6CM4nJBH39sc=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0 h1:LMuyCAyfalSjDyjdC65nK6N0zoTT63+E/u95X0JovZI=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0/go.mod h1:085m8qbm4hgc8rZWGDEa4vmyyo2c3nPxUslYUKUIU04=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 h1:F7Jx+6hwnZ41NSFTO5q4LYDtJRXBf2PD0rNBkeB/lus=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0/go.mod h1:UHB22Z8QsdRDrnAtX4PntOl36ajSxcdUMt1sF7Y6E7Q=
 go.opentelemetry.io/otel v1.45.0 h1:pdrWmLHofpubmArBv1LgFSv1Z0Ie/ppdZzu+kUN5EeU=
 go.opentelemetry.io/otel v1.45.0/go.mod h1:XZxIqPapzEYnhNSScF5DIqXhm/rYi0FzCe2XddAwZfQ=
 go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.45.0 h1:klTViGcsvLCd1xN3rZzfZ12NslC/OimbmR+k+A006RI=

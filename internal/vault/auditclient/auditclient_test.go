@@ -6,7 +6,7 @@ package auditclient
 import (
 	"testing"
 
-	auditv1 "github.com/Sneakers-PAM/sneakers-audit/gen/go/sneakers/audit/v1"
+	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/audit"
 )
 
