@@ -5,36 +5,43 @@ hook-enforced rules). Keep this file current when the build, layout, or public A
 
 ## What this is
 
-Sneakers vault and workflow services: secrets, versions, rotation, heartbeat state and approvals (with their gRPC APIs)
-
-<!-- Fill in: what the project does, what it ships (library, service, action, CLI), and the one or
-two things an agent must understand before changing it. -->
-
-## Using sneakers-vault
-
-<!-- If this project is consumed by others (a library/plugin/action), describe the contract a
-consumer must respect: the single entry point, the public surface, required options, and anything
-that must not be bypassed. Delete this section for a leaf application. -->
+Two Sneakers services built from one repository: the vault (`sneakers.vault.v1.VaultService`,
+secrets with envelope encryption, folders, RACI access rules, versions, heartbeat and rotation
+state) and the workflow service (`sneakers.workflow.v1.WorkflowService`, check-out leases and
+approvals). They run as separate processes with separate Postgres databases and ship as two
+images. Before changing the vault, know that its crypto and key ring (`internal/vault/crypto`,
+the `kek_*` files in `internal/vault/grpcsvc`) decide whether stored secrets can ever be opened
+again: change them only with tests that prove old records still open, and never log key material
+or values.
 
 ## Layout
 
-<!-- The directories that matter and what lives in each. Keep it short; point at the entry points. -->
-
-- `src/` - <what>
-- `<tests dir>/` - <what>
+- `cmd/vault/`, `cmd/workflow/` - the two service entrypoints.
+- `cmd/workflow-purge/` - the one-shot history purge; `cmd/seed-catalog/` - the built-in catalogue
+  upsert; `cmd/seed/` - dev demo data.
+- `internal/vault/` - the vault: `grpcsvc` (the service, its Postgres store and the tests;
+  `*_pg_test.go` and `main_pg_test.go` need Postgres), `crypto` (envelope and key ring), `authz`
+  (the RACI engine), `workloadid` (connector identity), `certsvc`, `catalogseed`, and the audit and
+  notify clients.
+- `internal/workflow/` - the workflow service: `grpcsvc` (service, saga, store) and `vaultclient`.
+- `internal/config/`, `internal/server/` - the env loader and the gRPC server bootstrap both use.
+- `proto/` - both APIs; `gen/go/` - the generated Go (committed, checked current in CI).
+- `migrations/vault/`, `migrations/workflow/` - each service's Postgres schema, forward only.
+- `docs/` - configuration, API, runbook, worker identity and type changes.
 
 ## Build, test, lint
 
-<!-- The exact commands. Pull these from package.json scripts (npm), the Taskfile (Go/Task), or
-pyproject (Python) so they stay accurate. -->
-
-- Build: `<command>`
-- Test: `<command>` (note any service/fixture the integration tests require)
-- Lint: `<command>`
-- Package checks (npm packages), after a build: `npm run check:pack` (contents and ceiling),
-  `npm run check:pack:growth` (growth against the last release), `npm run check:install`
-  (install the tarball, import ESM and CJS); see CLAUDE.md "npm package contents"
-- License headers / docs: `<command>`
+- Build: `task build`
+- Test: `task test`; set `TEST_DATABASE_DSN` (vault) and `WORKFLOW_PG_DSN` (workflow) to run the
+  Postgres integration tests (see README.md), otherwise they are skipped.
+- Lint: `task lint`, plus `buf lint` for the protos (after `scripts/proto-generate.sh` has
+  fetched the audit and notify protos).
+- Generated code: `scripts/proto-generate.sh`, with the plugin versions pinned in
+  `.github/workflows/job-go-lang-ci.yaml`. The audit and notify client stubs in
+  `gen/go/thirdparty/` come from the commits pinned in `proto-refs.env` (see docs/api.md,
+  "Calling other services").
+- Images: `docker build --target vault .` (or `workflow`, `seed-catalog`, `seed`).
+- License headers: `task license` (golic, the Apache-2.0 SPDX header in `.golic.yaml`).
 
 ## Logging
 
@@ -48,7 +55,8 @@ Follow the logging rules in `CLAUDE.md`. In short:
   qa/staging `info`, production `error`. Every cluster environment logs JSON. Set levels through
   `LOG_LEVEL` and `LOG_FORMAT`, never in code; local settings live in the run target or
   `.env.example`.
-- Never log secrets, tokens, or personal data, not even at `trace`. Log an opaque or keyed ID.
+- Never log secrets, tokens, key material or personal data, not even at `trace`. Log an opaque or
+  keyed ID.
 
 ## Conventions and gotchas
 
@@ -56,4 +64,7 @@ Follow the logging rules in `CLAUDE.md`. In short:
   `.claude/hooks` (run `bash .claude/hooks/install.sh` once per clone).
 - Open every PR as a draft. CI skips drafts, so run the full checks locally, push once they pass,
   and mark the PR ready when the work is finished; see CLAUDE.md "CI and Actions minutes".
-- <project-specific conventions, non-obvious constraints, and traps an agent should know>
+- Every commit carries a DCO sign-off (`git commit -s`); the `checks / scrub` job fails without it.
+- No real identifiers anywhere: fixtures use example.org, 192.0.2.0/24, 2001:db8::/32 and invented
+  names. Test keys are generated at test time; never commit key material.
+- The built-in catalogue is additive only: append new types, never reorder or alter existing ones.

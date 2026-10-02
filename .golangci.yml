@@ -1,4 +1,25 @@
+# Code-quality gate: complexity down, dead code pruned. Generated protobuf is
+# excluded (not hand-authored). golangci-lint v2.
 version: "2"
-
 linters:
-  default: standard
+  enable:
+    - gocyclo      # cyclomatic complexity
+    - gocognit     # cognitive complexity
+    - staticcheck
+    - unused       # provably-dead symbols
+    - govet
+    - ineffassign
+    - errcheck
+  settings:
+    gocyclo:
+      min-complexity: 15
+    gocognit:
+      min-complexity: 20
+  exclusions:
+    rules:
+      - path: '(\.pb\.go|_grpc\.pb\.go)$'
+        linters: [gocyclo, gocognit, staticcheck, unused, govet, errcheck, ineffassign]
+      # Tests carry legitimate setup/assertion complexity; the complexity
+      # gate targets production code, not test bodies.
+      - path: '_test\.go$'
+        linters: [gocyclo, gocognit]
