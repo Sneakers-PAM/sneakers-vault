@@ -43,14 +43,14 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft != true
     permissions:
       contents: read
-    uses: Sneakers-PAM/.github/.github/workflows/proto-sync.yml@f73a16590cd3b7415cade0ad0068dcc3e3e05930
+    uses: Sneakers-PAM/.github/.github/workflows/proto-sync.yml@79e08e14e14503bee04268e57c7a4b1467e2803f
     with:
-      tools-ref: f73a16590cd3b7415cade0ad0068dcc3e3e05930
+      tools-ref: 79e08e14e14503bee04268e57c7a4b1467e2803f
   proto-refresh:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
       pull-requests: write
-    uses: Sneakers-PAM/.github/.github/workflows/proto-sync.yml@f73a16590cd3b7415cade0ad0068dcc3e3e05930
+    uses: Sneakers-PAM/.github/.github/workflows/proto-sync.yml@79e08e14e14503bee04268e57c7a4b1467e2803f
     with:
-      tools-ref: f73a16590cd3b7415cade0ad0068dcc3e3e05930
+      tools-ref: 79e08e14e14503bee04268e57c7a4b1467e2803f
