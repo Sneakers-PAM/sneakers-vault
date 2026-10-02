@@ -124,14 +124,13 @@ func (s *Server) ensureHeartbeatScheduled(ctx context.Context, sec *vaultv1.Secr
 	if s.hb == nil || !s.secretHeartbeatEnabled(sec) {
 		return
 	}
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	if !s.rotationReachable(sec) {
-		l.Info().Str("secret_id", sec.GetId()).Str("target_id", sec.GetTargetId()).
-			Msg("heartbeat not scheduled: secret has no target with a connection")
+		l.Info("heartbeat not scheduled: secret has no target with a connection", log.F("secret_id", sec.GetId()), log.F("target_id", sec.GetTargetId()))
 		return
 	}
 	if err := s.hb.Ensure(ctx, sec.GetId(), int(sec.GetHeartbeatIntervalSeconds())); err != nil {
-		l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("create heartbeat schedule failed")
+		l.Error(err, "create heartbeat schedule failed", log.F("secret_id", sec.GetId()))
 	}
 }
 
@@ -148,14 +147,13 @@ func (s *Server) ensureRotationScheduled(ctx context.Context, sec *vaultv1.Secre
 	if days <= 0 {
 		return
 	}
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	if !s.rotationReachable(sec) {
-		l.Info().Str("secret_id", sec.GetId()).Str("target_id", sec.GetTargetId()).
-			Msg("rotation not scheduled: secret has no target with a connection")
+		l.Info("rotation not scheduled: secret has no target with a connection", log.F("secret_id", sec.GetId()), log.F("target_id", sec.GetTargetId()))
 		return
 	}
 	if err := s.rot.EnsureScheduled(ctx, sec.GetId(), days); err != nil {
-		l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("create rotation schedule failed")
+		l.Error(err, "create rotation schedule failed", log.F("secret_id", sec.GetId()))
 	}
 }
 
@@ -320,8 +318,8 @@ func (s *Server) SetSecretAutomation(ctx context.Context, req *vaultv1.SetSecret
 // still goes through. Caller holds s.mu (write).
 func (s *Server) applyAutomation(ctx context.Context, sec *vaultv1.Secret, disableRotation, disableHeartbeat bool, audit func(action string)) error {
 	if sec.GetBuiltinAdministrator() && sec.GetRotationOptOut() && !disableRotation {
-		l := log.Ctx(ctx)
-		l.Warn().Str("secret_id", sec.GetId()).Msg("rotation enable refused: built-in Administrator account")
+		l := s.lg(ctx)
+		l.Warn("rotation enable refused: built-in Administrator account", log.F("secret_id", sec.GetId()))
 		audit("secret.rotation.enable.refused")
 		return errBuiltinAdministrator
 	}
@@ -335,9 +333,9 @@ func (s *Server) applyAutomation(ctx context.Context, sec *vaultv1.Secret, disab
 }
 
 func (s *Server) setRotationOptOut(ctx context.Context, sec *vaultv1.Secret, optOut bool, audit func(action string)) {
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	sec.RotationOptOut = optOut
-	l.Info().Str("secret_id", sec.GetId()).Bool("rotation_opt_out", optOut).Msg("secret rotation automation changed")
+	l.Info("secret rotation automation changed", log.F("secret_id", sec.GetId()), log.F("rotation_opt_out", optOut))
 	if !optOut {
 		s.ensureRotationScheduled(ctx, sec)
 		audit("secret.rotation.enable")
@@ -345,16 +343,16 @@ func (s *Server) setRotationOptOut(ctx context.Context, sec *vaultv1.Secret, opt
 	}
 	if s.rot != nil {
 		if err := s.rot.Remove(ctx, sec.GetId()); err != nil {
-			l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("remove rotation schedule on opt-out failed")
+			l.Error(err, "remove rotation schedule on opt-out failed", log.F("secret_id", sec.GetId()))
 		}
 	}
 	audit("secret.rotation.disable")
 }
 
 func (s *Server) setHeartbeatOptOut(ctx context.Context, sec *vaultv1.Secret, optOut bool, audit func(action string)) {
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	sec.HeartbeatOptOut = optOut
-	l.Info().Str("secret_id", sec.GetId()).Bool("heartbeat_opt_out", optOut).Msg("secret heartbeat automation changed")
+	l.Info("secret heartbeat automation changed", log.F("secret_id", sec.GetId()), log.F("heartbeat_opt_out", optOut))
 	if !optOut {
 		s.ensureHeartbeatScheduled(ctx, sec)
 		audit("secret.heartbeat.enable")
@@ -362,7 +360,7 @@ func (s *Server) setHeartbeatOptOut(ctx context.Context, sec *vaultv1.Secret, op
 	}
 	if s.hb != nil {
 		if err := s.hb.Remove(ctx, sec.GetId()); err != nil {
-			l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("remove heartbeat schedule on opt-out failed")
+			l.Error(err, "remove heartbeat schedule on opt-out failed", log.F("secret_id", sec.GetId()))
 		}
 	}
 	audit("secret.heartbeat.disable")
@@ -529,9 +527,8 @@ func (s *Server) plainReadForPrincipal(ctx context.Context, actor *vaultv1.Actor
 		attrs["token_id"] = actor.GetTokenId()
 		attrs["via"] = "mcp"
 	}
-	l := log.Ctx(ctx)
-	l.Info().Str("secret_id", sec.GetId()).Str("field_key", fieldKey).
-		Str("principal_kind", actor.GetPrincipalKind().String()).Msg("principal read a non-sensitive field")
+	l := s.lg(ctx)
+	l.Info("principal read a non-sensitive field", log.F("secret_id", sec.GetId()), log.F("field_key", fieldKey), log.F("principal_kind", actor.GetPrincipalKind().String()))
 	s.emitAttrs(ctx, principalActorID(actor), "secret.read.principal", sec.Id+"#"+fieldKey, false, attrs)
 	return &vaultv1.RevealSecretFieldForPrincipalResponse{Value: val}
 }

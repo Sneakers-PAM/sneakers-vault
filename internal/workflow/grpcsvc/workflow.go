@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"time"
 
+	log "github.com/Bugs5382/go-log"
 	sagasdk "github.com/Bugs5382/go-saga-orchestration/saga"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	workflowv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/workflow/v1"
@@ -29,10 +30,23 @@ type Server struct {
 	// read grant that backs a lease (see raci.go). ResolveApproval grants on
 	// approve; the saga's close_lease step revokes when the lease ends.
 	vault vaultv1.VaultServiceClient
+	// log is the service logger; nil discards (tests that build a bare Server).
+	log log.Logger
 }
 
 func New(store Store, saga *sagasdk.Saga, vault vaultv1.VaultServiceClient) *Server {
 	return &Server{store: store, saga: saga, vault: vault}
+}
+
+// SetLogger sets the logger the workflow service writes through.
+func (s *Server) SetLogger(l log.Logger) { s.log = l }
+
+// lg returns the service logger correlated with the span in ctx.
+func (s *Server) lg(ctx context.Context) log.Logger {
+	if s.log == nil {
+		return log.Nop()
+	}
+	return s.log.Ctx(ctx)
 }
 
 func Register(gs *grpc.Server, s *Server) { workflowv1.RegisterWorkflowServiceServer(gs, s) }

@@ -3,13 +3,13 @@ module github.com/Sneakers-PAM/sneakers-vault
 go 1.26.6
 
 require (
-	github.com/Bugs5382/go-certkit v1.0.0
-	github.com/Bugs5382/go-log v1.2.1
+	github.com/Bugs5382/go-certkit v1.1.1
+	github.com/Bugs5382/go-log v1.3.0
 	github.com/Bugs5382/go-otel v1.3.2
 	github.com/Bugs5382/go-postgres v1.2.2
-	github.com/Bugs5382/go-redis v1.0.0
+	github.com/Bugs5382/go-redis v1.2.0
 	github.com/Bugs5382/go-saga-orchestration v0.7.0
-	github.com/Bugs5382/go-seed v1.0.0
+	github.com/Bugs5382/go-seed v1.0.1
 	github.com/Sneakers-PAM/sneakers-audit v0.0.0-20261001205656-04173a5f69e7
 	github.com/Sneakers-PAM/sneakers-notify v0.0.0-20261002014027-7322d3e5f0d3
 	github.com/alicebob/miniredis/v2 v2.38.0
@@ -17,12 +17,12 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
-	github.com/redis/go-redis/v9 v9.21.0
+	github.com/redis/go-redis/v9 v9.22.0
 	github.com/rs/zerolog v1.35.1
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/trace v1.45.0
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.57.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11
 )
@@ -61,7 +61,7 @@ require (
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect

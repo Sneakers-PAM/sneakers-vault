@@ -33,16 +33,14 @@ var skipsBuiltinAdministrator = map[string]bool{"checkin": true, "break-glass": 
 // refuseBuiltinAdministratorEnqueue handles an EnqueueRotation for the
 // built-in Administrator: nothing is scheduled either way.
 func (s *Server) refuseBuiltinAdministratorEnqueue(ctx context.Context, req *vaultv1.EnqueueRotationRequest) (*vaultv1.EnqueueRotationResponse, error) {
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	attrs := map[string]string{"reason": builtinAdministratorReason, "trigger": req.GetReason()}
 	if skipsBuiltinAdministrator[req.GetReason()] {
-		l.Info().Str("secret_id", req.GetSecretId()).Str("trigger", req.GetReason()).
-			Msg("rotation skipped: built-in Administrator account")
+		l.Info("rotation skipped: built-in Administrator account", log.F("secret_id", req.GetSecretId()), log.F("trigger", req.GetReason()))
 		s.emitAttrs(ctx, req.GetActor().GetUserId(), "rotate.skip", req.GetSecretId(), false, attrs)
 		return &vaultv1.EnqueueRotationResponse{Ok: true}, nil
 	}
-	l.Warn().Str("secret_id", req.GetSecretId()).Str("trigger", req.GetReason()).
-		Msg("rotation refused: built-in Administrator account")
+	l.Warn("rotation refused: built-in Administrator account", log.F("secret_id", req.GetSecretId()), log.F("trigger", req.GetReason()))
 	s.emitAttrs(ctx, req.GetActor().GetUserId(), "rotate.refused", req.GetSecretId(), false, attrs)
 	return nil, errBuiltinAdministrator
 }
@@ -58,17 +56,17 @@ func (s *Server) applyAccountFlags(ctx context.Context, sec *vaultv1.Secret, req
 	if req.BuiltinAdministrator != nil && req.GetBuiltinAdministrator() != sec.GetBuiltinAdministrator() {
 		changed = true
 		sec.BuiltinAdministrator = req.GetBuiltinAdministrator()
-		l := log.Ctx(ctx)
+		l := s.lg(ctx)
 		if sec.BuiltinAdministrator {
-			l.Warn().Str("secret_id", sec.GetId()).Msg("secret is the built-in Administrator account: rotation stopped, heartbeat continues")
+			l.Warn("secret is the built-in Administrator account: rotation stopped, heartbeat continues", log.F("secret_id", sec.GetId()))
 			if s.rot != nil {
 				if err := s.rot.Remove(ctx, sec.GetId()); err != nil {
-					l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("remove rotation schedule for built-in Administrator failed")
+					l.Error(err, "remove rotation schedule for built-in Administrator failed", log.F("secret_id", sec.GetId()))
 				}
 			}
 			sec.NextRotationAt = ""
 		} else {
-			l.Info().Str("secret_id", sec.GetId()).Msg("secret is no longer the built-in Administrator account")
+			l.Info("secret is no longer the built-in Administrator account", log.F("secret_id", sec.GetId()))
 			s.ensureRotationScheduled(ctx, sec)
 		}
 	}
@@ -106,7 +104,7 @@ func (s *Server) refuseBuiltinAdministratorReport(ctx context.Context, req *vaul
 	} else if err := s.vers.DiscardStaged(ctx, secID); err != nil {
 		return nil, status.Errorf(codes.Internal, "discard staged: %v", err)
 	}
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	if err := s.rot.Remove(ctx, secID); err != nil {
 		return nil, status.Errorf(codes.Internal, "remove rotation schedule: %v", err)
 	}
@@ -119,8 +117,7 @@ func (s *Server) refuseBuiltinAdministratorReport(ctx context.Context, req *vaul
 	sec.BuiltinAdministrator = true
 	sec.NextRotationAt = ""
 	s.mu.Unlock()
-	l.Warn().Str("secret_id", secID).Int32("version", req.GetVersion()).
-		Msg("rotation refused by connector: built-in Administrator account; staging discarded, schedule removed")
+	l.Warn("rotation refused by connector: built-in Administrator account; staging discarded, schedule removed", log.F("secret_id", secID), log.F("version", req.GetVersion()))
 	s.emitAttrs(ctx, "connector", "rotate.refused", secID, false, map[string]string{"reason": builtinAdministratorReason})
 	return &vaultv1.ReportRotationResponse{Ok: true}, nil
 }

@@ -60,6 +60,9 @@ type NotifyEvent struct {
 type Server struct {
 	vaultv1.UnimplementedVaultServiceServer
 
+	// log is the service logger; nil discards (tests that build a bare Server).
+	log log.Logger
+
 	mu          sync.RWMutex
 	types       []*vaultv1.SecretType
 	folders     []*vaultv1.Folder
@@ -261,15 +264,15 @@ func (s *Server) writeTx(ctx context.Context, mutate func(ctx context.Context) e
 		// A handler can change memory before it refuses; the transaction rolled
 		// back, so drop those changes too or this replica diverges from the rest.
 		if rerr := s.refresh(ctx, s.store); rerr != nil {
-			l := log.Ctx(ctx)
-			l.Warn().Err(rerr).Msg("vault re-sync after refused write failed")
+			l := s.lg(ctx)
+			l.Warn("vault re-sync after refused write failed", log.F("error", rerr.Error()))
 		}
 		return mutErr
 	}
 	if err != nil {
 		if rerr := s.refresh(ctx, s.store); rerr != nil {
-			l := log.Ctx(ctx)
-			l.Warn().Err(rerr).Msg("vault re-sync after failed write failed")
+			l := s.lg(ctx)
+			l.Warn("vault re-sync after failed write failed", log.F("error", rerr.Error()))
 		}
 		return fmt.Errorf("%w: %w", errStatePersist, err)
 	}
@@ -360,8 +363,8 @@ func (s *Server) PersistUnary(ctx context.Context, req any, info *grpc.UnaryServ
 		return herr
 	})
 	if errors.Is(err, errStatePersist) {
-		l := log.Ctx(ctx)
-		l.Error().Err(err).Str("rpc", method).Msg("persist after mutation failed")
+		l := s.lg(ctx)
+		l.Error(err, "persist after mutation failed", log.F("rpc", method))
 		return nil, status.Error(codes.Unavailable, "the change could not be saved; retry")
 	}
 	if err != nil {
@@ -423,6 +426,17 @@ func (s *Server) emitTierErr(ctx context.Context, tier audit.Tier, actor, action
 
 // SetNotifier installs the notification sink (called from cmd/vault).
 func (s *Server) SetNotifier(n Notifier) { s.notifier = n }
+
+// SetLogger sets the logger the vault writes through.
+func (s *Server) SetLogger(l log.Logger) { s.log = l }
+
+// lg returns the service logger correlated with the span in ctx.
+func (s *Server) lg(ctx context.Context) log.Logger {
+	if s.log == nil {
+		return log.Nop()
+	}
+	return s.log.Ctx(ctx)
+}
 
 // SetHeartbeat installs the heartbeat queue (pool-backed) + worker-identity
 // verifier (called from cmd/vault after the pool is opened).

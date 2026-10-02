@@ -93,7 +93,7 @@ func (s *Server) BreakGlassSecret(ctx context.Context, req *vaultv1.BreakGlassSe
 	// The audit above is now the authoritative record of this reveal. Everything
 	// below is best-effort operational bookkeeping: none of it may deny or
 	// unwind emergency access that has already been recorded.
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 
 	// Forced post-use rotation: enqueue only rotation-capable secrets (managed
 	// remote accounts with a password field). A static/personal entry has nothing
@@ -102,7 +102,7 @@ func (s *Server) BreakGlassSecret(ctx context.Context, req *vaultv1.BreakGlassSe
 	postRotationScheduled := false
 	if s.rot != nil && rotationCapable {
 		if err := s.rot.Enqueue(ctx, secID, "break-glass", intervalDays); err != nil {
-			l.Error().Err(err).Str("secret_id", secID).Msg("break-glass: enqueue post-use rotation failed")
+			l.Error(err, "break-glass: enqueue post-use rotation failed", log.F("secret_id", secID))
 		} else {
 			postRotationScheduled = true
 		}
@@ -114,7 +114,7 @@ func (s *Server) BreakGlassSecret(ctx context.Context, req *vaultv1.BreakGlassSe
 	notified := ownerUserID != ""
 	if s.bg != nil {
 		if err := s.bg.Insert(ctx, eventID, secID, actor, reason, postRotationScheduled, notified); err != nil {
-			l.Error().Err(err).Str("secret_id", secID).Msg("break-glass: ledger insert failed")
+			l.Error(err, "break-glass: ledger insert failed", log.F("secret_id", secID))
 		}
 	}
 

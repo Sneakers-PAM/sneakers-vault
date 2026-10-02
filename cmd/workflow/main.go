@@ -100,7 +100,9 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("build saga engine")
 	}
+	svcLog := log.NewLogger(serviceName)
 	svc := grpcsvc.New(st, engine, vault)
+	svc.SetLogger(svcLog)
 	if err := svc.SeedIfEmpty(ctx); err != nil {
 		logger.Fatal().Err(err).Msg("seed")
 	}
@@ -109,7 +111,7 @@ func main() {
 	go svc.RunHistoryPurge(ctx, historyPurgeInterval, vault)
 
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	if err := server.Run(ctx, cfg.GRPCPort, func(gs *grpc.Server) {
+	if err := server.RunWithLogger(ctx, cfg.GRPCPort, svcLog, func(gs *grpc.Server) {
 		grpcsvc.Register(gs, svc)
 	}); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")

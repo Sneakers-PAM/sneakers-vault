@@ -82,8 +82,8 @@ func (s *Server) publishInvalidate(ctx context.Context, kind, id string) {
 		return
 	}
 	if perr := s.redis.Redis().Publish(ctx, s.invChannel, payload).Err(); perr != nil {
-		l := log.Ctx(ctx)
-		l.Warn().Err(perr).Str("channel", s.invChannel).Msg("vault invalidate publish failed")
+		l := s.lg(ctx)
+		l.Warn("vault invalidate publish failed", log.F("error", perr.Error()), log.F("channel", s.invChannel))
 	}
 }
 
@@ -125,8 +125,8 @@ func (s *Server) refresh(ctx context.Context, st Store) error {
 	s.hydrate(loaded)
 	s.mu.Unlock()
 	if rerr := s.reconcileKeyring(ctx); rerr != nil {
-		l := log.Ctx(ctx)
-		l.Warn().Err(rerr).Msg("vault reconcile keyring after reload failed")
+		l := s.lg(ctx)
+		l.Warn("vault reconcile keyring after reload failed", log.F("error", rerr.Error()))
 	}
 	return nil
 }
@@ -140,9 +140,9 @@ func (s *Server) refresh(ctx context.Context, st Store) error {
 // No-op (returns immediately) when Redis is not wired. Intended to be launched
 // in its own goroutine.
 func (s *Server) RunInvalidationSubscriber(ctx context.Context) {
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	if s.redis == nil || s.invChannel == "" {
-		l.Warn().Msg("vault invalidate subscriber disabled: no Redis (single-replica reads only)")
+		l.Warn("vault invalidate subscriber disabled: no Redis (single-replica reads only)")
 		return
 	}
 	trigger := make(chan struct{}, 1)
@@ -152,7 +152,7 @@ func (s *Server) RunInvalidationSubscriber(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		l.Warn().Err(err).Msg("vault invalidate subscription lost; reconnecting")
+		l.Warn("vault invalidate subscription lost; reconnecting", log.F("error", err.Error()))
 		if !sleepCtx(ctx, s.invBackoffD) {
 			return
 		}
@@ -165,8 +165,8 @@ func (s *Server) RunInvalidationSubscriber(ctx context.Context) {
 func (s *Server) subscribeLoop(ctx context.Context, trigger chan<- struct{}) error {
 	sub := s.redis.Redis().Subscribe(ctx, s.invChannel)
 	defer func() { _ = sub.Close() }()
-	l := log.Ctx(ctx)
-	l.Info().Str("channel", s.invChannel).Msg("vault invalidate subscriber connected")
+	l := s.lg(ctx)
+	l.Info("vault invalidate subscriber connected", log.F("channel", s.invChannel))
 	for {
 		if _, err := sub.ReceiveMessage(ctx); err != nil {
 			return err
@@ -180,7 +180,7 @@ func (s *Server) subscribeLoop(ctx context.Context, trigger chan<- struct{}) err
 
 // reloadWorker debounces trigger signals and reloads the store once per burst.
 func (s *Server) reloadWorker(ctx context.Context, trigger <-chan struct{}) {
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	for {
 		select {
 		case <-ctx.Done():
@@ -194,7 +194,7 @@ func (s *Server) reloadWorker(ctx context.Context, trigger <-chan struct{}) {
 			default:
 			}
 			if err := s.reload(ctx); err != nil {
-				l.Warn().Err(err).Msg("vault reload after invalidate failed")
+				l.Warn("vault reload after invalidate failed", log.F("error", err.Error()))
 			}
 		}
 	}

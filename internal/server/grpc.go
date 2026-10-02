@@ -12,6 +12,7 @@ import (
 	"net"
 	"time"
 
+	log "github.com/Bugs5382/go-log"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -32,6 +33,12 @@ const gracefulStopTimeout = 10 * time.Second
 // Optional grpc.ServerOptions (e.g. interceptors) are passed through to
 // grpc.NewServer; callers that pass none get the previous behaviour.
 func Run(ctx context.Context, port string, register func(*grpc.Server), opts ...grpc.ServerOption) error {
+	return RunWithLogger(ctx, port, log.Nop(), register, opts...)
+}
+
+// RunWithLogger is Run with lg logging the panics the recovery interceptors
+// catch. Run itself discards them.
+func RunWithLogger(ctx context.Context, port string, lg log.Logger, register func(*grpc.Server), opts ...grpc.ServerOption) error {
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
@@ -57,8 +64,8 @@ func Run(ctx context.Context, port string, register func(*grpc.Server), opts ...
 	// panics on a second).
 	defaults := []grpc.ServerOption{
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
-		grpc.ChainUnaryInterceptor(RecoveryUnaryInterceptor()),
-		grpc.ChainStreamInterceptor(RecoveryStreamInterceptor()),
+		grpc.ChainUnaryInterceptor(RecoveryUnaryInterceptor(lg)),
+		grpc.ChainStreamInterceptor(RecoveryStreamInterceptor(lg)),
 	}
 	opts = append(defaults, opts...)
 

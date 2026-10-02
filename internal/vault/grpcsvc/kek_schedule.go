@@ -52,7 +52,7 @@ func (s *Server) RunKekScheduler(ctx context.Context, checkEvery time.Duration) 
 // and a persist failure is returned (and logged at error), never swallowed.
 // Every log line carries refs/counts only, never key material.
 func (s *Server) kekSchedulerTick(ctx context.Context) error {
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 
 	s.mu.RLock()
 	days := s.settings.GetKekRotationDays()
@@ -63,11 +63,11 @@ func (s *Server) kekSchedulerTick(ctx context.Context) error {
 
 	row, ok, err := s.keyringStore.Active(ctx)
 	if err != nil {
-		l.Warn().Err(err).Msg("kek scheduler: read active keyring generation failed")
+		l.Warn("kek scheduler: read active keyring generation failed", log.F("error", err.Error()))
 		return err
 	}
 	if !ok {
-		l.Warn().Msg("kek scheduler: no active keyring generation found")
+		l.Warn("kek scheduler: no active keyring generation found")
 		return nil
 	}
 
@@ -88,12 +88,10 @@ func (s *Server) kekSchedulerTick(ctx context.Context) error {
 			rotationAttrs(res, err, "workload", "system", "scheduler"))
 	}
 	if err != nil {
-		l.Error().Err(err).Str("active_ref", res.ActiveRef).Str("outcome", rotationOutcome(err)).
-			Msg("kek scheduler: rotation failed; every row remains readable under the generation it is on")
+		l.Error(err, "kek scheduler: rotation failed; every row remains readable under the generation it is on", log.F("active_ref", res.ActiveRef), log.F("outcome", rotationOutcome(err)))
 		return err
 	}
 
-	l.Info().Str("active_ref", res.ActiveRef).Int32("rewrapped_records", safeconv.Int32(res.Records)).
-		Int32("rewrapped_versions", safeconv.Int32(res.Versions)).Msg("kek scheduler: rotated")
+	l.Info("kek scheduler: rotated", log.F("active_ref", res.ActiveRef), log.F("rewrapped_records", safeconv.Int32(res.Records)), log.F("rewrapped_versions", safeconv.Int32(res.Versions)))
 	return nil
 }

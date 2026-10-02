@@ -39,17 +39,16 @@ func (s *Server) RunHistoryPurge(ctx context.Context, interval time.Duration, va
 // purgeHistoryOnce performs one retention sweep and returns the number of
 // resolved access requests deleted.
 func (s *Server) purgeHistoryOnce(ctx context.Context, vault vaultv1.VaultServiceClient) int {
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	days := s.retentionDays(ctx, vault)
 	cutoff := time.Now().UTC().AddDate(0, 0, -days).Format(time.RFC3339)
 	n, err := s.store.PurgeResolvedRequestsOlderThan(ctx, cutoff)
 	if err != nil {
-		l.Warn().Err(err).Msg("history-purge: delete resolved requests")
+		l.Warn("history-purge: delete resolved requests", log.F("error", err.Error()))
 		return 0
 	}
 	if n > 0 {
-		l.Info().Int("count", n).Int("retention_days", days).Str("cutoff", cutoff).
-			Msg("history-purge: purged resolved access requests")
+		l.Info("history-purge: purged resolved access requests", log.F("count", n), log.F("retention_days", days), log.F("cutoff", cutoff))
 	}
 	return n
 }
@@ -63,8 +62,8 @@ func (s *Server) retentionDays(ctx context.Context, vault vaultv1.VaultServiceCl
 				return d
 			}
 		} else {
-			l := log.Ctx(ctx)
-			l.Warn().Err(err).Msg("history-purge: read security settings; using fallback retention")
+			l := s.lg(ctx)
+			l.Warn("history-purge: read security settings; using fallback retention", log.F("error", err.Error()))
 		}
 	}
 	return DefaultRequestHistoryRetentionDays

@@ -23,8 +23,3 @@ linters:
       # gate targets production code, not test bodies.
       - path: '_test\.go$'
         linters: [gocyclo, gocognit]
-      # go-log v1.2.1 deprecates the package-level log.Ctx in favour of
-      # Logger.Ctx. It still works, and each service builds one logger, so the
-      # move is tracked separately rather than done inside a dependency bump.
-      - linters: [staticcheck]
-        text: 'SA1019: log\.Ctx is deprecated'

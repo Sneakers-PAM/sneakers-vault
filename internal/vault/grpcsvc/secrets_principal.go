@@ -127,9 +127,8 @@ func (s *Server) buildAndStoreSecret(ctx context.Context, actor *vaultv1.ActorCo
 			"rotation_opt_out":  strconv.FormatBool(spec.disableRotation),
 			"heartbeat_opt_out": strconv.FormatBool(spec.disableHeartbeat),
 		}
-		l := log.Ctx(ctx)
-		l.Info().Str("secret_id", sec.Id).Bool("rotation_opt_out", spec.disableRotation).
-			Bool("heartbeat_opt_out", spec.disableHeartbeat).Msg("principal created secret with automation opt-out")
+		l := s.lg(ctx)
+		l.Info("principal created secret with automation opt-out", log.F("secret_id", sec.Id), log.F("rotation_opt_out", spec.disableRotation), log.F("heartbeat_opt_out", spec.disableHeartbeat))
 	}
 	s.emitAttrs(ctx, principalActorID(actor), "secret.create.principal", sec.Id, true, principalAttrs(actor, optOuts))
 	s.ensureLifecycle(ctx, sec)

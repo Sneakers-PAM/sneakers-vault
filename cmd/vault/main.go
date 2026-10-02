@@ -143,8 +143,7 @@ func mustBootKeyring(ctx context.Context, logger zerolog.Logger, db *postgres.DB
 // empty url disables pub/sub, and a dial/ping failure logs a warning and returns
 // nil so vault still boots (degrading to single-replica reads) rather than
 // hard-failing on a Redis outage. Mirrors the notify service's REDIS_URL idiom.
-func dialRedis(ctx context.Context, url string) *bredis.Client {
-	l := log.Ctx(ctx)
+func dialRedis(ctx context.Context, l zerolog.Logger, url string) *bredis.Client {
 	if url == "" {
 		l.Warn().Msg("REDIS_URL empty: cache invalidation disabled (safe only with replicas=1)")
 		return nil
@@ -232,6 +231,8 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("vault init")
 	}
+	svcLog := log.NewLogger(serviceName)
+	srv.SetLogger(svcLog)
 	srv.SetNotifier(notifyclient.New(notifyv1.NewNotifyServiceClient(notifyConn)))
 	// RotateKek needs the keyring, its durable store, and the root KEK +
 	// ref to mint and persist new working-KEK generations.
@@ -269,7 +270,7 @@ func main() {
 	// unreachable server degrades to single-replica behaviour rather than
 	// failing the boot. When wired, a background subscriber reloads on each peer
 	// invalidation and reconnects on Redis errors.
-	if rc := dialRedis(ctx, env("REDIS_URL", "")); rc != nil {
+	if rc := dialRedis(ctx, logger, env("REDIS_URL", "")); rc != nil {
 		defer func() { _ = rc.Close() }()
 		srv.SetInvalidation(rc, env("VAULT_INVALIDATE_CHANNEL", grpcsvc.DefaultInvalidateChannel))
 		go srv.RunInvalidationSubscriber(ctx)
@@ -278,7 +279,7 @@ func main() {
 	}
 
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	if err := server.Run(ctx, cfg.GRPCPort, srv.RegisterInto, grpc.ChainUnaryInterceptor(srv.PersistUnary)); err != nil {
+	if err := server.RunWithLogger(ctx, cfg.GRPCPort, svcLog, srv.RegisterInto, grpc.ChainUnaryInterceptor(srv.PersistUnary)); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
 	}
 }

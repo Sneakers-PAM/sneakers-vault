@@ -353,9 +353,8 @@ func (s *Server) CreateFolderForPrincipal(ctx context.Context, req *vaultv1.Crea
 		return nil, status.Error(codes.PermissionDenied, "not permitted to create a folder here")
 	}
 	if why := s.personalCreateBlocked(actor, parent); why != "" {
-		l := log.Ctx(ctx)
-		l.Info().Str("parent_id", parent.GetId()).Str("principal_kind", actor.GetPrincipalKind().String()).
-			Str("reason", why).Msg("principal folder create refused")
+		l := s.lg(ctx)
+		l.Info("principal folder create refused", log.F("parent_id", parent.GetId()), log.F("principal_kind", actor.GetPrincipalKind().String()), log.F("reason", why))
 		return nil, status.Error(codes.PermissionDenied, why)
 	}
 	if s.siblingNameTaken(parent.GetId(), name, "") {

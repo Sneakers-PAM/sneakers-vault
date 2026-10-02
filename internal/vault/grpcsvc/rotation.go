@@ -176,13 +176,12 @@ func (s *Server) rotationEligible(sec *vaultv1.Secret) bool {
 // dropUnreachableRotation removes the schedule row of a claimed secret the
 // connector cannot reach.
 func (s *Server) dropUnreachableRotation(ctx context.Context, sec *vaultv1.Secret) {
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	if err := s.rot.Remove(ctx, sec.GetId()); err != nil {
-		l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("remove unreachable rotation schedule failed")
+		l.Error(err, "remove unreachable rotation schedule failed", log.F("secret_id", sec.GetId()))
 		return
 	}
-	l.Warn().Str("secret_id", sec.GetId()).Str("target_id", sec.GetTargetId()).
-		Msg("rotation schedule removed: secret has no target with a connection")
+	l.Warn("rotation schedule removed: secret has no target with a connection", log.F("secret_id", sec.GetId()), log.F("target_id", sec.GetTargetId()))
 }
 
 // unclaimableReason reports why a claimed rotation row can never become a
@@ -204,12 +203,12 @@ func unclaimableReason(s *Server, sec *vaultv1.Secret) string {
 // dropClaimedRotation removes the schedule row of a claimed secret that will
 // never be rotated, logging why.
 func (s *Server) dropClaimedRotation(ctx context.Context, secretID, why string) {
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	if err := s.rot.Remove(ctx, secretID); err != nil {
-		l.Error().Err(err).Str("secret_id", secretID).Str("reason", why).Msg("remove claimed rotation schedule failed")
+		l.Error(err, "remove claimed rotation schedule failed", log.F("secret_id", secretID), log.F("reason", why))
 		return
 	}
-	l.Warn().Str("secret_id", secretID).Str("reason", why).Msg("rotation schedule removed at claim")
+	l.Warn("rotation schedule removed at claim", log.F("secret_id", secretID), log.F("reason", why))
 }
 
 // errNoRotationTarget is returned when a rotation is requested for a secret
@@ -272,9 +271,8 @@ func (s *Server) EnqueueRotation(ctx context.Context, req *vaultv1.EnqueueRotati
 		return s.refuseBuiltinAdministratorEnqueue(ctx, req)
 	}
 	if !reachable {
-		l := log.Ctx(ctx)
-		l.Warn().Str("secret_id", req.GetSecretId()).Str("target_id", targetID).
-			Msg("rotation refused: secret has no target with a connection")
+		l := s.lg(ctx)
+		l.Warn("rotation refused: secret has no target with a connection", log.F("secret_id", req.GetSecretId()), log.F("target_id", targetID))
 		return nil, errNoRotationTarget
 	}
 	if s.rot == nil {

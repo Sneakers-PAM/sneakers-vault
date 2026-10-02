@@ -30,6 +30,7 @@ import (
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/grpcsvc"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/vaultclient"
+	"github.com/rs/zerolog"
 )
 
 func main() {
@@ -46,7 +47,7 @@ func main() {
 	}
 	defer db.Close()
 
-	days := resolveRetentionDays(ctx)
+	days := resolveRetentionDays(ctx, logger)
 	cutoff := time.Now().UTC().AddDate(0, 0, -days).Format(time.RFC3339)
 
 	st := grpcsvc.NewPGStore(db.Querier())
@@ -60,7 +61,7 @@ func main() {
 
 // resolveRetentionDays picks the retention window: RETENTION_DAYS env override,
 // else vault SecuritySettings, else the 90-day default.
-func resolveRetentionDays(ctx context.Context) int {
+func resolveRetentionDays(ctx context.Context, l zerolog.Logger) int {
 	if v := os.Getenv("RETENTION_DAYS"); v != "" {
 		if d, err := strconv.Atoi(v); err == nil && d > 0 {
 			return d
@@ -74,7 +75,6 @@ func resolveRetentionDays(ctx context.Context) int {
 					return d
 				}
 			} else {
-				l := log.Ctx(ctx)
 				l.Warn().Err(err).Msg("read security settings; using fallback retention")
 			}
 		}

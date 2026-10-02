@@ -198,11 +198,8 @@ func (s *Server) UpdateSecuritySettings(ctx context.Context, req *vaultv1.Update
 	if req.SessionTtlSeconds != nil {
 		clamped := clampSessionTTLSeconds(req.GetSessionTtlSeconds())
 		if clamped != req.GetSessionTtlSeconds() {
-			l := log.Ctx(ctx)
-			l.Info().
-				Int32("requested", req.GetSessionTtlSeconds()).
-				Int32("clamped", clamped).
-				Msg("session TTL clamped to policy bounds")
+			l := s.lg(ctx)
+			l.Info("session TTL clamped to policy bounds", log.F("requested", req.GetSessionTtlSeconds()), log.F("clamped", clamped))
 		}
 		s.settings.SessionTtlSeconds = clamped
 	}

@@ -9,12 +9,13 @@ package grpcsvc
 import (
 	"context"
 	"encoding/json"
-	log "github.com/Bugs5382/go-log"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	log "github.com/Bugs5382/go-log"
 
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/certsvc"
@@ -171,7 +172,7 @@ func certRetypeFields(out map[string]string) (string, error) {
 // retypeChecks runs the checks every save runs on the new plaintext, plus the
 // certificate validation when nt is the certificate type, and returns the
 // secret's expiry under nt.
-func retypeChecks(ctx context.Context, sec *vaultv1.Secret, nt *vaultv1.SecretType, next map[string]string) (string, error) {
+func (s *Server) retypeChecks(ctx context.Context, sec *vaultv1.Secret, nt *vaultv1.SecretType, next map[string]string) (string, error) {
 	// The same authoritative key-pair check every save runs.
 	if err := verifyKeyPairFields(next); err != nil {
 		return "", err
@@ -181,8 +182,8 @@ func retypeChecks(ctx context.Context, sec *vaultv1.Secret, nt *vaultv1.SecretTy
 	}
 	exp, err := certRetypeFields(next)
 	if err != nil {
-		l := log.Ctx(ctx)
-		l.Info().Str("secret_id", sec.GetId()).Msg("type change refused: certificate material does not validate")
+		l := s.lg(ctx)
+		l.Info("type change refused: certificate material does not validate", log.F("secret_id", sec.GetId()))
 		return "", err
 	}
 	return exp, nil
@@ -208,10 +209,8 @@ func (s *Server) applyRetypeAutomation(ctx context.Context, sec *vaultv1.Secret,
 		o.rotation = "off"
 	}
 	o.heartbeat = s.retypeHeartbeat(ctx, sec, st, nt)
-	l := log.Ctx(ctx)
-	l.Info().Str("secret_id", sec.GetId()).Str("from_type_id", st.GetId()).Str("to_type_id", nt.GetId()).
-		Str("rotation", o.rotation).Str("heartbeat", o.heartbeat).Str("target", o.target).
-		Str("from_target_id", o.fromTargetID).Msg("type change automation applied")
+	l := s.lg(ctx)
+	l.Info("type change automation applied", log.F("secret_id", sec.GetId()), log.F("from_type_id", st.GetId()), log.F("to_type_id", nt.GetId()), log.F("rotation", o.rotation), log.F("heartbeat", o.heartbeat), log.F("target", o.target), log.F("from_target_id", o.fromTargetID))
 	return o
 }
 
@@ -220,8 +219,8 @@ func (s *Server) applyRetypeAutomation(ctx context.Context, sec *vaultv1.Secret,
 func (s *Server) retypeRotation(ctx context.Context, sec *vaultv1.Secret, st, nt *vaultv1.SecretType) {
 	if s.rot != nil && (st.GetRotation() || nt.GetRotation()) {
 		if err := s.rot.Remove(ctx, sec.GetId()); err != nil {
-			l := log.Ctx(ctx)
-			l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("remove rotation schedule on type change failed")
+			l := s.lg(ctx)
+			l.Error(err, "remove rotation schedule on type change failed", log.F("secret_id", sec.GetId()))
 		}
 	}
 	if nt.GetRotation() {
@@ -252,8 +251,8 @@ func (s *Server) retypeHeartbeat(ctx context.Context, sec *vaultv1.Secret, st, n
 		err = s.hb.Remove(ctx, sec.GetId())
 	}
 	if err != nil {
-		l := log.Ctx(ctx)
-		l.Error().Err(err).Str("secret_id", sec.GetId()).Str("heartbeat", outcome).Msg("heartbeat schedule update on type change failed")
+		l := s.lg(ctx)
+		l.Error(err, "heartbeat schedule update on type change failed", log.F("secret_id", sec.GetId()), log.F("heartbeat", outcome))
 	}
 	return outcome
 }
@@ -269,14 +268,14 @@ func (s *Server) retypeAllowed(ctx context.Context, sec *vaultv1.Secret, st, nt 
 	if !st.GetRotation() || s.rot == nil {
 		return nil
 	}
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	claimed, err := s.rot.Claimed(ctx, sec.GetId())
 	if err != nil {
-		l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("type change: rotation claim check failed")
+		l.Error(err, "type change: rotation claim check failed", log.F("secret_id", sec.GetId()))
 		return status.Error(codes.Internal, "check rotation claim")
 	}
 	if claimed {
-		l.Info().Str("secret_id", sec.GetId()).Msg("type change refused: rotation in flight")
+		l.Info("type change refused: rotation in flight", log.F("secret_id", sec.GetId()))
 		return status.Error(codes.FailedPrecondition, "a rotation of this secret is in progress; retry the type change once it finishes")
 	}
 	return nil
@@ -525,7 +524,7 @@ func (s *Server) ChangeSecretTypeForPrincipal(ctx context.Context, req *vaultv1.
 		return nil, err
 	}
 	next := rt.fields
-	expiresAt, err := retypeChecks(ctx, sec, nt, next)
+	expiresAt, err := s.retypeChecks(ctx, sec, nt, next)
 	if err != nil {
 		return nil, err
 	}
@@ -568,14 +567,14 @@ func (s *Server) principalUsableTarget(ctx context.Context, actor *vaultv1.Actor
 	if id == "" {
 		return nil
 	}
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	t := findByID(s.targets, id)
 	if t == nil {
-		l.Info().Str("target_id", id).Str("principal_kind", actor.GetPrincipalKind().String()).Msg("principal target refused: not found")
+		l.Info("principal target refused: not found", log.F("target_id", id), log.F("principal_kind", actor.GetPrincipalKind().String()))
 		return errNotFound("target")
 	}
 	if t.GetOwnerUserId() != "" && t.GetOwnerUserId() != actor.GetUserId() {
-		l.Warn().Str("target_id", id).Str("principal_kind", actor.GetPrincipalKind().String()).Msg("principal target refused: another user's target")
+		l.Warn("principal target refused: another user's target", log.F("target_id", id), log.F("principal_kind", actor.GetPrincipalKind().String()))
 		return status.Error(codes.PermissionDenied, "not permitted to use this target")
 	}
 	return nil
@@ -604,9 +603,8 @@ func (s *Server) SetSecretTargetForPrincipal(ctx context.Context, req *vaultv1.S
 		s.ensureRotationScheduled(ctx, sec)
 		s.ensureHeartbeatScheduled(ctx, sec)
 	}
-	l := log.Ctx(ctx)
-	l.Info().Str("secret_id", sec.GetId()).Str("from_target_id", from).Str("target_id", sec.GetTargetId()).
-		Str("principal_kind", actor.GetPrincipalKind().String()).Msg("secret target changed by principal")
+	l := s.lg(ctx)
+	l.Info("secret target changed by principal", log.F("secret_id", sec.GetId()), log.F("from_target_id", from), log.F("target_id", sec.GetTargetId()), log.F("principal_kind", actor.GetPrincipalKind().String()))
 	s.emitAttrs(ctx, principalActorID(actor), "secret.target.principal", sec.GetId(), false, principalAttrs(actor, map[string]string{
 		"from_target_id": from, "target_id": sec.GetTargetId(),
 	}))
@@ -618,17 +616,16 @@ func (s *Server) SetSecretTargetForPrincipal(ctx context.Context, req *vaultv1.S
 // schedule handling as SetSecretAutomation; audited as the principal.
 func (s *Server) SetSecretAutomationForPrincipal(ctx context.Context, req *vaultv1.SetSecretAutomationForPrincipalRequest) (*vaultv1.SetSecretAutomationForPrincipalResponse, error) {
 	actor := req.GetActor()
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	if actor.GetPrincipalKind() == vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN {
-		l.Warn().Str("secret_id", req.GetSecretId()).Msg("principal automation change refused for a human caller")
+		l.Warn("principal automation change refused for a human caller", log.F("secret_id", req.GetSecretId()))
 		return nil, status.Error(codes.PermissionDenied, "principal automation change is for non-human principals")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sec, err := s.principalMutableSecret(actor, req.GetSecretId(), "change the automation of")
 	if err != nil {
-		l.Info().Err(err).Str("secret_id", req.GetSecretId()).Str("principal_kind", actor.GetPrincipalKind().String()).
-			Msg("principal automation change refused")
+		l.Info("principal automation change refused", log.F("error", err.Error()), log.F("secret_id", req.GetSecretId()), log.F("principal_kind", actor.GetPrincipalKind().String()))
 		return nil, err
 	}
 	if err := s.applyAutomation(ctx, sec, req.GetDisableRotation(), req.GetDisableHeartbeat(), func(action string) {

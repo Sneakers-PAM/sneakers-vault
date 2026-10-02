@@ -117,8 +117,8 @@ func (s *Server) rotateOnce(ctx context.Context) (rotationResult, error) {
 	if err := s.retireUnreferenced(ctx); err != nil {
 		// Bookkeeping only (retired_at); every row is already durable on the
 		// new ref, so report it without failing the rotation.
-		l := log.Ctx(ctx)
-		l.Warn().Err(err).Str("active_ref", newRef).Msg("rotate KEK: retire unreferenced generations failed")
+		l := s.lg(ctx)
+		l.Warn("rotate KEK: retire unreferenced generations failed", log.F("error", err.Error()), log.F("active_ref", newRef))
 	}
 	return res, nil
 }
@@ -232,11 +232,8 @@ func (s *Server) RotateKek(ctx context.Context, req *vaultv1.RotateKekRequest) (
 	res, err := s.rotateOnce(ctx)
 	attrs := rotationAttrs(res, err, principalKind, rotatedBy, "rpc")
 	if err != nil {
-		l := log.Ctx(ctx)
-		l.Error().Err(err).Str("active_ref", res.ActiveRef).Str("outcome", attrs["outcome"]).
-			Str("actor", actor.GetUserId()).Str("rotated_by", rotatedBy).
-			Int("rewrapped_records", res.Records).Int("rewrapped_versions", res.Versions).
-			Msg("rotate KEK failed; every row remains readable under the generation it is on — retry RotateKek to finish")
+		l := s.lg(ctx)
+		l.Error(err, "rotate KEK failed; every row remains readable under the generation it is on — retry RotateKek to finish", log.F("active_ref", res.ActiveRef), log.F("outcome", attrs["outcome"]), log.F("actor", actor.GetUserId()), log.F("rotated_by", rotatedBy), log.F("rewrapped_records", res.Records), log.F("rewrapped_versions", res.Versions))
 		if res.ActiveRef != "" {
 			s.emitAttrs(ctx, actor.GetUserId(), "kek.rotate", "", false, attrs)
 		}

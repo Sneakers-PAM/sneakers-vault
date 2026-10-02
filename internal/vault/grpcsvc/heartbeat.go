@@ -141,13 +141,12 @@ func (s *Server) ClaimDueHeartbeats(ctx context.Context, req *vaultv1.ClaimDueHe
 // dropUnreachableHeartbeat removes the schedule row of a claimed secret the
 // connector cannot reach.
 func (s *Server) dropUnreachableHeartbeat(ctx context.Context, sec *vaultv1.Secret) {
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	if err := s.hb.Remove(ctx, sec.GetId()); err != nil {
-		l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("remove unreachable heartbeat schedule failed")
+		l.Error(err, "remove unreachable heartbeat schedule failed", log.F("secret_id", sec.GetId()))
 		return
 	}
-	l.Warn().Str("secret_id", sec.GetId()).Str("target_id", sec.GetTargetId()).
-		Msg("heartbeat schedule removed: secret has no target with a connection")
+	l.Warn("heartbeat schedule removed: secret has no target with a connection", log.F("secret_id", sec.GetId()), log.F("target_id", sec.GetTargetId()))
 }
 
 // RevealForHeartbeat releases the managed account's current credential to a
@@ -404,13 +403,12 @@ func withoutPausedNote(detail string) string {
 // pauseHeartbeat holds a secret's heartbeat after a FAILED check until its
 // credential changes or a check is requested.
 func (s *Server) pauseHeartbeat(ctx context.Context, secretID string) {
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	if err := s.hb.Pause(ctx, secretID); err != nil {
-		l.Error().Err(err).Str("secret_id", secretID).Msg("pause heartbeat after a failed check failed")
+		l.Error(err, "pause heartbeat after a failed check failed", log.F("secret_id", secretID))
 		return
 	}
-	l.Warn().Str("secret_id", secretID).
-		Msg("heartbeat paused after a failed check: no automatic retry until the credential is updated or a check is requested")
+	l.Warn("heartbeat paused after a failed check: no automatic retry until the credential is updated or a check is requested", log.F("secret_id", secretID))
 	s.emit(ctx, "connector", "secret.heartbeat.pause", secretID, false)
 }
 
@@ -423,8 +421,8 @@ func (s *Server) resumeHeartbeatOnValueChange(ctx context.Context, sec *vaultv1.
 	}
 	resumed, err := s.hb.Resume(ctx, sec.GetId())
 	if err != nil {
-		l := log.Ctx(ctx)
-		l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("resume paused heartbeat failed")
+		l := s.lg(ctx)
+		l.Error(err, "resume paused heartbeat failed", log.F("secret_id", sec.GetId()))
 		return
 	}
 	if resumed {
@@ -436,7 +434,7 @@ func (s *Server) resumeHeartbeatOnValueChange(ctx context.Context, sec *vaultv1.
 // resume. Caller holds s.mu (write lock) and has already made the row due.
 func (s *Server) markHeartbeatResumed(ctx context.Context, sec *vaultv1.Secret, actorID string, attrs map[string]string) {
 	sec.LastHeartbeatDetail = withoutPausedNote(sec.LastHeartbeatDetail)
-	l := log.Ctx(ctx)
-	l.Info().Str("secret_id", sec.GetId()).Str("reason", attrs["reason"]).Msg("paused heartbeat resumed")
+	l := s.lg(ctx)
+	l.Info("paused heartbeat resumed", log.F("secret_id", sec.GetId()), log.F("reason", attrs["reason"]))
 	s.emitAttrs(ctx, actorID, "secret.heartbeat.resume", sec.GetId(), false, attrs)
 }

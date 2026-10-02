@@ -48,40 +48,39 @@ func (s *Server) RequestHeartbeatForPrincipal(ctx context.Context, req *vaultv1.
 	if err != nil {
 		return nil, err
 	}
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	// Without a verifier every connector claim is refused, so a due row would
 	// never be served and the caller would wait on it forever.
 	if s.wid == nil {
-		l.Info().Str("secret_id", sec.GetId()).Msg("heartbeat request refused: no worker-identity verifier, so no connector can serve it")
+		l.Info("heartbeat request refused: no worker-identity verifier, so no connector can serve it", log.F("secret_id", sec.GetId()))
 		return nil, status.Error(codes.FailedPrecondition, "no connector is available in this environment, so a heartbeat check cannot run")
 	}
 	s.mu.RLock()
 	reachable, targetID := s.rotationReachable(sec), sec.GetTargetId()
 	s.mu.RUnlock()
 	if !reachable {
-		l.Info().Str("secret_id", sec.GetId()).Str("target_id", targetID).
-			Msg("heartbeat request refused: secret has no target with a connection")
+		l.Info("heartbeat request refused: secret has no target with a connection", log.F("secret_id", sec.GetId()), log.F("target_id", targetID))
 		return nil, status.Error(codes.FailedPrecondition, "secret has no target with a connection: attach a target before requesting a heartbeat")
 	}
 	paused, err := s.hb.Paused(ctx, sec.GetId())
 	if err != nil {
-		l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("heartbeat request: store read failed")
+		l.Error(err, "heartbeat request: store read failed", log.F("secret_id", sec.GetId()))
 		return nil, status.Errorf(codes.Internal, "request heartbeat: %v", err)
 	}
 	requested, exists, err := s.hb.RequestNow(ctx, sec.GetId(), heartbeatRequestGap)
 	if err != nil {
-		l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("heartbeat request: store update failed")
+		l.Error(err, "heartbeat request: store update failed", log.F("secret_id", sec.GetId()))
 		return nil, status.Errorf(codes.Internal, "request heartbeat: %v", err)
 	}
 	if !exists {
-		l.Info().Str("secret_id", sec.GetId()).Msg("heartbeat request refused: secret has no heartbeat schedule")
+		l.Info("heartbeat request refused: secret has no heartbeat schedule", log.F("secret_id", sec.GetId()))
 		return nil, status.Error(codes.FailedPrecondition, "this secret has no heartbeat: it needs a heartbeat-capable type, heartbeat left on, and a target with a connection")
 	}
 	if !requested {
-		l.Info().Str("secret_id", sec.GetId()).Msg("heartbeat request rate-limited")
+		l.Info("heartbeat request rate-limited", log.F("secret_id", sec.GetId()))
 		return nil, status.Error(codes.ResourceExhausted, "the last check request was under a minute ago; read the status instead")
 	}
-	l.Info().Str("secret_id", sec.GetId()).Str("principal_kind", actor.GetPrincipalKind().String()).Msg("heartbeat requested on demand")
+	l.Info("heartbeat requested on demand", log.F("secret_id", sec.GetId()), log.F("principal_kind", actor.GetPrincipalKind().String()))
 	now := s.clock()
 	s.emitAttrs(ctx, principalActorID(actor), "heartbeat.request.principal", sec.GetId(), false, principalAttrs(actor, nil))
 	if paused {
@@ -99,16 +98,16 @@ func (s *Server) GetHeartbeatStatusForPrincipal(ctx context.Context, req *vaultv
 	if err != nil {
 		return nil, err
 	}
-	l := log.Ctx(ctx)
+	l := s.lg(ctx)
 	var pending bool
 	if s.wid == nil {
 		// A due row cannot be claimed without a verifier, so reporting it as
 		// pending would keep the caller polling for a result that never comes.
-		l.Debug().Str("secret_id", sec.GetId()).Msg("heartbeat status: no worker-identity verifier, reporting not pending")
+		l.Debug("heartbeat status: no worker-identity verifier, reporting not pending", log.F("secret_id", sec.GetId()))
 	} else {
 		pending, err = s.hb.Pending(ctx, sec.GetId())
 		if err != nil {
-			l.Error().Err(err).Str("secret_id", sec.GetId()).Msg("heartbeat status: store read failed")
+			l.Error(err, "heartbeat status: store read failed", log.F("secret_id", sec.GetId()))
 			return nil, status.Errorf(codes.Internal, "heartbeat status: %v", err)
 		}
 	}
