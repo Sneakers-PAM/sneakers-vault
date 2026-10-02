@@ -25,6 +25,9 @@ or values.
   notify clients.
 - `internal/workflow/` - the workflow service: `grpcsvc` (service, saga, store) and `vaultclient`.
 - `internal/config/`, `internal/server/` - the env loader and the gRPC server bootstrap both use.
+- `internal/workloadauth/` - service-to-service authentication (workload token verifier, per-method
+  allow-list interceptors, caller credentials). Self-contained and copied byte for byte into the
+  other services; change it here first. See docs/workload-auth.md.
 - `proto/` - both APIs; `gen/go/` - the generated Go (committed, checked current in CI).
 - `migrations/vault/`, `migrations/workflow/` - each service's Postgres schema, forward only.
 - `docs/` - configuration, API, runbook, worker identity and type changes.

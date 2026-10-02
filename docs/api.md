@@ -99,6 +99,25 @@ audit and notify are covered in [Calling other services](#calling-other-services
 - **Retention:** resolved requests and their comments are purged after
   `request_history_retention_days` (vault security settings, default 90), daily and at start.
 
+## Callers
+
+Every call is authenticated with the caller's workload identity; see
+[workload-auth.md](workload-auth.md). Each service checks the caller against a per-method
+allow-list in code (`CallerPolicy` in `internal/vault/grpcsvc/callers.go` and
+`internal/workflow/grpcsvc/callers.go`). **On behalf** means the caller may pass an end-user
+actor; **self** means it acts only as itself, and a request from it that carries an actor is
+refused with `PermissionDenied`. Any caller or method not listed is refused.
+
+| Service | Methods | Caller | Access |
+|---|---|---|---|
+| vault | every method except the connector pull-API | gateway | on behalf |
+| vault | `RevealSecretField` | sshbroker | on behalf |
+| vault | `GetSecretRuleset`, `SetSecretRuleset`, `MoveFolder`, `UpdateSecret`, `EnqueueRotation`, `GetSecuritySettings` | workflow | self |
+| vault | `ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeartbeat`, `ClaimDueRotations`, `RevealForRotation`, `ReportRotation` | connector | self |
+| workflow | every method | gateway | on behalf |
+
+The vault itself calls audit and notify, and the workflow calls the vault, each with its own token.
+
 ## Calling other services
 
 The vault never imports another service's Go module. It generates its own client stubs from each
