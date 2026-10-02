@@ -981,7 +981,13 @@ func (s *Server) ensureSecuritySettings() {
 	if s.settings != nil {
 		return
 	}
-	s.settings = &vaultv1.SecuritySettings{
+	s.settings = defaultSecuritySettings()
+}
+
+// defaultSecuritySettings are the settings a fresh instance gets at setup,
+// and what a read answers before setup has installed any.
+func defaultSecuritySettings() *vaultv1.SecuritySettings {
+	return &vaultv1.SecuritySettings{
 		DefaultPasswordPolicyId:        "pwpolicy-default",
 		RequireMfaForSensitiveCheckout: true, AllowApiForSensitive: false,
 		RequestHistoryRetentionDays: defaultRequestHistoryRetentionDays,

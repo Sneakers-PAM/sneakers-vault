@@ -167,8 +167,13 @@ func defaultKekRotationDays() int32 {
 // applied for read/response (0 request-history retention -> 90; 0 session TTL ->
 // 1800s / 30m). kek_rotation_days is deliberately NOT defaulted here: 0 is a
 // valid, persisted "auto-rotation off" — unlike the other two fields, it is
-// never "unset" once ensureSecuritySettings has seeded the instance.
+// never "unset" once ensureSecuritySettings has seeded the instance. With no
+// settings stored yet (a store before first-run setup) it returns the defaults
+// setup would install.
 func settingsWithDefaults(in *vaultv1.SecuritySettings) *vaultv1.SecuritySettings {
+	if in == nil {
+		in = defaultSecuritySettings()
+	}
 	out := proto.Clone(in).(*vaultv1.SecuritySettings)
 	if out.GetRequestHistoryRetentionDays() == 0 {
 		out.RequestHistoryRetentionDays = defaultRequestHistoryRetentionDays
@@ -183,6 +188,10 @@ func settingsWithDefaults(in *vaultv1.SecuritySettings) *vaultv1.SecuritySetting
 func (s *Server) UpdateSecuritySettings(ctx context.Context, req *vaultv1.UpdateSecuritySettingsRequest) (*vaultv1.UpdateSecuritySettingsResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.settings == nil {
+		s.lg(ctx).Info("security settings updated before setup: starting from the defaults")
+		s.ensureSecuritySettings()
+	}
 	if req.DefaultPasswordPolicyId != nil {
 		s.settings.DefaultPasswordPolicyId = req.GetDefaultPasswordPolicyId()
 	}

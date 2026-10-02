@@ -84,6 +84,9 @@ audit and notify are covered in [Calling other services](#calling-other-services
   in `VAULT_KEK_ROTATION_PRINCIPALS`, sent with `principal_kind: PRINCIPAL_KIND_WORKLOAD`. Only the
   gateway may call `RotateKek` and it never sends a workload actor, so with workload
   authentication on that path is reachable only with `WORKLOAD_AUTH=disabled`. Scheduled rotations are audited as `system:kek-scheduler`.
+- **Security settings:** before first-run setup has stored any (a store outside `dev`, `local`
+  and `development` starts empty), `GetSecuritySettings` returns the defaults setup installs, and
+  `UpdateSecuritySettings` starts from them.
 - **Delete:** with `ENVIRONMENT` set to `prod` or `production`, hard delete needs a human site
   admin or root.
 
