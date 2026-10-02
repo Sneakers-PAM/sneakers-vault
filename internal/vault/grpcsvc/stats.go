@@ -42,7 +42,7 @@ func (s *Server) GetSecretStats(_ context.Context, req *vaultv1.GetSecretStatsRe
 				}
 			}
 		}
-		if sec.GetLastHeartbeatResult() == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED {
+		if heartbeatFailed(sec.GetLastHeartbeatResult()) {
 			stats.Drift++
 		}
 	}
@@ -51,13 +51,13 @@ func (s *Server) GetSecretStats(_ context.Context, req *vaultv1.GetSecretStatsRe
 
 // secretMatchesStatus applies the same status rules GetSecretStats rolls up:
 // expired = expires_at parseable & before now; expiring = before now+30d & not
-// expired; drift = last heartbeat FAILED; all = every (readable) secret.
+// expired; drift = last heartbeat failed (FAILED or a host-key refusal); all = every (readable) secret.
 func secretMatchesStatus(sec *vaultv1.Secret, status string, now, soon time.Time) bool {
 	switch status {
 	case "all", "":
 		return true
 	case "drift":
-		return sec.GetLastHeartbeatResult() == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED
+		return heartbeatFailed(sec.GetLastHeartbeatResult())
 	case "expired", "expiring":
 		e := sec.GetExpiresAt()
 		if e == "" {

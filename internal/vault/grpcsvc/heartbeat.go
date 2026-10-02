@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"slices"
 	"strings"
 	"time"
 
@@ -34,6 +35,19 @@ const (
 	HB_VALID       = vaultv1.HeartbeatResult_HEARTBEAT_RESULT_OK
 	HB_UNREACHABLE = vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNREACHABLE
 )
+
+// hostKeyRefused reports an SSH heartbeat the connector didn't run because
+// the target's host key couldn't be verified (no pins, or a key not pinned).
+func hostKeyRefused(r vaultv1.HeartbeatResult) bool {
+	return r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED ||
+		r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_HOST_KEY_MISMATCH
+}
+
+// heartbeatFailed reports a failed check: a wrong credential, or a host the
+// connector refused to trust.
+func heartbeatFailed(r vaultv1.HeartbeatResult) bool {
+	return r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED || hostKeyRefused(r)
+}
 
 // nextDue computes the next scheduled time: interval on valid/invalid;
 // exponential backoff (capped) on unreachable, keyed by consecutive count.
@@ -280,19 +294,32 @@ func (s *Server) ReportHeartbeat(ctx context.Context, req *vaultv1.ReportHeartbe
 	}
 
 	s.emit(ctx, "connector", "heartbeat.report", req.GetSecretId(), false)
+	s.auditHostKeyRefusal(ctx, secID, req.GetResult(), req.GetDetail())
 	// Notify only on the TRANSITION into a bad state, never on every poll — a
 	// target that stays down/drifted must not flood the inbox each interval.
 	//   drift: fire when the result first becomes FAILED (prev wasn't FAILED).
 	//   unreachable: fire on the poll that reaches N consecutive (transient
 	//     blips below N stay quiet); clearUnreachable() re-arms on recovery.
-	driftAlert := req.GetResult() == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED &&
-		prevResult != vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED
+	driftAlert := heartbeatFailed(req.GetResult()) && prevResult != req.GetResult()
 	unreachableAlert := req.GetResult() == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNREACHABLE &&
 		consec == hbAlertAfterN
 	if driftAlert || unreachableAlert {
 		s.notifyHeartbeat(ctx, secID, secName, chain, req.GetResult(), req.GetDetail())
 	}
 	return &vaultv1.ReportHeartbeatResponse{Ok: true}, nil
+}
+
+// auditHostKeyRefusal logs and audits a heartbeat the connector refused
+// because the target's host key couldn't be verified. Other results are a
+// no-op.
+func (s *Server) auditHostKeyRefusal(ctx context.Context, secID string, result vaultv1.HeartbeatResult, detail string) {
+	if !hostKeyRefused(result) {
+		return
+	}
+	s.lg(ctx).Warn("SSH heartbeat refused: the target's host key could not be verified",
+		log.F("secret_id", secID), log.F("result", result.String()))
+	s.emitAttrs(ctx, "connector", "secret.heartbeat.host_key", secID, false,
+		map[string]string{"result": result.String(), "detail": truncate(detail, maxHeartbeatDetail)})
 }
 
 // connTargetFor resolves a secret's target and the target's connection into
@@ -306,6 +333,7 @@ func (s *Server) connTargetFor(sec *vaultv1.Secret) (*vaultv1.HeartbeatConn, *va
 	}
 	target := &vaultv1.HeartbeatTarget{
 		Kind: tgt.GetKind(), Domain: tgt.GetDomain(), Realm: tgt.GetRealm(), Hostname: tgt.GetHostname(),
+		SshHostKeys: slices.Clone(tgt.GetSshHostKeys()),
 	}
 	conn := findByID(s.connections, tgt.GetConnectionId())
 	if conn == nil {
@@ -372,7 +400,7 @@ func (s *Server) clearUnreachable(ctx context.Context, secretID string) error {
 // that keeps this notify path race-free against concurrent mutations.
 func (s *Server) notifyHeartbeat(ctx context.Context, secID, secName string, chain []authz.CategoryRuleset, result vaultv1.HeartbeatResult, detail string) {
 	action := "secret.heartbeat.unreachable"
-	if result == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED {
+	if heartbeatFailed(result) {
 		action = "secret.heartbeat.drift"
 	}
 	label := secName

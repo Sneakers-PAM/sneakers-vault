@@ -67,6 +67,12 @@ enum HeartbeatResult {
   HEARTBEAT_RESULT_FAILED = 2;
   HEARTBEAT_RESULT_UNKNOWN = 3;
   HEARTBEAT_RESULT_UNREACHABLE = 4;
+  // SSH: the target has no host-key pins, so the connector didn't connect.
+  // Recorded as a failed check.
+  HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED = 5;
+  // SSH: the host offered a key that isn't one of the target's pins.
+  // Recorded as a failed check.
+  HEARTBEAT_RESULT_HOST_KEY_MISMATCH = 6;
 }
 
 enum RotationPhase {
@@ -128,6 +134,17 @@ message Folder {
   repeated string owners = 10;          // RACI owners (user ids): auto read+approve+author, inherit down
   int32 subtree_secret_count = 11;      // output-only: secrets in this folder + all descendants (drives delete UX)
   bool can_manage = 12;                 // output-only: whether the requesting actor may manage/create-under this folder (= isFolderOwner incl. site-admin/root, personal owner, and inherited ancestor ownership). Drives UI affordances (context menu, create-subfolder). Empty/false unless ListFolders computed it for the actor.
+  // Step-up MFA before a reveal in this folder and below. UNSPECIFIED inherits:
+  // the nearest ancestor that sets one, and at the top the global
+  // SecuritySettings.require_mfa_for_reveal. Set by a site admin only
+  // (SetFolderRevealStepUp).
+  StepUpMode reveal_step_up = 13;
+}
+
+enum StepUpMode {
+  STEP_UP_MODE_UNSPECIFIED = 0;        // inherit
+  STEP_UP_MODE_REQUIRE = 1;
+  STEP_UP_MODE_OFF = 2;
 }
 
 message FolderAccessRule {
@@ -158,6 +175,10 @@ message RaciRule {
   SubjectKind subject_kind = 4;         // everyone | group | user
   string subject_name = 5;              // group name or user id; empty for everyone
   map<string, string> grants = 6;       // {"C|R|A|I": "allow|deny"}
+  // GROUP subjects: the directory group id the rule matches on (against
+  // ActorContext.group_ids). subject_name is then the display name only, so a
+  // rename doesn't change who the rule covers.
+  string subject_id = 7;
 }
 
 // The effective access a user has on a folder (Resolve over the chain), for UI
@@ -287,6 +308,15 @@ message ActorContext {
   PrincipalKind principal_kind = 6;     // human (default) | service_account | workload
   string principal_id = 7;              // set for non-human principals: the service-account or workload id
   string token_id = 8;                  // PRINCIPAL_KIND_USER_TOKEN: the personal token used, for audit
+  // When the human last completed an MFA challenge (Unix seconds), set by the
+  // gateway from the session. 0 = unknown. Step-up checks need it within the
+  // vault's freshness window, else STEP_UP_REQUIRED.
+  int64 mfa_verified_at_unix = 9;
+  // The human holds the recovery role. Trusted only from the gateway. Needed,
+  // with a fresh MFA, for prior-version values and RestoreSecretVersion.
+  bool is_recovery = 10;
+  // Directory group ids, matched by GROUP rules that carry a subject_id.
+  repeated string group_ids = 11;
 }
 
 message ListSecretTypesRequest {}
@@ -718,6 +748,16 @@ message ListSecretVersionsResponse { repeated SecretVersion versions = 1; }
 message RevealSecretVersionFieldRequest { ActorContext actor = 1; string secret_id = 2; int32 version_no = 3; string field_key = 4; }
 message RevealSecretVersionFieldResponse { string value = 1; }
 
+// Make a prior version's fields the current ones, as a new version. Needs the
+// recovery role and a fresh MFA; refused while the secret is checked out or
+// rotating. Audited.
+message RestoreSecretVersionRequest { ActorContext actor = 1; string secret_id = 2; int32 version_no = 3; }
+message RestoreSecretVersionResponse { Secret secret = 1; }
+
+// Set a folder's step-up-on-reveal override. Human site admin only.
+message SetFolderRevealStepUpRequest { ActorContext actor = 1; string folder_id = 2; StepUpMode mode = 3; }
+message SetFolderRevealStepUpResponse { Folder folder = 1; }
+
 // Emergency access: bypasses the checkout-lock/approval-pending gate for a
 // read-eligible actor (gateway MFA step-up gates the call before this RPC is
 // reached). Reveals ALL fields, records a high-severity audited event,
@@ -926,7 +966,15 @@ message HeartbeatConn {
   int32 port = 3;
   bool use_tls = 4;
 }
-message HeartbeatTarget { string kind = 1; string domain = 2; string realm = 3; string hostname = 4; }
+message HeartbeatTarget {
+  string kind = 1;
+  string domain = 2;
+  string realm = 3;
+  string hostname = 4;
+  // The target's SSH host-key pins (Target.ssh_host_keys, authorized_keys
+  // form). Empty means not pinned: the connector must not connect over SSH.
+  repeated string ssh_host_keys = 5;
+}
 
 // One due validation job (no secret value — reveal is a separate call).
 message HeartbeatJob {
@@ -1172,6 +1220,7 @@ service VaultService {
   // folder, evaluated down the folder chain. Enforcement source of truth.
   rpc GetFolderRuleset(GetFolderRulesetRequest) returns (GetFolderRulesetResponse);
   rpc SetFolderRuleset(SetFolderRulesetRequest) returns (SetFolderRulesetResponse);
+  rpc SetFolderRevealStepUp(SetFolderRevealStepUpRequest) returns (SetFolderRevealStepUpResponse);
   rpc GetMyAccess(GetMyAccessRequest) returns (GetMyAccessResponse);
   rpc SimulateFolder(SimulateFolderRequest) returns (SimulateFolderResponse);
   rpc SimulateSecret(SimulateSecretRequest) returns (SimulateSecretResponse);
@@ -1204,6 +1253,7 @@ service VaultService {
   // reveal a single field's value from a specific version (audited).
   rpc ListSecretVersions(ListSecretVersionsRequest) returns (ListSecretVersionsResponse);
   rpc RevealSecretVersionField(RevealSecretVersionFieldRequest) returns (RevealSecretVersionFieldResponse);
+  rpc RestoreSecretVersion(RestoreSecretVersionRequest) returns (RestoreSecretVersionResponse);
   // Emergency access: bypasses checkout/approval gating for a read-eligible
   // actor; high-severity audit + owner notify + forced rotation-enqueue.
   rpc BreakGlassSecret(BreakGlassSecretRequest) returns (BreakGlassSecretResponse);
@@ -1304,6 +1354,9 @@ message SecuritySettings {
   // effective value to [900, 3600] (15m-60m).
   int32 session_ttl_seconds = 6;
   int32 kek_rotation_days = 7;   // 0 = auto-rotation off; admin override of KEK_ROTATION_DAYS
+  // Global default for step-up MFA before a reveal; folders override it
+  // (Folder.reveal_step_up).
+  bool require_mfa_for_reveal = 8;
 }
 
 message ListPasswordPoliciesRequest {}
@@ -1324,6 +1377,7 @@ message UpdateSecuritySettingsRequest {
   optional int32 request_history_retention_days = 6;
   optional int32 session_ttl_seconds = 7;
   optional int32 kek_rotation_days = 8;   // 0 = auto-rotation off (distinct from unset = unchanged)
+  optional bool require_mfa_for_reveal = 9;
 }
 message UpdateSecuritySettingsResponse { SecuritySettings settings = 1; }
 

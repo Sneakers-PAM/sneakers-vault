@@ -69,6 +69,12 @@ audit and notify are covered in [Calling other services](#calling-other-services
   `target.host_keys.change` with the SHA256 fingerprints `added` and `removed`, never the keys.
   `ListTargets` returns them. An empty list means the target isn't pinned, and the broker refuses
   to connect to it. They're stored in `target_ssh_host_keys` with their fingerprints.
+  Heartbeat and rotation jobs carry them too (`HeartbeatTarget.ssh_host_keys`, empty for an
+  unpinned target), so the connector can check the host before it sends a credential. It reports
+  `HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED` or `HEARTBEAT_RESULT_HOST_KEY_MISMATCH` when it refuses;
+  the vault records either as a failed check with the connector's reason (counted as drift,
+  notified like a drift, audited as `secret.heartbeat.host_key`), but doesn't pause the schedule,
+  because no credential was tried.
 - **Type changes:** see [type-change.md](type-change.md).
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
   through `seed-catalog`.
