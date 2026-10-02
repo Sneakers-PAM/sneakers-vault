@@ -49,12 +49,19 @@ func (s *Server) checkCheckout(ctx context.Context, actor *workflowv1.ActorConte
 	if !acc.GetAccess().GetRead() {
 		return deny(refuse(codes.PermissionDenied, ReasonCheckoutNoAccess, "you have no access to this secret", nil), ReasonCheckoutNoAccess)
 	}
-	on, err := s.typeAllowsCheckout(ctx, secretID)
+	t, err := s.secretType(ctx, secretID)
 	if err != nil {
 		return err
 	}
-	if !on {
+	if !t.GetCheckout() {
 		return deny(refuse(codes.FailedPrecondition, ReasonCheckoutTypeDisabled, "this secret's type doesn't allow check-out", nil), ReasonCheckoutTypeDisabled)
+	}
+	need, err := s.sensitiveCheckoutNeedsMFA(ctx, t)
+	if err != nil {
+		return err
+	}
+	if need && !s.mfaFresh(actor) {
+		return deny(refuse(codes.PermissionDenied, ReasonStepUpRequired, "confirm your MFA again to check out this secret", nil), ReasonStepUpRequired)
 	}
 	if err := s.checkNoLease(ctx, userID, secretID); err != nil {
 		return deny(err, ReasonCheckoutLeaseHeld)
@@ -63,22 +70,41 @@ func (s *Server) checkCheckout(ctx context.Context, actor *workflowv1.ActorConte
 	return nil
 }
 
-// typeAllowsCheckout reads the secret's type from the vault.
-func (s *Server) typeAllowsCheckout(ctx context.Context, secretID string) (bool, error) {
+// secretType reads the secret's type from the vault; an unknown type reads
+// as one with nothing allowed.
+func (s *Server) secretType(ctx context.Context, secretID string) (*vaultv1.SecretType, error) {
 	sec, err := s.vault.GetSecret(ctx, &vaultv1.GetSecretRequest{Id: secretID})
 	if err != nil {
-		return false, fmt.Errorf("read secret: %w", err)
+		return nil, fmt.Errorf("read secret: %w", err)
 	}
 	types, err := s.vault.ListSecretTypes(ctx, &vaultv1.ListSecretTypesRequest{})
 	if err != nil {
-		return false, fmt.Errorf("read secret types: %w", err)
+		return nil, fmt.Errorf("read secret types: %w", err)
 	}
 	for _, t := range types.GetTypes() {
 		if t.GetId() == sec.GetSecret().GetTypeId() {
-			return t.GetCheckout(), nil
+			return t, nil
 		}
 	}
-	return false, nil
+	return &vaultv1.SecretType{}, nil
+}
+
+// sensitiveCheckoutNeedsMFA reports whether checking out a secret of type t
+// needs a fresh MFA: "require MFA for sensitive checkout" is on and the type
+// has a super-sensitive field.
+func (s *Server) sensitiveCheckoutNeedsMFA(ctx context.Context, t *vaultv1.SecretType) (bool, error) {
+	super := false
+	for _, f := range t.GetFields() {
+		super = super || f.GetSuperSensitive()
+	}
+	if !super {
+		return false, nil
+	}
+	st, err := s.vault.GetSecuritySettings(ctx, &vaultv1.GetSecuritySettingsRequest{})
+	if err != nil {
+		return false, fmt.Errorf("read security settings: %w", err)
+	}
+	return st.GetSettings().GetRequireMfaForSensitiveCheckout(), nil
 }
 
 // checkNoLease refuses when the secret has an active lease, naming its holder.

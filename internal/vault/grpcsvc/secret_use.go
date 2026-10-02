@@ -77,6 +77,10 @@ func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecre
 	s.mu.RLock()
 	sec := s.findSecret(req.GetSecretId())
 	readable := sec != nil && !sec.GetRetired() && s.canRead(actor, sec)
+	var apiErr error
+	if readable {
+		apiErr = s.checkAPIForSensitive(ctx, actor, sec, req.GetFieldKey(), "use.prepare")
+	}
 	var hasField, needsApproval bool
 	if readable {
 		_, hasField = s.records[sec.GetId()].Fields[req.GetFieldKey()]
@@ -86,6 +90,9 @@ func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecre
 		needsApproval = sec.GetRequireTokenApproval()
 	}
 	s.mu.RUnlock()
+	if apiErr != nil {
+		return nil, apiErr
+	}
 	attempt := map[string]string{"field": req.GetFieldKey(), "argv": strings.Join(argv, " "), "client_label": req.GetClientLabel()}
 	if !readable {
 		s.useRefused(ctx, actor, "secret.use.prepare", req.GetSecretId(), "denied", "no read access", attempt)
@@ -306,7 +313,14 @@ func (s *Server) RedeemSecretUse(ctx context.Context, req *vaultv1.RedeemSecretU
 	sec := s.findSecret(use.GetSecretId())
 	readable := sec != nil && !sec.GetRetired() && s.canRead(actor, sec)
 	rec := s.records[use.GetSecretId()]
+	var apiErr error
+	if readable {
+		apiErr = s.checkAPIForSensitive(ctx, actor, sec, use.GetFieldKey(), "use.redeem")
+	}
 	s.mu.RUnlock()
+	if apiErr != nil {
+		return nil, apiErr
+	}
 	if !readable {
 		s.useRefused(ctx, actor, "secret.use.redeem", use.GetSecretId(), "denied", "read access lost", useAttrs(use, nil))
 		return nil, status.Error(codes.PermissionDenied, "not permitted to use this secret any more")

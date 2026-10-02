@@ -743,8 +743,9 @@ message SecretVersion {
 message ListSecretVersionsRequest { ActorContext actor = 1; string secret_id = 2; }
 message ListSecretVersionsResponse { repeated SecretVersion versions = 1; }
 
-// Reveal ONE field from a specific prior version; audited exactly like
-// RevealSecretField (sensitive), gated by the same reveal access.
+// Reveal ONE field from a specific version. Needs read on the secret plus the
+// recovery role (is_recovery) and an MFA within MFA_MAX_AGE, else
+// RECOVERY_ROLE_REQUIRED or STEP_UP_REQUIRED. Audited at the audit tier.
 message RevealSecretVersionFieldRequest { ActorContext actor = 1; string secret_id = 2; int32 version_no = 3; string field_key = 4; }
 message RevealSecretVersionFieldResponse { string value = 1; }
 
@@ -1344,7 +1345,14 @@ message PasswordPolicy {
 
 message SecuritySettings {
   string default_password_policy_id = 1;
+  // On (the default): checking out a secret whose type has any
+  // super-sensitive field needs an MFA within MFA_MAX_AGE, else the workflow
+  // refuses with STEP_UP_REQUIRED. Other types are unaffected.
   bool require_mfa_for_sensitive_checkout = 3;
+  // Off (the default): service accounts and personal tokens can't reveal,
+  // prepare or redeem super-sensitive fields (API_SENSITIVE_DISABLED).
+  // Ordinary password and sensitive fields stay available to them. People
+  // are unaffected.
   bool allow_api_for_sensitive = 4;
   // Days a resolved access request is retained before the daily purge job
   // deletes it (and its comment thread) from the workflow DB. 0 = default (90).
@@ -1354,8 +1362,11 @@ message SecuritySettings {
   // effective value to [900, 3600] (15m-60m).
   int32 session_ttl_seconds = 6;
   int32 kek_rotation_days = 7;   // 0 = auto-rotation off; admin override of KEK_ROTATION_DAYS
-  // Global default for step-up MFA before a reveal; folders override it
-  // (Folder.reveal_step_up).
+  // Global default for step-up MFA before a person reveals or copies a
+  // sensitive field: when it applies, an MFA older than MFA_MAX_AGE is
+  // refused with STEP_UP_REQUIRED. The nearest folder that sets
+  // Folder.reveal_step_up overrides it. Machine principals are exempt
+  // (allow_api_for_sensitive covers them). Off by default.
   bool require_mfa_for_reveal = 8;
 }
 

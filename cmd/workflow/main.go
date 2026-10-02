@@ -109,6 +109,7 @@ func main() {
 	svcLog := log.NewLogger(serviceName)
 	svc := grpcsvc.New(st, engine, vault)
 	svc.SetLogger(svcLog)
+	svc.SetMFAMaxAge(mustMFAMaxAge(logger))
 	auditConn := mustDialAudit(logger)
 	defer func() { _ = auditConn.Close() }()
 	svc.SetAuditor(auditclient.New(auditv1.NewAuditServiceClient(auditConn)))
