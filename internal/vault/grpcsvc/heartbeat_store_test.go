@@ -41,8 +41,8 @@ func hbTestPool(t *testing.T) *pgxpool.Pool {
 		t.Fatalf("bootstrap heartbeat_schedule: %v", err)
 	}
 	// ClaimDue's rotation-coordination guard references rotation_schedule, so it
-	// must exist even for heartbeat-only tests (in production migration 0004
-	// always runs on boot).
+	// must exist even for heartbeat-only tests (the 0001_baseline migration
+	// creates it on boot).
 	if _, err := p.Exec(context.Background(), rotationScheduleDDL); err != nil {
 		t.Fatalf("bootstrap rotation_schedule: %v", err)
 	}

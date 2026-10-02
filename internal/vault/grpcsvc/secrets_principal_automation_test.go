@@ -189,8 +189,8 @@ func scheduleRows(t *testing.T, s *Server, id string) (rot, hb bool) {
 func TestCreateSecretForPrincipal_OptOutCreatesNoScheduleRows(t *testing.T) {
 	s, fid, tgt := automationPGServer(t)
 	resp, err := s.CreateSecretForPrincipal(context.Background(), &vaultv1.CreateSecretForPrincipalRequest{
-		Actor: agentGroupActor("sa-1"), Name: "dsrm", FolderId: fid, TypeId: "type-windows-domain", TargetId: tgt,
-		Fields:          map[string]string{"domain": "EXAMPLE", "username": "dsrm", "password": "Init1alP@ss"},
+		Actor: agentGroupActor("sa-1"), Name: "recovery-admin", FolderId: fid, TypeId: "type-windows-domain", TargetId: tgt,
+		Fields:          map[string]string{"domain": "EXAMPLE", "username": "recovery-admin", "password": "Init1alP@ss"},
 		DisableRotation: true, DisableHeartbeat: true,
 	})
 	if err != nil {
@@ -208,8 +208,8 @@ func TestCreateSecretForPrincipal_OptOutCreatesNoScheduleRows(t *testing.T) {
 func TestGenerateSecretForPrincipal_OptOutCreatesNoScheduleRows(t *testing.T) {
 	s, fid, tgt := automationPGServer(t)
 	resp, err := s.GenerateSecretForPrincipal(context.Background(), &vaultv1.GenerateSecretForPrincipalRequest{
-		Actor: agentGroupActor("sa-1"), Name: "dsrm", FolderId: fid, TypeId: "type-windows-domain", TargetId: tgt,
-		Fields:          map[string]string{"domain": "EXAMPLE", "username": "dsrm"},
+		Actor: agentGroupActor("sa-1"), Name: "recovery-admin", FolderId: fid, TypeId: "type-windows-domain", TargetId: tgt,
+		Fields:          map[string]string{"domain": "EXAMPLE", "username": "recovery-admin"},
 		DisableRotation: true, DisableHeartbeat: true,
 	})
 	if err != nil {

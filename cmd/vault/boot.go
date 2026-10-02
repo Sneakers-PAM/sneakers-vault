@@ -18,17 +18,18 @@ import (
 
 // preflightRootKEK resolves the root KEK and proves it can open the existing
 // keyring BEFORE any migration runs, so a missing or wrong VAULT_ROOT_KEK
-// exits without touching the schema. Once migrations 0003/0004 are applied
-// an older image can no longer boot ("no migration found for version 4"), so
-// an image revert is not a rollback: the KEK must be validated first.
+// exits without touching the schema. Once a migration is applied an image
+// built before it may no longer boot, so an image revert is not a rollback:
+// the KEK must be validated first.
 //
-// Two cases, keyed on whether kek_keyring exists yet (it is created by
-// migration 0003):
-//   - pre-0003 schema: there is nothing to unwrap-check, so only the KEK's
-//     presence and format (base64, 32 bytes) are validated here; the keyring
-//     is built (first generation seeded) after migrating, as before.
-//   - 0003+ schema: every persisted working-KEK generation is unwrapped under
-//     the resolved root. Any failure means the operator supplied a different
+// Two cases, keyed on whether the kek_keyring table exists yet (the
+// 0001_baseline migration creates it):
+//   - no kek_keyring table (an empty database): there is nothing to
+//     unwrap-check, so only the KEK's presence and format (base64, 32 bytes)
+//     are validated here; the keyring is built (first generation seeded)
+//     after migrating.
+//   - kek_keyring present: every persisted working-KEK generation is
+//     unwrapped under the resolved root. Any failure means the operator supplied a different
 //     root than the one that wrapped the ring, and boot fails closed.
 //
 // dsn should be the direct (session) connection used for migrations. The
@@ -57,7 +58,7 @@ func preflightRootKEK(ctx context.Context, dsn, environment string) (crypto.KEKP
 }
 
 // verifyKeyringUnwraps unwraps every kek_keyring generation under root. A
-// schema without kek_keyring (pre-0003) passes trivially. Only refs appear in
+// database without the kek_keyring table yet passes trivially. Only refs appear in
 // errors, never key material; the unwrapped bytes are discarded immediately.
 func verifyKeyringUnwraps(ctx context.Context, conn *pgx.Conn, root crypto.KEKProvider) error {
 	var exists bool

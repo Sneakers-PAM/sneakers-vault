@@ -12,7 +12,7 @@ import (
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 )
 
-// TestReconcileKeyring_PicksUpPeerRotatedGeneration is the HA regression:
+// TestReconcileKeyring_PicksUpPeerRotatedGeneration covers peer rotation:
 // a peer replica ran RotateKek and persisted kek-v2 to the shared kek_keyring
 // table, but THIS replica's in-memory keyring never saw it (only reload's
 // hydrate ran, refreshing s.records — which now reference kek-v2 — not the

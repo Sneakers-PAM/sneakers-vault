@@ -5140,7 +5140,7 @@ type CreateSecretForPrincipalRequest struct {
 	Name             string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Fields           map[string]string      `protobuf:"bytes,5,rep,name=fields,proto3" json:"fields,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	TargetId         string                 `protobuf:"bytes,6,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`                       // optional
-	DisableRotation  bool                   `protobuf:"varint,7,opt,name=disable_rotation,json=disableRotation,proto3" json:"disable_rotation,omitempty"` // never schedule rotation for this secret (e.g. a DSRM password)
+	DisableRotation  bool                   `protobuf:"varint,7,opt,name=disable_rotation,json=disableRotation,proto3" json:"disable_rotation,omitempty"` // never schedule rotation for this secret (e.g. a recovery password)
 	DisableHeartbeat bool                   `protobuf:"varint,8,opt,name=disable_heartbeat,json=disableHeartbeat,proto3" json:"disable_heartbeat,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -5601,12 +5601,13 @@ func (x *MoveSecretForPrincipalResponse) GetDestination() *Folder {
 // populated, and max_length/pattern hold, after mapping. Errors name field KEYS,
 // never values.
 //
-// Managed types: changing INTO a rotation- or heartbeat-managed type is allowed
-// (same Author gate a human create needs); the secret is then scheduled for
-// rotation/heartbeat exactly as a human-created secret of that type would be.
-// Changing OUT of a rotation- or heartbeat-managed type, into or out of the
-// certificate type, or to a type that drops checkout, is human-only
-// (FAILED_PRECONDITION). The prior values stay in version history.
+// Managed types: changing into or out of a rotation- or heartbeat-managed type,
+// and into or out of the certificate type, is allowed (same Author gate a human
+// create needs). After a change into a rotation type, rotation stays opted out
+// until it is enabled; heartbeat is scheduled when the secret has a target with
+// a connection. Changing a plain checkout type (one without rotation or
+// heartbeat) to a type without checkout is human-only (FAILED_PRECONDITION).
+// The prior values stay in version history.
 type ChangeSecretTypeForPrincipalRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Actor     *ActorContext          `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor,omitempty"`

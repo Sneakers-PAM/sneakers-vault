@@ -189,11 +189,11 @@ func seedRequests(ctx context.Context) error {
 	}))
 	// 3) Pending access requests from other users.
 	runner.Add(requestStep("user-hopper", "Grace Hopper", domainAdmin,
-		"Deploying the Q3 patch to the domain controllers tonight — need the domain admin for the maintenance window."))
+		"Applying tonight's scheduled updates — need the admin account for the maintenance window."))
 	runner.Add(requestStep("user-jobs", "Steve Jobs", domainAdmin,
-		"On-call: investigating a failed GPO push, need temporary domain admin to read the event logs."))
+		"On-call: investigating a failed configuration change, need temporary admin access to read the logs."))
 	runner.Add(requestStep("user-lovelace", "Ada Lovelace", coreSwitch,
-		"Core switch showing CRC errors on Gi1/0/24 — need root to pull interface counters."))
+		"A network device is reporting errors — need the admin login to collect diagnostics."))
 
 	if err := runner.Run(ctx); err != nil {
 		return fmt.Errorf("simrequest seed: %w", err)

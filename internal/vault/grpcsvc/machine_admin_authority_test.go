@@ -34,9 +34,9 @@ func spoofedAdminMachine(id string) *vaultv1.ActorContext {
 }
 
 // TestSpoofedAdminMachineCannotEscalateToPlaintext is the end-to-end proof.
-// Before the isFolderOwner fix every step below SUCCEEDED: the machine rewrote
-// the folder ruleset to grant itself RACI-C and then read the human-authored
-// secret's password in cleartext.
+// Without the human-only isFolderOwner check, every step below would succeed:
+// the machine would rewrite the folder ruleset to grant itself RACI-C and then
+// read the human-authored secret's password in cleartext.
 func TestSpoofedAdminMachineCannotEscalateToPlaintext(t *testing.T) {
 	s := newServer(t)
 	ctx := context.Background()

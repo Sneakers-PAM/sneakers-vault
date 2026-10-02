@@ -71,8 +71,8 @@ func subjectMatches(u EvalSubject, s RuleSubject) bool {
 	case SubjGroup:
 		// Group names are human directory names: rule subjects come from the
 		// admin picker and memberships from the directory, so casing drift must
-		// not silently drop a user from a rule (the legacy audience intersect
-		// lowercased both sides). User IDs above stay exact — they are opaque.
+		// not silently drop a user from a rule, so group names compare
+		// case-insensitively. User IDs above stay exact — they are opaque.
 		for _, g := range u.GroupNames {
 			if strings.EqualFold(g, s.Name) {
 				return true

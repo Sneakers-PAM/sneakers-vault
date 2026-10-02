@@ -7,8 +7,8 @@ import "testing"
 
 // Group-kind rule subjects match AD group names CASE-INSENSITIVELY: rule
 // subjects come from the admin picker and user memberships from the directory,
-// and casing drift between the two must not silently drop a user from a rule
-// (the legacy audience intersect lowercased both sides). User-kind subjects
+// and casing drift between the two must not silently drop a user from a rule.
+// User-kind subjects
 // remain exact — user IDs are opaque identifiers.
 
 func TestSubjectMatches_GroupNameCaseInsensitive(t *testing.T) {

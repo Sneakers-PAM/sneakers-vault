@@ -258,9 +258,9 @@ func BuiltinTypes() []*vaultv1.SecretType {
 			{Key: "zip", Label: "ZIP", Kind: text},
 			notes(),
 		}},
-		// Anthropic API token — a single fixed secret string, NOT the OAuth
+		// Anthropic OAuth token — a single fixed secret string, NOT the OAuth
 		// client/refresh shape (that's the separate type-oauth). Always begins
-		// "sk-ant-oa".
+		// "sk-ant-oa", the OAuth token prefix.
 		{Id: "type-anthropic-token", Name: "Anthropic Token", Origin: sys, Fields: []*vaultv1.SecretFieldDef{
 			desc(),
 			{Key: "token", Label: "Token", Kind: sens, Required: true, Sensitive: true, Pattern: `^sk-ant-oa`},

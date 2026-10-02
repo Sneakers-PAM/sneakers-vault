@@ -94,10 +94,9 @@ func resolveRootKEK(environment string) (crypto.KEKProvider, string, error) {
 // caller wires those (with the root KEK + ref) into the Server via SetKeyring
 // right after NewWithStore.
 func buildEnvelope(ctx context.Context, pool *pgxpool.Pool, root crypto.KEKProvider, rootRef string, withDevStatic bool) (*crypto.Envelope, *crypto.KeyringKEK, grpcsvc.KeyringAdmin, error) {
-	// Legacy working key: the KEK material vault used before the keyring
-	// existed (sha256 of DEV_KEK_SEED), kept recognized-but-inactive so
-	// records sealed before this migration keep unwrapping — until
-	// VAULT_DISABLE_DEV_STATIC_KEK retires it (withDevStatic=false).
+	// The static dev key (sha256 of DEV_KEK_SEED), kept recognized-but-inactive
+	// so data sealed with the static dev key keeps unwrapping — until
+	// VAULT_DISABLE_DEV_STATIC_KEK drops it (withDevStatic=false).
 	var legacy []crypto.WorkingKey
 	if withDevStatic {
 		legacyKey := sha256.Sum256([]byte(env("DEV_KEK_SEED", "sneakers-pam-dev-kek-seed-v1")))

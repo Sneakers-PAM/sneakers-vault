@@ -451,8 +451,7 @@ func (s *Server) RevealSecretFieldForPrincipal(ctx context.Context, req *vaultv1
 // lock) — bumpView mutates the secret.
 //
 // Deliberate defense-in-depth restriction: PRINCIPAL_KIND_HUMAN (including
-// the zero-value/unspecified kind, which defaults to HUMAN) is rejected here
-// .
+// the zero-value/unspecified kind, which defaults to HUMAN) is rejected here.
 // The no-MFA principal-reveal path must be reachable ONLY by non-human
 // principals, so a human is forced through RevealSecretField (subject to the
 // gateway's MFA/checkout step-up) instead of this path bypassing it — the

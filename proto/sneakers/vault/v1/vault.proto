@@ -439,7 +439,7 @@ message CreateSecretForPrincipalRequest {
   string name = 4;
   map<string, string> fields = 5;
   string target_id = 6; // optional
-  bool disable_rotation = 7;   // never schedule rotation for this secret (e.g. a DSRM password)
+  bool disable_rotation = 7;   // never schedule rotation for this secret (e.g. a recovery password)
   bool disable_heartbeat = 8;
 }
 message CreateSecretForPrincipalResponse {
@@ -522,12 +522,13 @@ enum UnmappedFieldPolicy {
 // populated, and max_length/pattern hold, after mapping. Errors name field KEYS,
 // never values.
 //
-// Managed types: changing INTO a rotation- or heartbeat-managed type is allowed
-// (same Author gate a human create needs); the secret is then scheduled for
-// rotation/heartbeat exactly as a human-created secret of that type would be.
-// Changing OUT of a rotation- or heartbeat-managed type, into or out of the
-// certificate type, or to a type that drops checkout, is human-only
-// (FAILED_PRECONDITION). The prior values stay in version history.
+// Managed types: changing into or out of a rotation- or heartbeat-managed type,
+// and into or out of the certificate type, is allowed (same Author gate a human
+// create needs). After a change into a rotation type, rotation stays opted out
+// until it is enabled; heartbeat is scheduled when the secret has a target with
+// a connection. Changing a plain checkout type (one without rotation or
+// heartbeat) to a type without checkout is human-only (FAILED_PRECONDITION).
+// The prior values stay in version history.
 message ChangeSecretTypeForPrincipalRequest {
   ActorContext actor = 1;
   string id = 2;

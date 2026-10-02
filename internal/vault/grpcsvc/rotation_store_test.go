@@ -14,7 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// rotationScheduleDDL mirrors migrations/0004_rotation.up.sql (idempotent).
+// rotationScheduleDDL mirrors the rotation_schedule table in
+// migrations/vault/0001_baseline.up.sql (idempotent).
 const rotationScheduleDDL = `
 CREATE TABLE IF NOT EXISTS rotation_schedule (
   secret_id            TEXT        PRIMARY KEY,

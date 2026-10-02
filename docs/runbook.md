@@ -67,10 +67,10 @@ failed sweep resumes on the next run. Callers:
 Other replicas pick up the new generation through the cache invalidation channel, or at their
 next restart without Redis.
 
-### Retiring the legacy dev working key
+### Dropping the static dev key
 
-The key ring always holds `dev-static-v1`, a decrypt-only working key derived from the dev seed,
-for data sealed before the key ring existed. To drop it:
+The key ring holds `dev-static-v1`, the static dev key, derived from the dev seed. It is
+decrypt-only: it opens data sealed with the static dev key and seals nothing new. To drop it:
 
 1. run `RotateKek`, which re-wraps every row that still uses it;
 2. check the boot report shows `dev_static_rows=0`;

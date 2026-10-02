@@ -140,8 +140,9 @@ func TestHeartbeatSchedule_NotCreatedOnRestoreWithoutTarget(t *testing.T) {
 	}
 }
 
-// Rows written before targets were required must never reach the connector,
-// or it reports UNREACHABLE and alerts on a secret it was never meant to check.
+// A schedule row whose secret has no target, or whose target has no
+// connection, must never reach the connector, or it reports UNREACHABLE and
+// alerts on a secret it was never meant to check.
 func TestClaimDueHeartbeats_RemovesExistingRowWithoutTargetOrConnection(t *testing.T) {
 	cases := map[string]func(t *testing.T, fx *noTargetFixture) string{
 		"no target": func(t *testing.T, fx *noTargetFixture) string { return fx.createHuman(t, "") },

@@ -19,8 +19,9 @@ type failAudit struct{}
 
 func (failAudit) Emit(context.Context, audit.Event) error { return errors.New("audit sink down") }
 
-// breakGlassEventsDDL mirrors migrations/0006_break_glass.up.sql (idempotent),
-// applied here directly because that migration only runs on vault boot.
+// breakGlassEventsDDL mirrors the break_glass_events table in
+// migrations/vault/0001_baseline.up.sql (idempotent), applied here directly
+// because migrations only run on vault boot.
 const breakGlassEventsDDL = `
 CREATE TABLE IF NOT EXISTS break_glass_events (
   id                      TEXT        PRIMARY KEY,

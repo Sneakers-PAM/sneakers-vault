@@ -1,6 +1,6 @@
 # Changing a secret's type
 
-`ChangeSecretTypeForPrincipal` changes a secret's type for a token, service account or workload with RACI Author on the secret. Any type may be converted into or out of any other, including the rotation and heartbeat types (Active Directory, Windows and database accounts) and the certificate type. No approval is needed.
+`ChangeSecretTypeForPrincipal` changes a secret's type for a token, service account or workload with RACI Author on the secret. Any type may be converted into or out of any other, including the rotation and heartbeat types (Active Directory, Windows and database accounts) and the certificate type, with one exception: changing a plain checkout type (one without rotation or heartbeat) to a type without checkout is human-only and fails with FailedPrecondition. No approval request is involved.
 
 ## Value rules
 

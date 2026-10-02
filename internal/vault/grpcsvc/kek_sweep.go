@@ -15,9 +15,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// DevStaticKeyRef is the KeyRef of the pre-keyring working KEK
-// (sha256("sneakers-pam-dev-kek-seed-v1"), public in the source). Every secret
-// sealed by a pre-keyring vault release carries it. It stays in the runtime keyring as a
+// DevStaticKeyRef is the KeyRef of the static dev key
+// (sha256("sneakers-pam-dev-kek-seed-v1"), public in the source). Data sealed
+// with the static dev key carries it. It stays in the runtime keyring as a
 // decrypt-only key until VAULT_DISABLE_DEV_STATIC_KEK retires it, which is
 // only allowed once no stored row references it (see CheckDevStaticRetired).
 const DevStaticKeyRef = "dev-static-v1"

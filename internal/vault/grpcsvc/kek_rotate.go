@@ -52,8 +52,8 @@ type rotationResult struct {
 func (r rotationResult) Total() int { return r.Records + r.Versions }
 
 // rotateOnce mints a new working-KEK generation, makes it active, and eagerly
-// re-wraps every sealed row still on an older generation (including the
-// pre-keyring dev-static-v1 key), in this order:
+// re-wraps every sealed row still on an older generation (including data
+// sealed with the static dev key, dev-static-v1), in this order:
 //
 //  1. insert the new generation (durable before anything is sealed under it);
 //     2-3. re-wrap secret_records (sweepRewrap) and persist them, as one writeTx
@@ -201,7 +201,8 @@ func (s *Server) retireUnreferenced(ctx context.Context) error {
 
 // RotateKek mints a new working-KEK generation, makes it active, and eagerly
 // re-wraps every secret_records and secret_versions row onto it. This is
-// how operators move data off dev-static-v1 before retiring it. Two callers
+// how operators move data sealed with the static dev key (dev-static-v1) onto
+// a working key before dropping it from the keyring. Two callers
 // are allowed:
 //
 //   - a human site-admin/root (isHumanAdmin; admin authority is human-only);

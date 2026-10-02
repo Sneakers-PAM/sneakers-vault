@@ -60,8 +60,8 @@ func freshDB(t *testing.T) string {
 	return u.String()
 }
 
-// migrateTo applies only the repo migrations whose version is <= upto, to
-// simulate a database last migrated by an older image.
+// migrateTo applies the repo migrations whose version is <= upto to the
+// database at dsn.
 // headMigration is the highest migration number in the repo.
 func headMigration(t *testing.T) int64 {
 	t.Helper()
@@ -127,8 +127,8 @@ func randKEK(t *testing.T) string {
 	return base64.StdEncoding.EncodeToString(k)
 }
 
-// A correct KEK on an existing schema migrates to head and the keyring then
-// builds (seeding kek-v1) — the normal bump path.
+// With a correct KEK, preflight migrates to head and the keyring then builds
+// (seeding kek-v1); a second boot with the same KEK passes the unwrap check.
 func TestMigrateAfterPreflight_CorrectKEK_MigratesAndBoots(t *testing.T) {
 	dsn := freshDB(t)
 	migrateTo(t, dsn, "0002")
@@ -177,7 +177,7 @@ func TestMigrateAfterPreflight_DevFallback_FreshDB(t *testing.T) {
 	}
 }
 
-// devStaticRecord seals fields exactly as pre-keyring vault releases did: under
+// devStaticRecord seals fields with the static dev key: under
 // sha256("sneakers-pam-dev-kek-seed-v1"), stamped KeyRef dev-static-v1.
 func devStaticRecord(t *testing.T, fields map[string]string) (crypto.Record, []byte) {
 	t.Helper()
@@ -236,7 +236,7 @@ func readAll(t *testing.T, pool *pgxpool.Pool, env *crypto.Envelope, want []stor
 	}
 }
 
-// End-to-end retirement of dev-static-v1 on real Postgres: pre-keyring rows
+// End-to-end retirement of dev-static-v1 on real Postgres: rows sealed with the static dev key
 // (records + versions under dev-static) -> boot (report shows them) ->
 // disable-flag boot refused -> RotateKek -> no dev-static rows left ->
 // disable-flag boot passes and every row still reads -> one leftover row ->
