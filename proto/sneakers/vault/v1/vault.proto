@@ -1,0 +1,1332 @@
+// Copyright 2026 The Sneakers-PAM Authors
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package sneakers.vault.v1;
+
+option go_package = "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1;vaultv1";
+
+// The vault surface: secret-type templates, the folder hierarchy with
+// inherited RBAC, and secrets whose sensitive fields are revealed only on
+// demand. Shapes mirror the UI contract so the gateway
+// can map GraphQL 1:1 onto these RPCs.
+
+// ---- Enums ------------------------------------------------------------------
+
+enum FieldKind {
+  FIELD_KIND_UNSPECIFIED = 0;
+  FIELD_KIND_TEXT = 1;
+  FIELD_KIND_MULTILINE = 2;
+  FIELD_KIND_PASSWORD = 3;
+  FIELD_KIND_BOOLEAN = 4;
+  FIELD_KIND_SELECT = 5;
+  FIELD_KIND_FILE = 6;
+  FIELD_KIND_SENSITIVE = 7;              // secret but not a password: SSH keys, tokens — masked/revealed, no generate/rotate/policy
+}
+
+enum PolicyEnforcement {
+  POLICY_ENFORCEMENT_UNSPECIFIED = 0;
+  POLICY_ENFORCEMENT_LAX = 1;
+  POLICY_ENFORCEMENT_STRICT = 2;
+}
+
+enum TypeOrigin {
+  TYPE_ORIGIN_UNSPECIFIED = 0;
+  TYPE_ORIGIN_SYSTEM = 1;
+  TYPE_ORIGIN_EXTENSION = 2;
+  TYPE_ORIGIN_CUSTOM = 3;
+}
+
+enum FolderScope {
+  FOLDER_SCOPE_UNSPECIFIED = 0;
+  FOLDER_SCOPE_PERSONAL = 1;
+  FOLDER_SCOPE_GROUP = 2;
+  FOLDER_SCOPE_ROLE = 3;
+}
+
+enum FolderRole {
+  FOLDER_ROLE_UNSPECIFIED = 0;
+  FOLDER_ROLE_READ = 1;
+  FOLDER_ROLE_WRITE = 2;
+  FOLDER_ROLE_DELETE = 3;
+  FOLDER_ROLE_BULK = 4;
+  FOLDER_ROLE_OWNER = 5;
+}
+
+enum SubjectKind {
+  SUBJECT_KIND_UNSPECIFIED = 0;
+  SUBJECT_KIND_GROUP = 1;
+  SUBJECT_KIND_USER = 2;
+  SUBJECT_KIND_EVERYONE = 3;             // all users (firewall-RACI subject)
+}
+
+enum HeartbeatResult {
+  HEARTBEAT_RESULT_UNSPECIFIED = 0;
+  HEARTBEAT_RESULT_OK = 1;
+  HEARTBEAT_RESULT_FAILED = 2;
+  HEARTBEAT_RESULT_UNKNOWN = 3;
+  HEARTBEAT_RESULT_UNREACHABLE = 4;
+}
+
+enum RotationPhase {
+  ROTATION_PHASE_UNSPECIFIED = 0;
+  ROTATION_PHASE_OK = 1;
+  ROTATION_PHASE_FAILED = 2;
+  ROTATION_PHASE_SKIPPED = 3;
+}
+
+enum RotationState {
+  ROTATION_STATE_UNSPECIFIED = 0;
+  ROTATION_STATE_OK = 1;
+  ROTATION_STATE_FAILED = 2;
+  ROTATION_STATE_DEGRADED = 3;
+  ROTATION_STATE_ROTATING = 4;
+}
+
+// ---- Secret types (templates) ----------------------------------------------
+
+message SecretFieldDef {
+  string key = 1;
+  string label = 2;
+  FieldKind kind = 3;
+  repeated string options = 4;
+  string default_value = 5;
+  bool required = 6;
+  bool sensitive = 7;
+  string policy_id = 8;                 // password fields: bound policy (empty = default)
+  PolicyEnforcement policy_enforcement = 9;
+  bool rotates = 10;                     // rotation replaces THIS field's value (not hard-coded to "password")
+  bool super_sensitive = 11;             // extra-sensitive: reveal shows a partial mask + requires a second "double reveal"
+  string pattern = 12;                    // validation regex (RE2/ECMA-safe); empty = no constraint
+  int32 max_length = 13;                  // max input length; 0 = no cap
+}
+
+message SecretType {
+  string id = 1;
+  string name = 2;
+  repeated SecretFieldDef fields = 3;
+  bool heartbeat = 4;
+  bool checkout = 5;
+  TypeOrigin origin = 6;
+  string vendor = 7;                    // extension provenance
+  bool rotation = 8;                    // "allowed rotation": type may be rotated (else never scheduled/run)
+}
+
+// ---- Folders + RBAC ---------------------------------------------------------
+
+message Folder {
+  string id = 1;
+  string name = 2;
+  string parent_id = 3;                 // empty = top-level
+  FolderScope scope = 4;
+  string owner_user_id = 5;             // scope=personal
+  string group_id = 6;                  // scope=group
+  string role = 7;                      // scope=role
+  bool is_master_personal = 8;
+  int32 order = 9;
+  repeated string owners = 10;          // RACI owners (user ids): auto read+approve+author, inherit down
+  int32 subtree_secret_count = 11;      // output-only: secrets in this folder + all descendants (drives delete UX)
+  bool can_manage = 12;                 // output-only: whether the requesting actor may manage/create-under this folder (= isFolderOwner incl. site-admin/root, personal owner, and inherited ancestor ownership). Drives UI affordances (context menu, create-subfolder). Empty/false unless ListFolders computed it for the actor.
+}
+
+message FolderAccessRule {
+  string id = 1;
+  string folder_id = 2;
+  SubjectKind subject_kind = 3;
+  string subject_id = 4;
+  FolderRole role = 5;
+}
+
+// A rule inherited from an ancestor, tagged with where it came from.
+message InheritedFolderRule {
+  FolderAccessRule rule = 1;
+  string from_folder_id = 2;
+  string from_folder_name = 3;
+}
+
+// RaciRule is one ordered firewall row on a folder: a subject with a tri-state
+// grant per RACI action. Evaluated top-down the folder chain (target folder
+// first, then ancestors); first non-blank allow/deny per action wins. Grant
+// keys are "C" (read+reveal), "R" (manage/create/edit/rotate), "A" (approve
+// access requests), "I" (informed / metadata-only); values "allow"|"deny";
+// a missing key = blank (fall through). Mirrors the authz engine's Rule.
+message RaciRule {
+  string id = 1;
+  string folder_id = 2;
+  int32 order = 3;                      // position in the folder's ordered ruleset
+  SubjectKind subject_kind = 4;         // everyone | group | user
+  string subject_name = 5;              // group name or user id; empty for everyone
+  map<string, string> grants = 6;       // {"C|R|A|I": "allow|deny"}
+}
+
+// The effective access a user has on a folder (Resolve over the chain), for UI
+// gating. read == reveal (both = RACI C in v1).
+message FolderAccess {
+  bool read = 1;
+  bool reveal = 2;
+  bool manage = 3;                      // RACI R
+  bool approve = 4;                     // RACI A
+  bool informed = 5;                    // RACI I
+  bool manage_ruleset = 6;              // may edit this ruleset (owner/admin/root)
+}
+
+message GetFolderRulesetRequest { ActorContext actor = 1; string folder_id = 2; }
+message GetFolderRulesetResponse { repeated string owners = 1; repeated RaciRule rules = 2; }
+message SetFolderRulesetRequest { ActorContext actor = 1; string folder_id = 2; repeated string owners = 3; repeated RaciRule rules = 4; }
+message SetFolderRulesetResponse {}
+message GetMyAccessRequest { ActorContext actor = 1; string folder_id = 2; }
+message GetMyAccessResponse { FolderAccess access = 1; }
+
+// Per-action outcome of evaluating a (possibly draft, unsaved) ruleset for a
+// simulated actor, with the human-readable reason (which rule/owner/root
+// short-circuit produced the decision) — powers the RACI ruleset editor's
+// "simulate as user" panel.
+message RaciDecision {
+  bool read = 1;
+  string read_reason = 2;
+  bool reveal = 3;
+  string reveal_reason = 4;
+  bool manage = 5;
+  string manage_reason = 6;
+  bool approve = 7;
+  string approve_reason = 8;
+  bool informed = 9;
+  string informed_reason = 10;
+}
+
+// Evaluates draft_rules (not yet saved) for a synthesized simulated actor
+// against a folder's chain, so an editor can preview the effect of in-progress
+// rule changes before saving. sim_* fields describe the simulated actor;
+// actor is the real caller (for authz on the simulate call itself).
+message SimulateFolderRequest {
+  ActorContext actor = 1;
+  string folder_id = 2;
+  string sim_user_id = 3;
+  bool sim_is_site_admin = 4;
+  bool sim_is_root = 5;
+  repeated string sim_group_names = 6;
+  repeated RaciRule draft_rules = 7;
+}
+message SimulateFolderResponse { RaciDecision decision = 1; }
+
+message SimulateSecretRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  string sim_user_id = 3;
+  bool sim_is_site_admin = 4;
+  bool sim_is_root = 5;
+  repeated string sim_group_names = 6;
+  repeated RaciRule draft_rules = 7;
+}
+message SimulateSecretResponse { RaciDecision decision = 1; }
+
+// ---- Secrets ----------------------------------------------------------------
+
+// A secret is always returned masked; its sensitive field values are fetched
+// only via RevealSecretField (audited), never embedded here.
+message Secret {
+  string id = 1;
+  string name = 2;
+  string folder_id = 3;
+  string type_id = 4;
+  string target_id = 5;
+  RotationState last_rotation_result = 6;
+  string expires_at = 7;                // RFC3339, empty = none
+  HeartbeatResult last_heartbeat_result = 8;
+  int32 view_count = 9;                 // reveals/copies by the current dataset
+  string last_accessed_at = 10;         // RFC3339 of the most recent reveal/copy
+  repeated RaciRule ruleset = 11;       // secret-level firewall-RACI overrides (empty = inherit folder ruleset)
+  bool retired = 12;                    // soft-deleted: hidden from default listings, recoverable via RestoreSecret
+  string retired_at = 13;               // RFC3339, empty = active
+  string verified_at = 14;              // RFC3339 of last successful/attempted validation
+  int32 heartbeat_interval_seconds = 15;  // 0 = use type/default
+  string next_heartbeat_at = 16;        // RFC3339; scheduler mirror (queue is source of truth)
+  string rotated_at = 17;               // RFC3339 of last successful rotation
+  int32 rotation_interval_days = 18;    // 0 = no scheduled rotation
+  string next_rotation_at = 19;         // RFC3339; scheduler mirror (queue is source of truth)
+  bool rotation_opt_out = 20;           // per-secret override: never rotate this secret (audited; type must allow rotation)
+  // Set by vault from connector reports, never by a caller. Fields 29-30
+  // leave 24-28 to the value-version fields.
+  //   builtin_administrator: the target account is the domain's built-in
+  //     Administrator (RID 500). Vault never rotates it; heartbeat still runs.
+  //   admin_count: the account has adminCount=1 (AD protected groups). It
+  //     rotates with the self-service change only; OU-delegated admin reset
+  //     does not apply to it.
+  bool builtin_administrator = 29;
+  bool admin_count = 30;
+  bool heartbeat_opt_out = 21;          // per-secret override: never heartbeat this secret (audited)
+  bool require_token_approval = 22;     // a personal-token reveal needs the owner's per-use browser approval (or a grant with allow_reveal); set by a person only
+  string last_heartbeat_detail = 23;    // the connector's reason for the last heartbeat result (never a value), truncated
+}
+
+// ---- Request/response messages ----------------------------------------------
+
+// PrincipalKind distinguishes a human (cookie/session) caller from a
+// non-human caller (service-account API token, or an in-cluster workload
+// verified via the workload-identity (SPIFFE) seam). Default (0) is
+// intentionally HUMAN (not UNSPECIFIED): every ActorContext produced before
+// this field existed decodes with principal_kind unset, and it must still be
+// treated as a human caller for backward compatibility.
+// buf:lint:ignore ENUM_ZERO_VALUE_SUFFIX
+enum PrincipalKind {
+  PRINCIPAL_KIND_HUMAN = 0;
+  PRINCIPAL_KIND_SERVICE_ACCOUNT = 1;
+  PRINCIPAL_KIND_WORKLOAD = 2;
+  // A human's personal token (MCP /login). Evaluated as user_id with its live
+  // group_names, but never with admin or root authority, never break-glass,
+  // never another user's personal folder, and never a reveal to the caller.
+  PRINCIPAL_KIND_USER_TOKEN = 3;
+}
+
+message ActorContext {
+  string user_id = 1;                   // set by the gateway from the session
+  bool is_site_admin = 2;               // gateway-resolved from identity (roles)
+  bool is_root = 3;                     // bootstrap super-admin
+  repeated string group_names = 4;      // gateway-resolved directory group memberships
+  PrincipalKind principal_kind = 6;     // human (default) | service_account | workload
+  string principal_id = 7;              // set for non-human principals: the service-account or workload id
+  string token_id = 8;                  // PRINCIPAL_KIND_USER_TOKEN: the personal token used, for audit
+}
+
+message ListSecretTypesRequest {}
+message ListSecretTypesResponse { repeated SecretType types = 1; }
+
+message CreateSecretTypeRequest {
+  ActorContext actor = 1;
+  SecretType type = 2;                  // id/origin ignored; created as CUSTOM
+}
+message CreateSecretTypeResponse { SecretType type = 1; }
+
+message UpdateSecretTypeRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  SecretType type = 3;
+}
+message UpdateSecretTypeResponse { SecretType type = 1; }
+
+message DeleteSecretTypeRequest { ActorContext actor = 1; string id = 2; }
+message DeleteSecretTypeResponse { bool removed = 1; }
+
+message CloneSecretTypeRequest { ActorContext actor = 1; string id = 2; }
+message CloneSecretTypeResponse { SecretType type = 1; }
+
+// Extension packs = vendor secret-type templates installed as EXTENSION-origin
+// types (read-only, uninstallable, never editable). Available = catalogued but
+// not yet installed.
+message ListAvailableExtensionsRequest {}
+message ListAvailableExtensionsResponse { repeated SecretType extensions = 1; }
+message ImportExtensionRequest { ActorContext actor = 1; string id = 2; }        // install from catalog
+message ImportExtensionResponse { SecretType type = 1; }
+message ImportExtensionFromJsonRequest { ActorContext actor = 1; string json = 2; } // install a pasted pack
+message ImportExtensionFromJsonResponse { SecretType type = 1; }
+
+// Actor-scoped: returns shared folders plus only the actor's OWN personal
+// folders (never other users' personal folders). The master personal root is
+// always included so the personal tree renders.
+message ListFoldersRequest { ActorContext actor = 1; }
+message ListFoldersResponse { repeated Folder folders = 1; }
+
+message CreateFolderRequest {
+  ActorContext actor = 1;
+  string parent_id = 2;                 // empty = new top-level shared folder
+  string name = 3;
+}
+message CreateFolderResponse { Folder folder = 1; }
+
+message RenameFolderRequest { ActorContext actor = 1; string id = 2; string name = 3; }
+message RenameFolderResponse { Folder folder = 1; }
+
+message MoveFolderRequest { ActorContext actor = 1; string id = 2; string new_parent_id = 3; }
+message MoveFolderResponse { Folder folder = 1; }
+
+message DeleteFolderRequest { ActorContext actor = 1; string id = 2; string reassign_to_id = 3; }
+message DeleteFolderResponse {}
+
+message ReorderFoldersRequest { ActorContext actor = 1; string parent_id = 2; repeated string ordered_ids = 3; }
+message ReorderFoldersResponse {}
+
+message ListFolderRulesRequest { string folder_id = 1; }
+message ListFolderRulesResponse { repeated FolderAccessRule rules = 1; }
+
+message GetInheritedFolderRulesRequest { string folder_id = 1; }
+message GetInheritedFolderRulesResponse { repeated InheritedFolderRule rules = 1; }
+
+message AddFolderRuleRequest { ActorContext actor = 1; FolderAccessRule rule = 2; }
+message AddFolderRuleResponse { FolderAccessRule rule = 1; }
+
+message RemoveFolderRuleRequest { ActorContext actor = 1; string id = 2; }
+message RemoveFolderRuleResponse {}
+
+message ListSecretsInFolderRequest {
+  ActorContext actor = 1;
+  string folder_id = 2;
+  bool include_retired = 3;             // default false: retired secrets excluded
+}
+message ListSecretsInFolderResponse { repeated Secret secrets = 1; }
+
+message GetSecretRequest { ActorContext actor = 1; string id = 2; }
+message GetSecretResponse { Secret secret = 1; }
+
+message CreateSecretRequest {
+  ActorContext actor = 1;
+  string name = 2;
+  string folder_id = 3;
+  string type_id = 4;
+  string target_id = 5;
+  string expires_at = 6;
+  map<string, string> fields = 7;       // all field values incl. sensitive; encrypted at rest
+}
+message CreateSecretResponse { Secret secret = 1; }
+
+message UpdateSecretRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  string name = 3;
+  string target_id = 4;
+  string expires_at = 5;
+  // Only the sensitive fields present here are changed; omit to keep existing.
+  map<string, string> fields = 6;
+  // Move the secret to another folder. Empty = keep its current folder.
+  // personal -> shared is free; shared -> personal needs site-admin (a non-admin
+  // is rejected and routes through an approval that re-applies this as system).
+  string dest_folder_id = 7;
+}
+message UpdateSecretResponse { Secret secret = 1; }
+
+// Per-secret automation override. Disabling is audited and surfaced with a notice
+// in the UI (these should be rare, deliberate exceptions).
+message SetSecretAutomationRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  bool disable_rotation = 3;
+  bool disable_heartbeat = 4;
+}
+message SetSecretAutomationResponse { Secret secret = 1; }
+
+// Non-sensitive field values, safe to show without an audited reveal.
+message GetSecretFieldsRequest { ActorContext actor = 1; string id = 2; }
+message GetSecretFieldsResponse { map<string, string> fields = 1; }
+
+// Reveal ONE sensitive field; the service records an audited "reveal" event.
+message RevealSecretFieldRequest { ActorContext actor = 1; string id = 2; string field_key = 3; }
+message RevealSecretFieldResponse { string value = 1; }
+
+// Reveal ONE sensitive field for a non-human principal (service-account API
+// token or in-cluster workload): RACI-read + full audit, no interactive
+// checkout/MFA. actor.principal_kind must be non-human for this path.
+message RevealSecretFieldForPrincipalRequest { ActorContext actor = 1; string id = 2; string field_key = 3; }
+message RevealSecretFieldForPrincipalResponse { string value = 1; }
+
+// List secrets a non-human principal may READ (RACI-read filtered). Metadata
+// only — field values NEVER travel here.
+message ListSecretsForPrincipalRequest {
+  ActorContext actor = 1;
+  string query = 2;      // optional case-insensitive name substring
+  string folder_id = 3;  // optional: restrict to this folder
+  string type_id = 4;    // optional: restrict to this secret type
+}
+message ListSecretsForPrincipalResponse {
+  repeated Secret secrets = 1; // metadata only
+}
+
+// Create a secret as a non-human principal. Requires RACI-Author (R) on the
+// folder chain (same grant human CreateSecret requires). No MFA/checkout.
+message CreateSecretForPrincipalRequest {
+  ActorContext actor = 1;
+  string folder_id = 2;
+  string type_id = 3;
+  string name = 4;
+  map<string, string> fields = 5;
+  string target_id = 6; // optional
+  bool disable_rotation = 7;   // never schedule rotation for this secret (e.g. a DSRM password)
+  bool disable_heartbeat = 8;
+}
+message CreateSecretForPrincipalResponse {
+  Secret secret = 1;
+}
+
+// Generate a policy-compliant password for the type's password field and store
+// the secret, as a non-human principal. Requires RACI-Author (R). The generated
+// value is returned ONLY if return_value=true.
+message GenerateSecretForPrincipalRequest {
+  ActorContext actor = 1;
+  string folder_id = 2;
+  string type_id = 3;
+  string name = 4;
+  map<string, string> fields = 5; // non-generated fields (username, domain, ...)
+  string policy_id = 6;           // optional password policy; else default
+  string target_id = 7;           // optional
+  bool return_value = 8;          // if true, return the generated password once
+  bool disable_rotation = 9;      // never schedule rotation for this secret
+  bool disable_heartbeat = 10;
+}
+message GenerateSecretForPrincipalResponse {
+  Secret secret = 1;
+  string generated_value = 2;     // set only when return_value=true
+}
+
+// Move a secret to another folder as a non-human principal. Same rule as the
+// human UpdateSecret dest_folder_id move: RACI-Author (R) on the secret's
+// current location AND on the destination folder chain. A move into a personal
+// folder (other than rearranging within the same owner's personal tree) needs
+// a site-admin approval, as it does for a human: once every RACI check has
+// passed, the vault moves NOTHING and returns approval_required=true (audited
+// as secret.move.approval_required.principal), and the caller (the gateway)
+// files a secret-move approval request with the principal as requester. A
+// site-admin approving it performs the move. The secret keeps its id, sealed
+// record and version history.
+message MoveSecretForPrincipalRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  string dest_folder_id = 3;
+}
+message MoveSecretForPrincipalResponse {
+  Secret secret = 1;
+  // true = not moved: the destination is a personal folder and the move
+  // needs a site-admin approval (see above). secret is unchanged.
+  bool approval_required = 2;
+  // Metadata-only view of the destination folder (for the approval request's
+  // display label). Set on success and when approval_required.
+  Folder destination = 3;
+}
+
+// What ChangeSecretTypeForPrincipal does with a non-empty value that has no
+// field under the new type (neither the same key nor a field_mapping entry).
+enum UnmappedFieldPolicy {
+  // Default: same as NOTES.
+  UNMAPPED_FIELD_POLICY_UNSPECIFIED = 0;
+  // Append the value to the new type's notes field (see
+  // ChangeSecretTypeForPrincipalRequest for the format and rules).
+  UNMAPPED_FIELD_POLICY_NOTES = 1;
+  // Refuse the change (FAILED_PRECONDITION) naming the unmapped keys.
+  UNMAPPED_FIELD_POLICY_REFUSE = 2;
+}
+
+// Change a secret's type as a non-human principal. Requires RACI-Author (R) on
+// the secret. Never silently drops a stored value. Every non-empty field carries
+// over to a field of the new type by identical key, or via field_mapping (which
+// always wins). A value with no field left over is handled by unmapped_fields:
+//  - NOTES (default): appended to the new type's notes field (key "notes", or
+//    "note" when the type has no "notes"). The block is separated from any
+//    existing notes by a blank line, one line per key in key order:
+//      [moved from <old key>]: <value as a JSON string>
+//    e.g. [moved from url]: "https://example.test". A sensitive value only
+//    moves into a sensitive notes field, a super-sensitive value only into a
+//    super-sensitive one; otherwise the change is refused naming the keys. It is
+//    also refused when the new type has no notes field, or when the result
+//    would exceed the notes field's max_length (never truncated).
+//  - REFUSE: the change fails naming the unmapped keys.
+// A sensitive value may only land in a sensitive field (and a super-sensitive
+// one only in a super-sensitive field). The new type's required fields must be
+// populated, and max_length/pattern hold, after mapping. Errors name field KEYS,
+// never values.
+//
+// Managed types: changing INTO a rotation- or heartbeat-managed type is allowed
+// (same Author gate a human create needs); the secret is then scheduled for
+// rotation/heartbeat exactly as a human-created secret of that type would be.
+// Changing OUT of a rotation- or heartbeat-managed type, into or out of the
+// certificate type, or to a type that drops checkout, is human-only
+// (FAILED_PRECONDITION). The prior values stay in version history.
+message ChangeSecretTypeForPrincipalRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  string new_type_id = 3;
+  // Old field key -> new field key. Keys not listed carry over by identical key.
+  map<string, string> field_mapping = 4;
+  // Values for new-type fields the mapping leaves empty (e.g. a field the new
+  // type requires). May not overwrite a carried-over value.
+  map<string, string> fields = 5;
+  UnmappedFieldPolicy unmapped_fields = 6;
+}
+message ChangeSecretTypeForPrincipalResponse {
+  Secret secret = 1;
+  repeated string field_keys = 2; // field keys populated under the new type (never values)
+  repeated string moved_to_notes_keys = 3; // old keys appended to the notes field (never values)
+  string notes_field_key = 4;     // the notes field used, when moved_to_notes_keys is non-empty
+}
+
+// ---- Organize verbs for non-human principals --------------------------------
+//
+// Every *ForPrincipal RPC below rejects a PRINCIPAL_KIND_HUMAN actor
+// (PERMISSION_DENIED) and evaluates RACI for the principal id only: a
+// machine's is_site_admin / is_root flags are ignored, and folder ownership
+// (keyed by human user id) never applies. Each call is audited as the
+// principal. There is deliberately no machine delete for secrets or folders.
+//
+// Folders returned by these RPCs carry metadata only: id, name, parent_id,
+// scope, order and can_manage (= the principal holds RACI Author there).
+// owners, owner_user_id, group_id, role and subtree_secret_count are cleared.
+
+// Rename a secret. Requires RACI-Author (R) on the secret's folder chain AND on
+// the secret's own ruleset (a per-secret deny wins). Retired secrets are
+// refused (FAILED_PRECONDITION). The name is trimmed and must be non-empty.
+message RenameSecretForPrincipalRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  string name = 3;
+}
+message RenameSecretForPrincipalResponse {
+  Secret secret = 1;
+}
+
+// Partially update a secret's field values. Requires RACI-Author (R) on the
+// secret, as RenameSecretForPrincipal. Only the listed keys change; every key
+// must be a field the secret's type declares. An empty value clears an optional
+// field; a required field cannot be cleared. Each new value must satisfy the
+// field's max_length and pattern. The merged values are re-sealed as a NEW
+// active version, so the prior values stay in version history; an update that
+// changes nothing mints no version and returns no changed keys.
+//
+// Types the vault manages are restricted (FAILED_PRECONDITION): on a type with
+// rotation, heartbeat or checkout, or the certificate type, a machine may only
+// change the descriptive "notes" and "description" fields. Changing the
+// credential there would desync it from the real system (rotation/heartbeat),
+// changing the account identity (username, domain, server...) would point the
+// connector at a different account, certificate fields are derived from the
+// imported material, and checkout exists to gate human access to the value.
+// Errors and audit records name field keys, never values.
+message UpdateSecretFieldsForPrincipalRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  map<string, string> fields = 3;     // field key -> new value ("" clears an optional field)
+}
+message UpdateSecretFieldsForPrincipalResponse {
+  Secret secret = 1;
+  repeated string changed_field_keys = 2; // keys whose value changed, sorted (never values)
+}
+
+// List folders the principal may READ (RACI C) on the folder's own chain.
+// Personal-scope folders are only listed when the principal is granted read on
+// them explicitly; the master personal root is never listed. Optional filters:
+// parent_id (direct children only) and query (case-insensitive name
+// substring). Metadata only (see above).
+message ListFoldersForPrincipalRequest {
+  ActorContext actor = 1;
+  string query = 2;
+  string parent_id = 3;
+}
+message ListFoldersForPrincipalResponse {
+  repeated Folder folders = 1;
+}
+
+// Create a subfolder. parent_id is required: a machine cannot create a
+// top-level folder (the human route makes the creator its owner, and a machine
+// cannot own). Requires RACI-Author (R) on the parent's chain (the machine
+// equivalent of the human owner gate, which a machine can never meet). A parent
+// in a personal subtree is refused (PERMISSION_DENIED). A sibling with the same
+// name (case-insensitive) is refused (ALREADY_EXISTS). The folder inherits its
+// parent's scope and RACI chain and gets no owners of its own.
+message CreateFolderForPrincipalRequest {
+  ActorContext actor = 1;
+  string parent_id = 2;
+  string name = 3;
+}
+message CreateFolderForPrincipalResponse {
+  Folder folder = 1;
+}
+
+// Rename a folder. Requires RACI-Author (R) on the folder's chain (a
+// folder-level deny wins). The master personal root is refused.
+message RenameFolderForPrincipalRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  string name = 3;
+}
+message RenameFolderForPrincipalResponse {
+  Folder folder = 1;
+}
+
+// Move a folder (with its subtree) under another parent. Mirrors the human
+// MoveFolder for a principal that can never be a site-admin:
+//  - RACI-Author (R) on the folder itself, on its current parent's chain, and
+//    on the destination parent's chain;
+//  - Author on every folder and secret in the moved subtree (a machine cannot
+//    re-parent content it could not manage);
+//  - new_parent_id is required (no machine move to top level);
+//  - no cycles: the destination may not be the folder or a descendant
+//    (INVALID_ARGUMENT);
+//  - a destination in a personal subtree (unless the folder is already in that
+//    same owner's personal tree) needs a site-admin approval: see
+//    approval_required below;
+//  - the master personal root is refused.
+// The subtree takes on the destination's scope, as the human move does.
+message MoveFolderForPrincipalRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  string new_parent_id = 3;
+}
+message MoveFolderForPrincipalResponse {
+  Folder folder = 1;
+  // true = not moved: the destination is in a personal subtree and the move
+  // needs a site-admin approval. Returned only after every RACI check above has
+  // passed (audited as folder.move.approval_required.principal); the caller
+  // (the gateway) files a folder-move approval request with the principal as
+  // requester, and a site-admin approving it performs the move.
+  bool approval_required = 2;
+  // Metadata-only view of the destination parent (display label).
+  Folder destination = 3;
+}
+
+// Generate a fresh SSH keypair server-side. Stateless: nothing is
+// persisted by the vault, the caller is responsible for storing the private
+// key as a secret field.
+message GenerateKeyPairRequest {
+  ActorContext actor = 1;
+  // One of: "Ed25519", "RSA 4096", "RSA 2048", "ECDSA P-256".
+  string format = 2;
+}
+message GenerateKeyPairResponse {
+  string private_key = 1;
+  string public_key = 2;
+}
+
+// Rotates the active working-KEK: mints a new KEK, makes it the active ref,
+// and sweeps existing records to re-wrap their DEKs under it.
+message RotateKekRequest { ActorContext actor = 1; }
+message RotateKekResponse {
+  string active_ref = 1;   // the new active working-KEK ref
+  int32 rewrapped  = 2;    // number of records re-wrapped by the sweep
+}
+
+// One prior (or current) entry in a secret's append-only version ledger. Every
+// edit and rotation appends a version; field_keys lists the keys present in that
+// version's record (for the UI) but NEVER any values — an old value is fetched
+// only via the audited RevealSecretVersionField.
+message SecretVersion {
+  int32 version_no = 1;
+  string created_by = 2;
+  string created_at = 3;                 // RFC3339
+  bool active = 4;                        // the current live version
+  repeated string field_keys = 5;
+  // The subset of field_keys whose VALUE differs from the immediately-prior
+  // version (by version_no) — the fields this version actually changed. The
+  // oldest version reports all its keys (initial set); a field removed between
+  // versions counts as changed. Computed server-side by comparing value hashes,
+  // so still NEVER exposes any value. Empty means a re-save with no value change.
+  repeated string changed_field_keys = 6;
+}
+
+// List a secret's versions (newest version_no first). Metadata only; gated by
+// the same read access as revealing the secret.
+message ListSecretVersionsRequest { ActorContext actor = 1; string secret_id = 2; }
+message ListSecretVersionsResponse { repeated SecretVersion versions = 1; }
+
+// Reveal ONE field from a specific prior version; audited exactly like
+// RevealSecretField (sensitive), gated by the same reveal access.
+message RevealSecretVersionFieldRequest { ActorContext actor = 1; string secret_id = 2; int32 version_no = 3; string field_key = 4; }
+message RevealSecretVersionFieldResponse { string value = 1; }
+
+// Emergency access: bypasses the checkout-lock/approval-pending gate for a
+// read-eligible actor (gateway MFA step-up gates the call before this RPC is
+// reached). Reveals ALL fields, records a high-severity audited event,
+// notifies the secret's owner, and enqueues a forced post-use rotation.
+message BreakGlassSecretRequest { ActorContext actor = 1; string secret_id = 2; string reason = 3; }
+message BreakGlassSecretResponse { map<string, string> fields = 1; }
+
+// Copy the secret's primary sensitive field value to the clipboard; recorded as
+// a distinct audited "copy" access event. Empty value if the secret has none.
+message CopySecretRequest { ActorContext actor = 1; string id = 2; }
+message CopySecretResponse { string value = 1; }
+
+// Soft-delete: hides the secret from default listings and marks it recoverable.
+message RetireSecretRequest { ActorContext actor = 1; string id = 2; }
+message RetireSecretResponse { Secret secret = 1; }
+
+// Reverses RetireSecret, clearing retired/retired_at.
+message RestoreSecretRequest { ActorContext actor = 1; string id = 2; }
+message RestoreSecretResponse { Secret secret = 1; }
+
+// Hard delete: permanently removes the secret. Irreversible.
+message DeleteSecretRequest { ActorContext actor = 1; string id = 2; }
+message DeleteSecretResponse {}
+
+// Dashboard rollup over the actor's readable secrets.
+message SecretStats {
+  int32 total = 1;
+  int32 expiring_soon = 2;   // expires within 30 days
+  int32 expired = 3;
+  int32 drift = 4;           // last heartbeat FAILED
+}
+message GetSecretStatsRequest { ActorContext actor = 1; }
+message GetSecretStatsResponse { SecretStats stats = 1; }
+
+message GetTopAccessedSecretsRequest { ActorContext actor = 1; int32 limit = 2; }
+message GetTopAccessedSecretsResponse { repeated Secret secrets = 1; }
+
+// Dashboard drill-down: the actor's readable secrets filtered by the status a
+// stat tile represents. status ∈ {"expiring","expired","drift","all"} — same
+// filter rules as GetSecretStats. RACI-scoped (readable-only), never persisted.
+message ListSecretsByStatusRequest { ActorContext actor = 1; string status = 2; }
+message ListSecretsByStatusResponse { repeated Secret secrets = 1; }
+
+// Find secrets whose stored publicKey field matches (case-insensitive
+// substring); for automation agents discovering deployed keys.
+message FindSecretsByPublicKeyRequest { ActorContext actor = 1; string query = 2; }
+message FindSecretsByPublicKeyResponse { repeated Secret secrets = 1; }
+
+// Firewall-RACI secret access: mirrors the folder ruleset RPCs above but
+// scoped to a single secret's own ruleset (its Secret.ruleset field).
+message GetSecretRulesetRequest { ActorContext actor = 1; string secret_id = 2; }
+message GetSecretRulesetResponse { repeated RaciRule rules = 1; }
+message SetSecretRulesetRequest { ActorContext actor = 1; string secret_id = 2; repeated RaciRule rules = 3; }
+message SetSecretRulesetResponse { repeated RaciRule rules = 1; }
+message GetMySecretAccessRequest { ActorContext actor = 1; string secret_id = 2; }
+message GetMySecretAccessResponse { FolderAccess access = 1; }
+
+// ---- Certificates (import/export) -------------------------------------------
+
+// Parsed metadata pulled from an X.509 certificate at import time, or from the
+// secret's stored certificate at export time; surfaced to the UI so it never
+// has to parse certificate bytes itself.
+message CertMeta {
+  string subject = 1;
+  string issuer = 2;
+  repeated string sans = 3;
+  string not_before = 4;          // RFC3339
+  string not_after = 5;           // RFC3339
+  string serial_number = 6;
+  string fingerprint_sha256 = 7;
+  string key_algorithm = 8;
+  int32 key_bits = 9;
+  bool is_ca = 10;
+  // output-only: whether the stored secret carries the certificate's private
+  // key (= len(KeyPEM)>0). Lets the UI seed the export-disable state for
+  // key-bearing formats straight from an import/replace response, without a
+  // page reload. The server enforces key presence independently on export.
+  bool has_private_key = 11;
+}
+
+// Imports a certificate file (PKCS#12, PEM, DER, PKCS#7, or JKS) into a secret
+// under folder_id. passphrase unlocks an encrypted container (PKCS#12/JKS);
+// alias picks one entry when the container holds more than one and the
+// caller already knows which. If the file holds multiple entries and alias
+// is empty, no secret is created — aliases lists what's inside so the caller
+// can re-call with one chosen.
+message ImportCertificateRequest {
+  ActorContext actor = 1;
+  string folder_id = 2;
+  string name = 3;
+  bytes file_bytes = 4;
+  string passphrase = 5;
+  string alias = 6;
+}
+// aliases is set (secret left empty) when file_bytes contains multiple
+// entries and the request didn't disambiguate with alias.
+message ImportCertificateResponse {
+  Secret secret = 1;
+  CertMeta meta = 2;
+  repeated string aliases = 3;
+}
+
+// Exports a stored certificate secret as a downloadable file in the requested
+// format. new_passphrase re-encrypts the output container (pkcs12/jks); it's
+// ignored for formats with no container encryption (pem*, der, pkcs7).
+message ExportCertificateRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  string format = 3;              // pkcs12|pem|pem-cert|pem-key|pem-fullchain|der|pkcs7|jks
+  string new_passphrase = 4;
+}
+message ExportCertificateResponse {
+  bytes file_bytes = 1;
+  string filename = 2;
+  string content_type = 3;
+}
+
+// Replaces a certificate secret's material in place with a freshly issued
+// certificate file (PKCS#12, PEM, DER, PKCS#7, or JKS) — e.g. after a CA
+// re-issue — without changing the secret's id, folder, or ruleset. Appends a
+// new version to the secret's ledger like any other update. passphrase and
+// alias behave as in ImportCertificate: passphrase unlocks an encrypted
+// container, alias picks one entry when the container holds more than one.
+message ReplaceCertificateRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  bytes file_bytes = 3;
+  string passphrase = 4;
+  string alias = 5;
+}
+// aliases is set (secret left empty) when file_bytes contains multiple
+// entries and the request didn't disambiguate with alias.
+message ReplaceCertificateResponse {
+  Secret secret = 1;
+  CertMeta meta = 2;
+  repeated string aliases = 3;
+}
+
+// ---- Connections + Targets --------------------------------------------------
+
+message Connection {
+  string id = 1;
+  string name = 2;
+  string protocol = 3;        // ssh|winrm|https|ldap|database
+  int32 port = 4;
+  bool use_tls = 5;
+  string description = 6;
+  int32 target_count = 7;     // output-only: targets binding to this connection
+  string target_id = 8;
+  string privileged_secret_id = 9;
+  bool bootstrap = 10;
+}
+
+message Target {
+  string id = 1;
+  string name = 2;
+  string hostname = 3;
+  string connection_id = 4;
+  string description = 5;
+  int32 secret_count = 6;     // output-only: secrets pointing at this target
+  string kind = 7;
+  string domain = 8;
+  string realm = 9;
+  string owner_user_id = 10;  // empty = shared (admin-owned); set = personal (owner-scoped)
+}
+
+message ListConnectionsRequest {}
+message ListConnectionsResponse { repeated Connection connections = 1; }
+message SaveConnectionRequest { ActorContext actor = 1; Connection connection = 2; } // id empty = create
+message SaveConnectionResponse { Connection connection = 1; }
+message DeleteConnectionRequest { ActorContext actor = 1; string id = 2; }
+message DeleteConnectionResponse { bool removed = 1; } // false if targets still bind
+
+// Actor-scoped: returns shared targets (owner_user_id empty) plus only the
+// actor's OWN personal targets; site-admin/root see all.
+message ListTargetsRequest { ActorContext actor = 1; }
+message ListTargetsResponse { repeated Target targets = 1; }
+message SaveTargetRequest { ActorContext actor = 1; Target target = 2; } // id empty = create
+message SaveTargetResponse { Target target = 1; }
+message DeleteTargetRequest { ActorContext actor = 1; string id = 2; }
+message DeleteTargetResponse { bool removed = 1; } // false if secrets still point at it
+
+// Target RACI ruleset: mirrors the folder firewall-RACI ruleset (RaciRule),
+// scoped to a target instead of a folder. No new grant action is introduced
+// — the existing C|R|A|I map applies; C on a target means "may reveal/connect
+// via this target" (shared with the vendor-launch Connect gating).
+message GetTargetRulesetRequest { ActorContext actor = 1; string target_id = 2; }
+message GetTargetRulesetResponse { repeated RaciRule ruleset = 1; }
+message SetTargetRulesetRequest { ActorContext actor = 1; string target_id = 2; repeated RaciRule ruleset = 3; }
+message SetTargetRulesetResponse {}
+
+// ---- Connector / heartbeat ----
+// WorkerIdentity is the connector's platform identity (dev seam token now;
+// SPIFFE SVID later). The vault verifies it before releasing anything.
+message WorkerIdentity { string token = 1; string worker_id = 2; }
+
+message HeartbeatConn {
+  string protocol = 1;   // ldaps|kerberos
+  string host = 2;
+  int32 port = 3;
+  bool use_tls = 4;
+}
+message HeartbeatTarget { string kind = 1; string domain = 2; string realm = 3; string hostname = 4; }
+
+// One due validation job (no secret value — reveal is a separate call).
+message HeartbeatJob {
+  string secret_id = 1;
+  string secret_name = 2;
+  string username = 3;         // non-sensitive: the account to bind AS
+  HeartbeatConn connection = 4;
+  HeartbeatTarget target = 5;
+}
+
+message ClaimDueHeartbeatsRequest { WorkerIdentity identity = 1; int32 limit = 2; }
+message ClaimDueHeartbeatsResponse { repeated HeartbeatJob jobs = 1; }
+
+message RevealForHeartbeatRequest { WorkerIdentity identity = 1; string secret_id = 2; }
+// Returns the managed account's own current credential to bind with.
+// For key-based protocols (ssh) private_key/passphrase carry the key
+// material and password is empty; for password protocols the reverse.
+message RevealForHeartbeatResponse {
+  string username = 1;
+  string password = 2;
+  string private_key = 3;
+  string passphrase = 4;
+}
+
+message ReportHeartbeatRequest {
+  WorkerIdentity identity = 1;
+  string secret_id = 2;
+  HeartbeatResult result = 3;
+  string detail = 4;          // human-readable reason (audit/UX)
+  // What the connector read about the AD account after a successful bind.
+  // Both unset when it could not tell (not an AD target, or the bind or
+  // lookup failed).
+  optional bool builtin_administrator = 5;  // objectSid RID is 500
+  optional bool admin_count = 6;            // adminCount=1
+}
+message ReportHeartbeatResponse { bool ok = 1; }
+
+// ---- Connector / rotation ----
+// One due rotation job (no secret value — reveal is a separate call).
+message RotationJob {
+  string secret_id = 1;
+  string secret_name = 2;
+  string username = 3;         // non-sensitive: the account being rotated
+  HeartbeatConn connection = 4;
+  HeartbeatTarget target = 5;
+}
+
+message EnqueueRotationRequest { ActorContext actor = 1; string secret_id = 2; string reason = 3; }
+message EnqueueRotationResponse { bool ok = 1; }
+
+message ClaimDueRotationsRequest { WorkerIdentity identity = 1; int32 limit = 2; }
+message ClaimDueRotationsResponse { repeated RotationJob jobs = 1; }
+
+message RevealForRotationRequest { WorkerIdentity identity = 1; string secret_id = 2; }
+// Returns the managed account's current credential plus a freshly generated
+// replacement; the connector never generates passwords itself.
+message RevealForRotationResponse { string username = 1; string current_password = 2; string new_password = 3; int32 version = 4; }
+
+message ReportRotationRequest {
+  WorkerIdentity identity = 1;
+  string secret_id = 2;
+  RotationPhase change = 3;     // outcome of applying the new credential on the target
+  RotationPhase validate = 4;   // outcome of validating the new credential
+  string detail = 5;            // human-readable reason (audit/UX)
+  int32 version = 6;            // the staged version_no from RevealForRotation; binds this report to the exact applied credential
+  // true: the account is the domain's built-in Administrator (RID 500), so
+  // the connector made no change (change and validate are SKIPPED). Unset
+  // when the connector did not determine it.
+  optional bool builtin_administrator = 7;
+}
+message ReportRotationResponse { bool ok = 1; }
+
+// ---- Service ----------------------------------------------------------------
+
+// Use without reveal: a personal-token caller asks to use one secret field for
+// one exact command. The value is released only after the token's owner
+// approves in the Sneakers UI (with a fresh second factor) or a use grant the
+// owner created covers it, and only once, to the same token.
+enum SecretUseState {
+  SECRET_USE_STATE_UNSPECIFIED = 0;
+  SECRET_USE_STATE_PENDING = 1;
+  SECRET_USE_STATE_APPROVED = 2;
+  SECRET_USE_STATE_DENIED = 3;
+  SECRET_USE_STATE_REDEEMED = 4;
+  SECRET_USE_STATE_EXPIRED = 5;
+}
+
+message SecretUse {
+  string id = 1;
+  string secret_id = 2;
+  string secret_name = 3;
+  string field_key = 4;
+  repeated string argv = 5;             // the exact command the value is released for
+  string user_id = 6;                   // the token's owner; only they can decide
+  string token_id = 7;                  // only this token can redeem
+  SecretUseState state = 8;
+  int64 created_at_unix = 9;
+  int64 expires_at_unix = 10;
+  string grant_id = 11;                 // set when a use grant approved it
+  string client_label = 12;
+  bool reveal = 13;                     // releases the value to the token itself rather than to a command; argv is empty
+}
+
+message PrepareSecretUseRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  string field_key = 3;
+  repeated string argv = 4;             // empty when reveal
+  string client_label = 5;
+  bool reveal = 6;
+}
+message PrepareSecretUseResponse { SecretUse use = 1; }
+
+message GetSecretUseRequest { ActorContext actor = 1; string use_id = 2; }
+message GetSecretUseResponse { SecretUse use = 1; }
+
+message ListPendingSecretUsesRequest { ActorContext actor = 1; }
+message ListPendingSecretUsesResponse { repeated SecretUse uses = 1; }
+
+message DecideSecretUseRequest {
+  ActorContext actor = 1;
+  string use_id = 2;
+  bool approve = 3;
+}
+message DecideSecretUseResponse { SecretUse use = 1; }
+
+// value is set only on the single successful redemption.
+message RedeemSecretUseRequest { ActorContext actor = 1; string use_id = 2; }
+message RedeemSecretUseResponse {
+  SecretUse use = 1;
+  string value = 2;
+}
+
+// A program the grant allows and a glob its space-joined arguments must match.
+message UseGrantProgram {
+  string program = 1;
+  string arg_pattern = 2;
+}
+
+// A pre-approval the owner creates in the UI so uses inside its scope need no
+// per-use approval. Only a human session can create one.
+message UseGrant {
+  string id = 1;
+  string user_id = 2;
+  string token_id = 3;
+  repeated string secret_ids = 4;
+  string folder_id = 5;                 // alternative to secret_ids: every secret directly in this folder
+  repeated string field_keys = 6;       // empty = the secret type's password field only
+  repeated UseGrantProgram programs = 7;
+  int64 expires_at_unix = 8;
+  int32 max_uses = 9;                   // 0 = unlimited within the window
+  int32 uses = 10;
+  int64 revoked_at_unix = 11;
+  int64 created_at_unix = 12;
+  bool allow_reveal = 13;               // also covers reveals to the token (no command), for secrets with require_token_approval
+}
+
+// SetSecretAutomationForPrincipal opts a secret out of (or back into) rotation
+// and heartbeat for a non-human principal with RACI-Author on the secret.
+message SetSecretAutomationForPrincipalRequest { ActorContext actor = 1; string secret_id = 2; bool disable_rotation = 3; bool disable_heartbeat = 4; }
+message SetSecretAutomationForPrincipalResponse { Secret secret = 1; }
+
+// SetSecretTargetForPrincipal attaches a target to a secret, or detaches it
+// when target_id is empty, for a non-human principal with RACI-Author on the
+// secret. The target must be one the principal can see.
+message SetSecretTargetForPrincipalRequest { ActorContext actor = 1; string secret_id = 2; string target_id = 3; }
+message SetSecretTargetForPrincipalResponse { Secret secret = 1; }
+
+// RequestHeartbeatForPrincipal makes a secret's heartbeat due now, so the next
+// connector poll checks the stored credential against its target. Needs read
+// on the secret and a scheduled heartbeat; limited to once a minute per secret.
+message RequestHeartbeatForPrincipalRequest { ActorContext actor = 1; string secret_id = 2; }
+message RequestHeartbeatForPrincipalResponse { int64 requested_at_unix = 1; }
+
+// GetHeartbeatStatusForPrincipal reports the last heartbeat of a secret the
+// principal can read. pending: a check is due or in progress.
+message GetHeartbeatStatusForPrincipalRequest { ActorContext actor = 1; string secret_id = 2; }
+message GetHeartbeatStatusForPrincipalResponse {
+  HeartbeatResult result = 1;
+  int64 checked_at_unix = 2;
+  string detail = 3;
+  bool pending = 4;
+}
+
+// SetSecretTokenApproval turns require_token_approval on or off. A person with
+// manage rights on the secret only; never a token or other non-human principal.
+message SetSecretTokenApprovalRequest { ActorContext actor = 1; string secret_id = 2; bool required = 3; }
+message SetSecretTokenApprovalResponse { Secret secret = 1; }
+
+message CreateUseGrantRequest { ActorContext actor = 1; UseGrant grant = 2; }
+message CreateUseGrantResponse { UseGrant grant = 1; }
+
+message ListUseGrantsRequest { ActorContext actor = 1; }
+message ListUseGrantsResponse { repeated UseGrant grants = 1; }
+
+message RevokeUseGrantRequest { ActorContext actor = 1; string grant_id = 2; }
+message RevokeUseGrantResponse { UseGrant grant = 1; }
+
+service VaultService {
+  rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse);
+  rpc SaveConnection(SaveConnectionRequest) returns (SaveConnectionResponse);
+  rpc DeleteConnection(DeleteConnectionRequest) returns (DeleteConnectionResponse);
+  rpc ListTargets(ListTargetsRequest) returns (ListTargetsResponse);
+  rpc SaveTarget(SaveTargetRequest) returns (SaveTargetResponse);
+  rpc DeleteTarget(DeleteTargetRequest) returns (DeleteTargetResponse);
+  rpc GetTargetRuleset(GetTargetRulesetRequest) returns (GetTargetRulesetResponse);
+  rpc SetTargetRuleset(SetTargetRulesetRequest) returns (SetTargetRulesetResponse);
+
+  // Certificates: import a certificate file into a secret, export a
+  // certificate secret's material back out as a file, or replace a secret's
+  // certificate material in place (rotation, e.g. after a CA re-issue).
+  rpc ImportCertificate(ImportCertificateRequest) returns (ImportCertificateResponse);
+  rpc ExportCertificate(ExportCertificateRequest) returns (ExportCertificateResponse);
+  rpc ReplaceCertificate(ReplaceCertificateRequest) returns (ReplaceCertificateResponse);
+
+  // Secret types
+  rpc ListSecretTypes(ListSecretTypesRequest) returns (ListSecretTypesResponse);
+  rpc CreateSecretType(CreateSecretTypeRequest) returns (CreateSecretTypeResponse);
+  rpc UpdateSecretType(UpdateSecretTypeRequest) returns (UpdateSecretTypeResponse);
+  rpc DeleteSecretType(DeleteSecretTypeRequest) returns (DeleteSecretTypeResponse);
+  rpc CloneSecretType(CloneSecretTypeRequest) returns (CloneSecretTypeResponse);
+  rpc ListAvailableExtensions(ListAvailableExtensionsRequest) returns (ListAvailableExtensionsResponse);
+  rpc ImportExtension(ImportExtensionRequest) returns (ImportExtensionResponse);
+  rpc ImportExtensionFromJson(ImportExtensionFromJsonRequest) returns (ImportExtensionFromJsonResponse);
+
+  // Folders
+  rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse);
+  rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse);
+  rpc RenameFolder(RenameFolderRequest) returns (RenameFolderResponse);
+  rpc MoveFolder(MoveFolderRequest) returns (MoveFolderResponse);
+  rpc DeleteFolder(DeleteFolderRequest) returns (DeleteFolderResponse);
+  rpc ReorderFolders(ReorderFoldersRequest) returns (ReorderFoldersResponse);
+
+  // Folder RBAC (legacy FolderAccessRule API — retained for the current UI;
+  // superseded by the firewall-RACI ruleset below, which is the enforcement
+  // source of truth).
+  rpc ListFolderRules(ListFolderRulesRequest) returns (ListFolderRulesResponse);
+  rpc GetInheritedFolderRules(GetInheritedFolderRulesRequest) returns (GetInheritedFolderRulesResponse);
+  rpc AddFolderRule(AddFolderRuleRequest) returns (AddFolderRuleResponse);
+  rpc RemoveFolderRule(RemoveFolderRuleRequest) returns (RemoveFolderRuleResponse);
+
+  // Firewall-RACI folder access (the authz engine): ordered rules + owners per
+  // folder, evaluated down the folder chain. Enforcement source of truth.
+  rpc GetFolderRuleset(GetFolderRulesetRequest) returns (GetFolderRulesetResponse);
+  rpc SetFolderRuleset(SetFolderRulesetRequest) returns (SetFolderRulesetResponse);
+  rpc GetMyAccess(GetMyAccessRequest) returns (GetMyAccessResponse);
+  rpc SimulateFolder(SimulateFolderRequest) returns (SimulateFolderResponse);
+  rpc SimulateSecret(SimulateSecretRequest) returns (SimulateSecretResponse);
+
+  // Secrets
+  rpc ListSecretsInFolder(ListSecretsInFolderRequest) returns (ListSecretsInFolderResponse);
+  rpc GetSecret(GetSecretRequest) returns (GetSecretResponse);
+  rpc CreateSecret(CreateSecretRequest) returns (CreateSecretResponse);
+  rpc UpdateSecret(UpdateSecretRequest) returns (UpdateSecretResponse);
+  rpc SetSecretAutomation(SetSecretAutomationRequest) returns (SetSecretAutomationResponse);
+  rpc GetSecretFields(GetSecretFieldsRequest) returns (GetSecretFieldsResponse);
+  rpc RevealSecretField(RevealSecretFieldRequest) returns (RevealSecretFieldResponse);
+  // Reveal for non-human principals (service accounts, workloads): RACI-read
+  // + full audit, no interactive checkout/MFA.
+  rpc RevealSecretFieldForPrincipal(RevealSecretFieldForPrincipalRequest) returns (RevealSecretFieldForPrincipalResponse);
+  rpc ListSecretsForPrincipal(ListSecretsForPrincipalRequest) returns (ListSecretsForPrincipalResponse);
+  rpc CreateSecretForPrincipal(CreateSecretForPrincipalRequest) returns (CreateSecretForPrincipalResponse);
+  rpc GenerateSecretForPrincipal(GenerateSecretForPrincipalRequest) returns (GenerateSecretForPrincipalResponse);
+  rpc MoveSecretForPrincipal(MoveSecretForPrincipalRequest) returns (MoveSecretForPrincipalResponse);
+  rpc ChangeSecretTypeForPrincipal(ChangeSecretTypeForPrincipalRequest) returns (ChangeSecretTypeForPrincipalResponse);
+  // Organize verbs for non-human principals: rename/update a secret and
+  // list/create/rename/move folders. No machine delete.
+  rpc RenameSecretForPrincipal(RenameSecretForPrincipalRequest) returns (RenameSecretForPrincipalResponse);
+  rpc UpdateSecretFieldsForPrincipal(UpdateSecretFieldsForPrincipalRequest) returns (UpdateSecretFieldsForPrincipalResponse);
+  rpc ListFoldersForPrincipal(ListFoldersForPrincipalRequest) returns (ListFoldersForPrincipalResponse);
+  rpc CreateFolderForPrincipal(CreateFolderForPrincipalRequest) returns (CreateFolderForPrincipalResponse);
+  rpc RenameFolderForPrincipal(RenameFolderForPrincipalRequest) returns (RenameFolderForPrincipalResponse);
+  rpc MoveFolderForPrincipal(MoveFolderForPrincipalRequest) returns (MoveFolderForPrincipalResponse);
+  // Per-secret value history: list prior versions (metadata + field keys) and
+  // reveal a single field's value from a specific version (audited).
+  rpc ListSecretVersions(ListSecretVersionsRequest) returns (ListSecretVersionsResponse);
+  rpc RevealSecretVersionField(RevealSecretVersionFieldRequest) returns (RevealSecretVersionFieldResponse);
+  // Emergency access: bypasses checkout/approval gating for a read-eligible
+  // actor; high-severity audit + owner notify + forced rotation-enqueue.
+  rpc BreakGlassSecret(BreakGlassSecretRequest) returns (BreakGlassSecretResponse);
+  rpc CopySecret(CopySecretRequest) returns (CopySecretResponse);
+  // Secret lifecycle: soft-retire (recoverable), restore, and hard delete (permanent).
+  rpc RetireSecret(RetireSecretRequest) returns (RetireSecretResponse);
+  rpc RestoreSecret(RestoreSecretRequest) returns (RestoreSecretResponse);
+  rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse);
+  rpc GetSecretStats(GetSecretStatsRequest) returns (GetSecretStatsResponse);
+  rpc GetTopAccessedSecrets(GetTopAccessedSecretsRequest) returns (GetTopAccessedSecretsResponse);
+  rpc ListSecretsByStatus(ListSecretsByStatusRequest) returns (ListSecretsByStatusResponse);
+  rpc FindSecretsByPublicKey(FindSecretsByPublicKeyRequest) returns (FindSecretsByPublicKeyResponse);
+
+  // Firewall-RACI secret access (the authz engine): ordered rules on a single
+  // secret, evaluated before falling through to its folder's ruleset.
+  rpc GetSecretRuleset(GetSecretRulesetRequest) returns (GetSecretRulesetResponse);
+  rpc SetSecretRuleset(SetSecretRulesetRequest) returns (SetSecretRulesetResponse);
+  rpc GetMySecretAccess(GetMySecretAccessRequest) returns (GetMySecretAccessResponse);
+
+  // Connector / heartbeat — called by the connector worker, identity-gated.
+  rpc ClaimDueHeartbeats(ClaimDueHeartbeatsRequest) returns (ClaimDueHeartbeatsResponse);
+  rpc RevealForHeartbeat(RevealForHeartbeatRequest) returns (RevealForHeartbeatResponse);
+  rpc ReportHeartbeat(ReportHeartbeatRequest) returns (ReportHeartbeatResponse);
+
+  // Connector / rotation — called by the connector worker, identity-gated.
+  rpc EnqueueRotation(EnqueueRotationRequest) returns (EnqueueRotationResponse);
+  rpc ClaimDueRotations(ClaimDueRotationsRequest) returns (ClaimDueRotationsResponse);
+  rpc RevealForRotation(RevealForRotationRequest) returns (RevealForRotationResponse);
+  rpc ReportRotation(ReportRotationRequest) returns (ReportRotationResponse);
+
+  // Instance configuration: password policies + security settings
+  rpc ListPasswordPolicies(ListPasswordPoliciesRequest) returns (ListPasswordPoliciesResponse);
+  rpc SavePasswordPolicy(SavePasswordPolicyRequest) returns (SavePasswordPolicyResponse);
+  rpc DeletePasswordPolicy(DeletePasswordPolicyRequest) returns (DeletePasswordPolicyResponse);
+  rpc GetSecuritySettings(GetSecuritySettingsRequest) returns (GetSecuritySettingsResponse);
+  rpc UpdateSecuritySettings(UpdateSecuritySettingsRequest) returns (UpdateSecuritySettingsResponse);
+
+  // Install the built-in baseline (secret types, extension catalog, default
+  // password policies, connections, the master personal folder + the acting
+  // admin's personal folder) into a fresh, EMPTY vault. Idempotent: safe to
+  // re-run. Called by the gateway as part of first-run /setup, after the first
+  // admin is created — a fresh install stays empty until this runs.
+  rpc SeedBuiltins(SeedBuiltinsRequest) returns (SeedBuiltinsResponse);
+
+  // Generate a fresh SSH keypair server-side. The private key is
+  // returned once for the caller to store as a secret field; it is never
+  // persisted by the vault itself.
+  rpc GenerateKeyPair(GenerateKeyPairRequest) returns (GenerateKeyPairResponse);
+
+  // Rotates the active working-KEK: mints a new KEK, activates it, and
+  // sweeps existing records to re-wrap their DEKs under it.
+  rpc RotateKek(RotateKekRequest) returns (RotateKekResponse);
+  rpc PrepareSecretUse(PrepareSecretUseRequest) returns (PrepareSecretUseResponse);
+  rpc GetSecretUse(GetSecretUseRequest) returns (GetSecretUseResponse);
+  rpc ListPendingSecretUses(ListPendingSecretUsesRequest) returns (ListPendingSecretUsesResponse);
+  rpc DecideSecretUse(DecideSecretUseRequest) returns (DecideSecretUseResponse);
+  rpc RedeemSecretUse(RedeemSecretUseRequest) returns (RedeemSecretUseResponse);
+  rpc CreateUseGrant(CreateUseGrantRequest) returns (CreateUseGrantResponse);
+  rpc ListUseGrants(ListUseGrantsRequest) returns (ListUseGrantsResponse);
+  rpc RevokeUseGrant(RevokeUseGrantRequest) returns (RevokeUseGrantResponse);
+  rpc SetSecretTokenApproval(SetSecretTokenApprovalRequest) returns (SetSecretTokenApprovalResponse);
+  rpc SetSecretTargetForPrincipal(SetSecretTargetForPrincipalRequest) returns (SetSecretTargetForPrincipalResponse);
+  rpc SetSecretAutomationForPrincipal(SetSecretAutomationForPrincipalRequest) returns (SetSecretAutomationForPrincipalResponse);
+  rpc RequestHeartbeatForPrincipal(RequestHeartbeatForPrincipalRequest) returns (RequestHeartbeatForPrincipalResponse);
+  rpc GetHeartbeatStatusForPrincipal(GetHeartbeatStatusForPrincipalRequest) returns (GetHeartbeatStatusForPrincipalResponse);
+}
+
+// ---- Instance configuration -------------------------------------------------
+
+message PasswordPolicy {
+  string id = 1;
+  string name = 2;
+  int32 min_length = 3;
+  optional int32 max_length = 4;   // absent = no maximum
+  bool require_upper = 5;
+  bool require_lower = 6;
+  bool require_digit = 7;
+  bool require_symbol = 8;
+  optional int32 rotation_days = 9;
+  string start_class = 10;         // any|letter|digit|symbol ("" = any)
+  string end_literal = 11;         // required suffix ("" = none)
+  string exclude_chars = 12;       // disallowed characters
+  // output-only usage (server-computed):
+  bool is_default = 13;            // the instance default policy
+  int32 by_type_fields = 14;       // secret-type password fields referencing it
+  bool deletable = 15;             // false when default or referenced
+}
+
+message SecuritySettings {
+  string default_password_policy_id = 1;
+  bool require_mfa_for_sensitive_checkout = 3;
+  bool allow_api_for_sensitive = 4;
+  // Days a resolved access request is retained before the daily purge job
+  // deletes it (and its comment thread) from the workflow DB. 0 = default (90).
+  int32 request_history_retention_days = 5;
+  // Gateway sliding-session lifetime, in seconds. Applied to session create
+  // and each sliding renewal. 0 = default (1800 = 30m). The gateway clamps the
+  // effective value to [900, 3600] (15m-60m).
+  int32 session_ttl_seconds = 6;
+  int32 kek_rotation_days = 7;   // 0 = auto-rotation off; admin override of KEK_ROTATION_DAYS
+}
+
+message ListPasswordPoliciesRequest {}
+message ListPasswordPoliciesResponse { repeated PasswordPolicy policies = 1; }
+message SavePasswordPolicyRequest { ActorContext actor = 1; PasswordPolicy policy = 2; } // id empty = create
+message SavePasswordPolicyResponse { PasswordPolicy policy = 1; }
+message DeletePasswordPolicyRequest { ActorContext actor = 1; string id = 2; }
+message DeletePasswordPolicyResponse { bool removed = 1; }
+
+message GetSecuritySettingsRequest {}
+message GetSecuritySettingsResponse { SecuritySettings settings = 1; }
+// Partial update: only present fields are applied.
+message UpdateSecuritySettingsRequest {
+  ActorContext actor = 1;
+  optional string default_password_policy_id = 2;
+  optional bool require_mfa_for_sensitive_checkout = 4;
+  optional bool allow_api_for_sensitive = 5;
+  optional int32 request_history_retention_days = 6;
+  optional int32 session_ttl_seconds = 7;
+  optional int32 kek_rotation_days = 8;   // 0 = auto-rotation off (distinct from unset = unchanged)
+}
+message UpdateSecuritySettingsResponse { SecuritySettings settings = 1; }
+
+// Seed the built-in baseline on demand (first-run /setup). Idempotent. The
+// actor's user id is used to ensure that admin's personal folder exists.
+message SeedBuiltinsRequest { ActorContext actor = 1; }
+// Totals present after seeding (not just newly-added), so idempotent re-runs
+// return the same numbers.
+message SeedBuiltinsResponse {
+  int32 types = 1;
+  int32 connections = 2;
+  int32 folders = 3;
+}
