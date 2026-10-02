@@ -6,6 +6,7 @@ package grpcsvc
 import (
 	"context"
 	"testing"
+	"time"
 
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"google.golang.org/grpc/codes"
@@ -14,12 +15,13 @@ import (
 // TestListAndRevealSecretVersions exercises the value-history surface end to
 // end: creating then updating a secret leaves two ledger versions (newest
 // first, active flag on the current one, field keys but no values), and a prior
-// version's field can be revealed to recover the old value — gated by the same
-// read access as RevealSecretField. Skips without TEST_DATABASE_DSN.
+// version's field can be revealed to recover the old value — by a reader who
+// also holds the recovery role with a fresh MFA. Skips without TEST_DATABASE_DSN.
 func TestListAndRevealSecretVersions(t *testing.T) {
 	s := newServerWithVersions(t)
 	ctx := context.Background()
 	carol := &vaultv1.ActorContext{UserId: "user-carol"} // OWNER of the shared folder
+	carolRecovery := &vaultv1.ActorContext{UserId: "user-carol", IsRecovery: true, MfaVerifiedAtUnix: time.Now().Unix()}
 	fid := newSharedFolder(t, s)
 
 	created, err := s.CreateSecret(ctx, &vaultv1.CreateSecretRequest{
@@ -59,7 +61,7 @@ func TestListAndRevealSecretVersions(t *testing.T) {
 
 	// Reveal the OLD password from version 1.
 	rev, err := s.RevealSecretVersionField(ctx, &vaultv1.RevealSecretVersionFieldRequest{
-		Actor: carol, SecretId: sid, VersionNo: 1, FieldKey: "password",
+		Actor: carolRecovery, SecretId: sid, VersionNo: 1, FieldKey: "password",
 	})
 	if err != nil {
 		t.Fatalf("RevealSecretVersionField(v1): %v", err)
@@ -70,7 +72,7 @@ func TestListAndRevealSecretVersions(t *testing.T) {
 
 	// Current version reveals the new value.
 	rev2, err := s.RevealSecretVersionField(ctx, &vaultv1.RevealSecretVersionFieldRequest{
-		Actor: carol, SecretId: sid, VersionNo: 2, FieldKey: "password",
+		Actor: carolRecovery, SecretId: sid, VersionNo: 2, FieldKey: "password",
 	})
 	if err != nil || rev2.GetValue() != "new-pw" {
 		t.Fatalf("v2 password = %q err=%v, want new-pw", rev2.GetValue(), err)
@@ -89,7 +91,7 @@ func TestListAndRevealSecretVersions(t *testing.T) {
 
 	// A missing version is NotFound.
 	if _, err := s.RevealSecretVersionField(ctx, &vaultv1.RevealSecretVersionFieldRequest{
-		Actor: carol, SecretId: sid, VersionNo: 99, FieldKey: "password",
+		Actor: carolRecovery, SecretId: sid, VersionNo: 99, FieldKey: "password",
 	}); code(err) != codes.NotFound {
 		t.Fatalf("reveal missing version: want NotFound, got %v", err)
 	}

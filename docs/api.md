@@ -53,6 +53,18 @@ audit and notify are covered in [Calling other services](#calling-other-services
   vault moves nothing, answers `approval_required`, and the caller files a move request with the
   workflow service.
 - **Versions:** every edit and rotation appends a version. A save that changes nothing mints none.
+- **Version history (recovery):** `ListSecretVersions` gives a human reader the change list
+  (version numbers, authors, times, changed field keys), never values; machine principals are
+  refused. Revealing a field of any version (`RevealSecretVersionField`) and
+  `RestoreSecretVersion` need read on the secret plus the recovery role (`is_recovery`; site
+  admin and root don't imply it) and an MFA within `MFA_MAX_AGE`. Otherwise `PermissionDenied`
+  with reason `RECOVERY_ROLE_REQUIRED` or `STEP_UP_REQUIRED`, audited as `recovery.denied`.
+  Both are recorded at the audit tier (`secret.version.reveal`, `secret.version.restore`).
+- **Restore:** makes a prior version's fields the current ones as a new version. It changes only
+  the vault's copy and is never pushed to a target: a managed target's heartbeat result goes to
+  unknown and a heartbeat is queued, so drift shows. It's refused while a rotation is queued or
+  running (`FailedPrecondition`, `ROTATION_IN_PROGRESS`). The gateway refuses it while the secret
+  is checked out.
 - **Automation:** `SetSecretAutomation` (or the principal variant, with RACI Author) opts a secret
   out of rotation or heartbeat; an opted-out secret has no schedule row. Rotation and heartbeat are
   scheduled only for a secret whose target has a connection; a manual rotation or heartbeat

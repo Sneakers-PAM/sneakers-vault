@@ -23,8 +23,11 @@ const (
 )
 
 // refuse builds a PermissionDenied status carrying an ErrorInfo for reason.
-func refuse(reason, msg string) error {
-	st := status.New(codes.PermissionDenied, msg)
+func refuse(reason, msg string) error { return refuseCode(codes.PermissionDenied, reason, msg) }
+
+// refuseCode builds a status with code carrying an ErrorInfo for reason.
+func refuseCode(code codes.Code, reason, msg string) error {
+	st := status.New(code, msg)
 	if d, err := st.WithDetails(&errdetails.ErrorInfo{Domain: errorDomain, Reason: reason}); err == nil {
 		return d.Err()
 	}

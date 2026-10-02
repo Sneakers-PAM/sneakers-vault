@@ -35,6 +35,18 @@ func (r *rotationStore) Enqueue(ctx context.Context, secretID, reason string, in
 	return err
 }
 
+// InProgress reports whether a rotation of the secret is queued (due now) or
+// running (claimed and not yet lapsed).
+func (r *rotationStore) InProgress(ctx context.Context, secretID string) (bool, error) {
+	var busy bool
+	err := r.db.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM rotation_schedule WHERE secret_id = $1 AND (
+		   (next_rotation_at IS NOT NULL AND next_rotation_at <= now())
+		   OR (claimed_until IS NOT NULL AND claimed_until > now())))`,
+		secretID).Scan(&busy)
+	return busy, err
+}
+
 // EnsureScheduled makes sure a rotation-capable secret has a schedule row. When
 // intervalDays>0 the next rotation is set that far out; interval 0 means the row
 // exists but is not auto-due (on-demand only). Upsert keeps any existing due time

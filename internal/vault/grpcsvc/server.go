@@ -87,6 +87,8 @@ type Server struct {
 	hb       *heartbeatStore
 	vers     *versionStore
 	rot      *rotationStore
+	// mfaMaxAge is how recent MFA must be (MFA_MAX_AGE); 0 = default.
+	mfaMaxAge time.Duration
 	// uses holds secret use handles and use grants, shared by every replica.
 	uses useStore
 	// now is the clock for use-handle and grant expiry; nil means time.Now.
@@ -321,6 +323,8 @@ var mutatingMethods = map[string]bool{
 	// RevealSecretVersionField reveals a historical value and bumps view_count
 	// too (same access accounting as RevealSecretField).
 	"RevealSecretVersionField": true,
+	// RestoreSecretVersion writes a new current record.
+	"RestoreSecretVersion": true,
 	// Lifecycle: retire/restore flip Secret.retired; delete hard-removes the
 	// secret (and its encrypted record) from the store slice.
 	"RetireSecret": true, "RestoreSecret": true, "DeleteSecret": true,

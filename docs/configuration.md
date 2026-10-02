@@ -39,6 +39,7 @@ Both services authenticate every caller and present their own token on outbound 
 | `DEV_KEK_SEED` | a built-in dev seed | `dev` only, with no `VAULT_ROOT_KEK`: the root key is derived from this string, so a dev database opens across restarts with no setup. It's public in the source; never use it outside development. |
 | `VAULT_DISABLE_DEV_STATIC_KEK` | `false` | `true` drops the decrypt-only static dev key (`dev-static-v1`) from the key ring. The vault refuses to boot with it set while any stored row still uses that key. |
 | `KEK_ROTATION_DAYS` | `90` | Seeds `kek_rotation_days` on a fresh instance's security settings. `0` turns automatic rotation off. Existing instances keep their stored value. |
+| `MFA_MAX_AGE` | `5m` | How recent a user's MFA must be for every MFA-freshness check (version history and restore). A Go duration from `1m` to `1h`; anything else stops the boot. The workflow service reads the same setting. |
 | `KEK_SCHEDULER_CHECK_MINUTES` | `60` | How often the automatic rotation scheduler checks the active working key's age. |
 | `VAULT_KEK_ROTATION_PRINCIPALS` | (empty: off) | Comma list of `system:<name>` principals that may call `RotateKek` besides a human site admin. See [runbook.md](runbook.md#rotating-the-working-key). |
 

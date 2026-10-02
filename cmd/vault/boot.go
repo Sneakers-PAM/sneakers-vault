@@ -8,11 +8,14 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	postgres "github.com/Bugs5382/go-postgres"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
 	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog"
 )
 
 // preflightRootKEK resolves the root KEK and proves it can open the existing
@@ -173,4 +176,13 @@ func bootKeyring(ctx context.Context, db *postgres.DB, root crypto.KEKProvider, 
 // allowlisted.
 func kekRotationPrincipals() ([]string, error) {
 	return grpcsvc.ParseKekRotationPrincipals(os.Getenv(grpcsvc.KekRotationPrincipalsEnv))
+}
+
+// mustMFAMaxAge reads MFA_MAX_AGE and stops the boot on a bad value.
+func mustMFAMaxAge(logger zerolog.Logger) time.Duration {
+	d, err := config.MFAMaxAge(os.Getenv)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("MFA freshness window")
+	}
+	return d
 }
