@@ -170,6 +170,9 @@ func main() {
 
 	logger := log.New(serviceName)
 	cfg, err := config.Load()
+	if err == nil {
+		err = refuseRemovedSettings(os.Getenv)
+	}
 	if err != nil {
 		logger.Fatal().Err(err).Msg("config")
 	}
@@ -242,15 +245,6 @@ func main() {
 	// RotateKek needs the keyring, its durable store, and the root KEK +
 	// ref to mint and persist new working-KEK generations.
 	srv.SetKeyring(keyring, keyringStore, rootKEK, rootRef)
-	// SYSTEM principals allowed to call RotateKek besides a human site-admin
-	// (VAULT_KEK_ROTATION_PRINCIPALS, e.g. "system:kek-rotation"). Unset means
-	// disabled. A malformed entry fails the boot.
-	kekRotators, err := kekRotationPrincipals()
-	if err != nil {
-		logger.Fatal().Err(err).Msg("config")
-	}
-	srv.SetKekRotationPrincipals(kekRotators)
-	logger.Info().Strs("kek_rotation_principals", kekRotators).Msg("KEK rotation principals")
 	// Automatic KEK rotation: a background scheduler polls every
 	// KEK_SCHEDULER_CHECK_MINUTES (default 60) and rotates once the active
 	// generation ages past SecuritySettings.kek_rotation_days (0 = off). Runs

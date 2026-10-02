@@ -371,19 +371,17 @@ func TestDevStaticDisabled_Parse(t *testing.T) {
 	}
 }
 
-func TestKekRotationPrincipals_Boot(t *testing.T) {
-	t.Setenv(grpcsvc.KekRotationPrincipalsEnv, "")
-	if ids, err := kekRotationPrincipals(); err != nil || len(ids) != 0 {
-		t.Fatalf("unset: got %v, %v; want disabled", ids, err)
+func TestRemovedKekRotationPrincipalsIsRefused(t *testing.T) {
+	if err := refuseRemovedSettings(func(string) string { return "" }); err != nil {
+		t.Fatalf("unset: %v", err)
 	}
-	t.Setenv(grpcsvc.KekRotationPrincipalsEnv, "system:kek-rotation")
-	if ids, err := kekRotationPrincipals(); err != nil || len(ids) != 1 || ids[0] != "system:kek-rotation" {
-		t.Fatalf("valid: got %v, %v", ids, err)
-	}
-	for _, bad := range []string{"user-carol", "system:kek-rotation,sa-1", "system:"} {
-		t.Setenv(grpcsvc.KekRotationPrincipalsEnv, bad)
-		if _, err := kekRotationPrincipals(); err == nil {
-			t.Fatalf("%q: bad entry must be a boot error", bad)
+	err := refuseRemovedSettings(func(k string) string {
+		if k == "VAULT_KEK_ROTATION_PRINCIPALS" {
+			return "system:kek-rotation"
 		}
+		return ""
+	})
+	if err == nil || !strings.Contains(err.Error(), "VAULT_KEK_ROTATION_PRINCIPALS") || !strings.Contains(err.Error(), "removed") {
+		t.Fatalf("set: %v, want an error naming the removed setting", err)
 	}
 }
