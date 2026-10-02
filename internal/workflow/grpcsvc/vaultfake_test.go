@@ -22,6 +22,8 @@ type fakeVaultClient struct {
 
 	mu       sync.Mutex
 	calls    []*vaultv1.EnqueueRotationRequest
+	// enqueueErr, when set, is what EnqueueRotation answers.
+	enqueueErr error
 	rulesets map[string][]*vaultv1.RaciRule // secretID -> ordered ruleset
 	// noRead lists "secretID|userID" pairs the fake vault denies read on;
 	// everyone else may read. checkoutOff lists secrets whose type has
@@ -95,6 +97,9 @@ func (f *fakeVaultClient) EnqueueRotation(_ context.Context, in *vaultv1.Enqueue
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls = append(f.calls, in)
+	if f.enqueueErr != nil {
+		return nil, f.enqueueErr
+	}
 	return &vaultv1.EnqueueRotationResponse{Ok: true}, nil
 }
 

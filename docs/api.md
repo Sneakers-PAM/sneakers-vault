@@ -81,6 +81,11 @@ audit and notify are covered in [Calling other services](#calling-other-services
   out of rotation or heartbeat; an opted-out secret has no schedule row. Rotation and heartbeat are
   scheduled only for a secret whose target has a connection; a manual rotation or heartbeat
   request without one answers `FailedPrecondition`.
+- **What can rotate:** `EnqueueRotation` refuses a secret whose type has no rotation
+  (`FailedPrecondition`, reason `ROTATION_NOT_SUPPORTED`) or that is opted out
+  (`ROTATION_OPTED_OUT`). Nothing is queued, and the refusal is audited as `rotate.refused`. A
+  check-in or break-glass rotation the vault refuses this way is skipped, so the lease still
+  closes.
 - **Heartbeat:** a FAILED check pauses that secret's heartbeat so a wrong password isn't retried
   into a lockout. It resumes, due at once, when a person changes the value, a rotation commits, or
   `RequestHeartbeatForPrincipal` is called (at most once a minute). Without a worker-identity

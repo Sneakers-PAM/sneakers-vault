@@ -15,6 +15,9 @@ import (
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	workflowv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/workflow/v1"
 	"github.com/google/uuid"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Workflow definition IDs.
@@ -100,9 +103,9 @@ func registerActionVerb(sc *sagasdk.Saga, s Store, vault vaultv1.VaultServiceCli
 //
 // This always enqueues on check-in, regardless of whether the secret's type
 // actually declares rotate-on-checkin: workflow has no visibility into the
-// secret type's policy (that lives in vault), so it enqueues unconditionally
-// and lets vault's typeHasRotation gate the no-op case. Vault is the source
-// of truth for what rotation-capable means.
+// secret type's policy (that lives in vault), so it enqueues unconditionally.
+// Vault is the source of truth for what rotation-capable means: it refuses a
+// secret that can't rotate, and the step then records a skip.
 func rotate(ctx context.Context, vault vaultv1.VaultServiceClient, run domain.SagaRun) (map[string]any, error) {
 	secretID := runStr(run, "secret_id")
 	if secretID == "" {
@@ -122,9 +125,32 @@ func rotate(ctx context.Context, vault vaultv1.VaultServiceClient, run domain.Sa
 		SecretId: secretID,
 		Reason:   reason,
 	}); err != nil {
+		if r := cantRotateReason(err); r != "" {
+			// The secret can't rotate (its type has no rotation, or it opted
+			// out): nothing to do, and the run carries on to close the lease.
+			return map[string]any{"rotated": false, "skipped": r}, nil
+		}
 		return nil, fmt.Errorf("enqueue rotation: %w", err)
 	}
 	return map[string]any{"rotated": true}, nil
+}
+
+// cantRotateReason returns the vault's reason when it refused a rotation the
+// secret can't do, or "".
+func cantRotateReason(err error) string {
+	st := status.Convert(err)
+	if st.Code() != codes.FailedPrecondition {
+		return ""
+	}
+	for _, d := range st.Details() {
+		if info, ok := d.(*errdetails.ErrorInfo); ok && info.GetDomain() == "sneakers.vault" {
+			switch info.GetReason() {
+			case "ROTATION_NOT_SUPPORTED", "ROTATION_OPTED_OUT":
+				return info.GetReason()
+			}
+		}
+	}
+	return ""
 }
 
 // defaultRotateReason maps a workflow definition ID to the reason its

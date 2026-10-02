@@ -246,7 +246,7 @@ func (s *Server) managedPeersOnConnection(connID, exceptSecretID string) []strin
 func (s *Server) EnqueueRotation(ctx context.Context, req *vaultv1.EnqueueRotationRequest) (*vaultv1.EnqueueRotationResponse, error) {
 	s.mu.RLock()
 	sec := findByID(s.secrets, req.GetSecretId())
-	var retired, permitted, reachable, builtinAdmin bool
+	var retired, permitted, reachable, builtinAdmin, optedOut, rotates bool
 	var intervalDays int
 	var targetID string
 	if sec != nil {
@@ -254,6 +254,8 @@ func (s *Server) EnqueueRotation(ctx context.Context, req *vaultv1.EnqueueRotati
 		builtinAdmin = sec.GetBuiltinAdministrator()
 		permitted = s.canManage(req.GetActor(), sec.GetFolderId()) || isHumanAdmin(req.GetActor())
 		reachable = s.rotationReachable(sec)
+		optedOut = sec.GetRotationOptOut()
+		rotates = s.typeHasRotation(sec)
 		intervalDays = policyRotationDays(s.policyForSecret(sec))
 		targetID = sec.GetTargetId()
 	}
@@ -269,6 +271,9 @@ func (s *Server) EnqueueRotation(ctx context.Context, req *vaultv1.EnqueueRotati
 	}
 	if builtinAdmin {
 		return s.refuseBuiltinAdministratorEnqueue(ctx, req)
+	}
+	if err := s.checkRotatable(ctx, req, optedOut, rotates); err != nil {
+		return nil, err
 	}
 	if !reachable {
 		l := s.lg(ctx)
@@ -737,4 +742,31 @@ func (s *Server) notifyRotation(ctx context.Context, secID, secName string, chai
 		label = label + " — " + detail
 	}
 	s.notifyInformed(ctx, "connector", action, "secret", secID, label, chain)
+}
+
+// Rotation refusal reasons.
+const (
+	// ReasonRotationNotSupported: the secret's type has no rotation.
+	ReasonRotationNotSupported = "ROTATION_NOT_SUPPORTED"
+	// ReasonRotationOptedOut: the secret is opted out of rotation.
+	ReasonRotationOptedOut = "ROTATION_OPTED_OUT"
+)
+
+// checkRotatable refuses a rotation the secret can't do, so nothing is queued
+// for a job that would never finish. Audited as rotate.refused.
+func (s *Server) checkRotatable(ctx context.Context, req *vaultv1.EnqueueRotationRequest, optedOut, rotates bool) error {
+	reason, msg := "", ""
+	switch {
+	case optedOut:
+		reason, msg = ReasonRotationOptedOut, "this secret is opted out of rotation"
+	case !rotates:
+		reason, msg = ReasonRotationNotSupported, "this secret's type can't be rotated"
+	default:
+		return nil
+	}
+	s.lg(ctx).Info("rotation refused", log.F("secret_id", req.GetSecretId()), log.F("reason", reason), log.F("trigger", req.GetReason()))
+	s.emitAttrs(ctx, req.GetActor().GetUserId(), "rotate.refused", req.GetSecretId(), false, map[string]string{
+		"reason": reason, "trigger": req.GetReason(),
+	})
+	return refuseCode(codes.FailedPrecondition, reason, msg)
 }
