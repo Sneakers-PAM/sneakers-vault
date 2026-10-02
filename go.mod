@@ -10,8 +10,8 @@ require (
 	github.com/Bugs5382/go-redis v1.2.0
 	github.com/Bugs5382/go-saga-orchestration v0.7.0
 	github.com/Bugs5382/go-seed v1.0.1
-	github.com/Sneakers-PAM/sneakers-audit v0.0.0-20261001205656-04173a5f69e7
-	github.com/Sneakers-PAM/sneakers-notify v0.0.0-20261002014027-7322d3e5f0d3
+	github.com/Sneakers-PAM/sneakers-audit v0.0.0-20261002074856-31fe7af87c02
+	github.com/Sneakers-PAM/sneakers-notify v0.0.0-20261002075504-e1877c1cdb89
 	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
