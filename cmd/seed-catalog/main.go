@@ -54,7 +54,7 @@ func run(ctx context.Context) error {
 	}
 	defer db.Close()
 
-	if err := catalogseed.Run(ctx, db.Pool()); err != nil {
+	if err := catalogseed.Run(ctx, db); err != nil {
 		return err
 	}
 

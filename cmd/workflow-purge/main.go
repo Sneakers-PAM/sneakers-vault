@@ -49,7 +49,7 @@ func main() {
 	days := resolveRetentionDays(ctx)
 	cutoff := time.Now().UTC().AddDate(0, 0, -days).Format(time.RFC3339)
 
-	st := grpcsvc.NewPGStore(db.Pool())
+	st := grpcsvc.NewPGStore(db.Querier())
 	n, err := st.PurgeResolvedRequestsOlderThan(ctx, cutoff)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("purge resolved requests")

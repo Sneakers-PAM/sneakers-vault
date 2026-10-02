@@ -18,6 +18,7 @@ import (
 	log "github.com/Bugs5382/go-log"
 	otel "github.com/Bugs5382/go-otel"
 	postgres "github.com/Bugs5382/go-postgres"
+	otelpg "github.com/Bugs5382/go-postgres/otel"
 	bredis "github.com/Bugs5382/go-redis"
 	auditv1 "github.com/Sneakers-PAM/sneakers-audit/gen/go/sneakers/audit/v1"
 	notifyv1 "github.com/Sneakers-PAM/sneakers-notify/gen/go/sneakers/notify/v1"
@@ -27,7 +28,6 @@ import (
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/notifyclient"
-	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
@@ -93,7 +93,7 @@ func resolveRootKEK(environment string) (crypto.KEKProvider, string, error) {
 // encryption, plus the keyring and its store that RotateKek needs — the
 // caller wires those (with the root KEK + ref) into the Server via SetKeyring
 // right after NewWithStore.
-func buildEnvelope(ctx context.Context, pool *pgxpool.Pool, root crypto.KEKProvider, rootRef string, withDevStatic bool) (*crypto.Envelope, *crypto.KeyringKEK, grpcsvc.KeyringAdmin, error) {
+func buildEnvelope(ctx context.Context, db *postgres.DB, root crypto.KEKProvider, rootRef string, withDevStatic bool) (*crypto.Envelope, *crypto.KeyringKEK, grpcsvc.KeyringAdmin, error) {
 	// The static dev key (sha256 of DEV_KEK_SEED), kept recognized-but-inactive
 	// so data sealed with the static dev key keeps unwrapping — until
 	// VAULT_DISABLE_DEV_STATIC_KEK drops it (withDevStatic=false).
@@ -103,7 +103,7 @@ func buildEnvelope(ctx context.Context, pool *pgxpool.Pool, root crypto.KEKProvi
 		legacy = append(legacy, crypto.WorkingKey{Ref: grpcsvc.DevStaticKeyRef, Key: legacyKey[:]})
 	}
 
-	ks := grpcsvc.NewKeyringStore(pool)
+	ks := grpcsvc.NewKeyringStore(db)
 	keyring, err := grpcsvc.BuildKeyring(ctx, ks, root, rootRef, legacy...)
 	if err != nil {
 		return nil, nil, nil, err
@@ -115,12 +115,12 @@ func buildEnvelope(ctx context.Context, pool *pgxpool.Pool, root crypto.KEKProvi
 // the KeyRef report (the verification record for the dev-static retirement
 // procedure: rows per KeyRef in every table that stores a wrapped DEK — refs
 // and counts only, never key material), and exits on any failure.
-func mustBootKeyring(ctx context.Context, logger zerolog.Logger, pool *pgxpool.Pool, root crypto.KEKProvider, rootRef string) keyringBoot {
+func mustBootKeyring(ctx context.Context, logger zerolog.Logger, db *postgres.DB, root crypto.KEKProvider, rootRef string) keyringBoot {
 	disableDevStatic, err := devStaticDisabled()
 	if err != nil {
 		logger.Fatal().Err(err).Msg("config")
 	}
-	kb, err := bootKeyring(ctx, pool, root, rootRef, disableDevStatic)
+	kb, err := bootKeyring(ctx, db, root, rootRef, disableDevStatic)
 	if kb.report != nil {
 		logger.Info().Str("key_refs", kb.report.String()).
 			Int64("dev_static_rows", kb.report.Count(grpcsvc.DevStaticKeyRef)).
@@ -219,17 +219,16 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("root KEK preflight / migrate")
 	}
-	db, err := postgres.New(ctx, cfg.DatabaseDSN)
+	db, err := postgres.New(ctx, cfg.DatabaseDSN, otelpg.WithTracing())
 	if err != nil {
 		logger.Fatal().Err(err).Msg("db connect")
 	}
 	defer db.Close()
-	pool := db.Pool()
 
-	kb := mustBootKeyring(ctx, logger, pool, rootKEK, rootRef)
+	kb := mustBootKeyring(ctx, logger, db, rootKEK, rootRef)
 	envelope, keyring, keyringStore := kb.envelope, kb.keyring, kb.store
 
-	srv, err := grpcsvc.NewWithStore(ctx, grpcsvc.NewPGStore(pool), envelope, auditor, environment)
+	srv, err := grpcsvc.NewWithStore(ctx, grpcsvc.NewPGStore(db), envelope, auditor, environment)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("vault init")
 	}
@@ -256,13 +255,13 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("connector worker identity config")
 	}
-	srv.SetHeartbeat(pool, workerVerifier)
+	srv.SetHeartbeat(db, workerVerifier)
 	// Rotation shares the connector identity verifier (a nil verifier, prod
 	// without WORKLOAD_OIDC_ISSUER, makes the rotation pull-API fail closed).
 	// SetRotation is idempotent for the version store, so ordering vs
 	// SetHeartbeat is irrelevant.
-	srv.SetRotation(pool, workerVerifier)
-	srv.SetSecretUses(pool)
+	srv.SetRotation(db, workerVerifier)
+	srv.SetSecretUses(db)
 
 	// HA read-consistency: wire Redis pub/sub cache invalidation so every replica
 	// re-hydrates from Postgres after any pod's write (fixes stale reads when

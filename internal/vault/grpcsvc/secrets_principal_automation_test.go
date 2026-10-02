@@ -164,8 +164,8 @@ func automationPGServer(t *testing.T) (*Server, string, string) {
 	pool := rotTestPool(t)
 	hbPool := hbTestPool(t)
 	s := newServer(t)
-	s.rot = newRotationStore(pool)
-	s.hb = newHeartbeatStore(hbPool)
+	s.rot = newRotationStore(pool.Querier())
+	s.hb = newHeartbeatStore(hbPool.Querier())
 	carol := &vaultv1.ActorContext{UserId: "user-carol"}
 	fid := mutFolder(t, s, "Ops")
 	grantGroup(t, s, carol, fid, "R")

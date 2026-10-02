@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	postgres "github.com/Bugs5382/go-postgres"
 )
 
 // heartbeatScheduleDDL mirrors the heartbeat_schedule table in
@@ -26,33 +26,33 @@ CREATE TABLE IF NOT EXISTS heartbeat_schedule (
 CREATE INDEX IF NOT EXISTS heartbeat_schedule_due ON heartbeat_schedule (next_heartbeat_at);
 `
 
-func hbTestPool(t *testing.T) *pgxpool.Pool {
+func hbTestPool(t *testing.T) *postgres.DB {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_DSN")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_DSN not set")
 	}
-	p, err := pgxpool.New(context.Background(), dsn)
+	p, err := postgres.New(context.Background(), dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(p.Close)
-	if _, err := p.Exec(context.Background(), heartbeatScheduleDDL); err != nil {
+	if _, err := p.Querier().Exec(context.Background(), heartbeatScheduleDDL); err != nil {
 		t.Fatalf("bootstrap heartbeat_schedule: %v", err)
 	}
 	// ClaimDue's rotation-coordination guard references rotation_schedule, so it
 	// must exist even for heartbeat-only tests (the 0001_baseline migration
 	// creates it on boot).
-	if _, err := p.Exec(context.Background(), rotationScheduleDDL); err != nil {
+	if _, err := p.Querier().Exec(context.Background(), rotationScheduleDDL); err != nil {
 		t.Fatalf("bootstrap rotation_schedule: %v", err)
 	}
-	_, _ = p.Exec(context.Background(), "TRUNCATE heartbeat_schedule")
+	_, _ = p.Querier().Exec(context.Background(), "TRUNCATE heartbeat_schedule")
 	return p
 }
 
 func TestClaimDueSkipsLockedAndReschedules(t *testing.T) {
 	ctx := context.Background()
-	hs := newHeartbeatStore(hbTestPool(t))
+	hs := newHeartbeatStore(hbTestPool(t).Querier())
 	if err := hs.Ensure(ctx, "sec-1", 300); err != nil {
 		t.Fatal(err)
 	}

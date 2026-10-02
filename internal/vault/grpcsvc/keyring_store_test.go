@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	postgres "github.com/Bugs5382/go-postgres"
 )
 
 // kekKeyringDDL mirrors the kek_keyring table in migrations/vault/0001_baseline.up.sql (idempotent).
@@ -24,21 +24,21 @@ CREATE TABLE IF NOT EXISTS kek_keyring (
 CREATE UNIQUE INDEX IF NOT EXISTS kek_keyring_one_active ON kek_keyring (active) WHERE active;
 `
 
-func keyringTestPool(t *testing.T) *pgxpool.Pool {
+func keyringTestPool(t *testing.T) *postgres.DB {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_DSN")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_DSN not set")
 	}
-	p, err := pgxpool.New(context.Background(), dsn)
+	p, err := postgres.New(context.Background(), dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(p.Close)
-	if _, err := p.Exec(context.Background(), kekKeyringDDL); err != nil {
+	if _, err := p.Querier().Exec(context.Background(), kekKeyringDDL); err != nil {
 		t.Fatalf("bootstrap kek_keyring: %v", err)
 	}
-	_, _ = p.Exec(context.Background(), "TRUNCATE kek_keyring")
+	_, _ = p.Querier().Exec(context.Background(), "TRUNCATE kek_keyring")
 	return p
 }
 
@@ -47,7 +47,7 @@ func TestKeyringStoreInsertActiveLoadRetire(t *testing.T) {
 	k := newKeyringStore(keyringTestPool(t))
 
 	// Seed kek-v1 as active directly (simulating an existing generation).
-	if _, err := k.db.Exec(ctx,
+	if _, err := k.db.Querier().Exec(ctx,
 		`INSERT INTO kek_keyring (ref, wrapped_key, root_ref, active) VALUES ($1,$2,$3,true)`,
 		"kek-v1", []byte("wrapped-v1"), "root-1"); err != nil {
 		t.Fatalf("seed kek-v1: %v", err)
@@ -117,7 +117,7 @@ func TestKeyringStoreInsertActiveLoadRetire(t *testing.T) {
 		t.Fatalf("Retire: %v", err)
 	}
 	var retiredAtSet, stillInactive bool
-	if err := k.db.QueryRow(ctx,
+	if err := k.db.Querier().QueryRow(ctx,
 		`SELECT retired_at IS NOT NULL, NOT active FROM kek_keyring WHERE ref='kek-v1'`,
 	).Scan(&retiredAtSet, &stillInactive); err != nil {
 		t.Fatal(err)

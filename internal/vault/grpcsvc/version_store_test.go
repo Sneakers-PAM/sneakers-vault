@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
+	postgres "github.com/Bugs5382/go-postgres"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // secretVersionsDDL mirrors the secret_versions table in
@@ -30,21 +30,21 @@ CREATE INDEX IF NOT EXISTS secret_versions_active ON secret_versions (secret_id)
 CREATE UNIQUE INDEX IF NOT EXISTS secret_versions_one_staged ON secret_versions (secret_id) WHERE staged;
 `
 
-func verTestPool(t *testing.T) *pgxpool.Pool {
+func verTestPool(t *testing.T) *postgres.DB {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_DSN")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_DSN not set")
 	}
-	p, err := pgxpool.New(context.Background(), dsn)
+	p, err := postgres.New(context.Background(), dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(p.Close)
-	if _, err := p.Exec(context.Background(), secretVersionsDDL); err != nil {
+	if _, err := p.Querier().Exec(context.Background(), secretVersionsDDL); err != nil {
 		t.Fatalf("bootstrap secret_versions: %v", err)
 	}
-	_, _ = p.Exec(context.Background(), "TRUNCATE secret_versions")
+	_, _ = p.Querier().Exec(context.Background(), "TRUNCATE secret_versions")
 	return p
 }
 
@@ -62,9 +62,9 @@ func sealTest(t *testing.T, fields map[string]string) (crypto.Record, *crypto.En
 	return rec, env
 }
 
-func rowState(t *testing.T, p *pgxpool.Pool, secretID string, versionNo int) (active, staged bool) {
+func rowState(t *testing.T, p *postgres.DB, secretID string, versionNo int) (active, staged bool) {
 	t.Helper()
-	err := p.QueryRow(context.Background(),
+	err := p.Querier().QueryRow(context.Background(),
 		`SELECT active, staged FROM secret_versions WHERE secret_id=$1 AND version_no=$2`,
 		secretID, versionNo).Scan(&active, &staged)
 	if err != nil {
@@ -179,7 +179,7 @@ func TestVersionStoreDiscardStaged(t *testing.T) {
 		t.Fatalf("DiscardStaged: %v", err)
 	}
 	var staged int
-	if err := v.db.QueryRow(ctx, `SELECT count(*) FROM secret_versions WHERE secret_id='sec-1' AND staged`).Scan(&staged); err != nil {
+	if err := v.db.Querier().QueryRow(ctx, `SELECT count(*) FROM secret_versions WHERE secret_id='sec-1' AND staged`).Scan(&staged); err != nil {
 		t.Fatal(err)
 	}
 	if staged != 0 {

@@ -22,8 +22,6 @@ import (
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const repoMigrations = "../../migrations/vault"
@@ -38,19 +36,19 @@ func freshDB(t *testing.T) string {
 		t.Skip("TEST_DATABASE_DSN not set")
 	}
 	ctx := context.Background()
-	admin, err := pgx.Connect(ctx, base)
+	admin, err := postgres.New(ctx, base)
 	if err != nil {
 		t.Fatalf("connect admin: %v", err)
 	}
 	b := make([]byte, 6)
 	_, _ = rand.Read(b)
 	name := "boot_" + hex.EncodeToString(b)
-	if _, err := admin.Exec(ctx, "CREATE DATABASE "+name); err != nil {
+	if _, err := admin.Querier().Exec(ctx, "CREATE DATABASE "+name); err != nil {
 		t.Fatalf("create db: %v", err)
 	}
 	t.Cleanup(func() {
-		_, _ = admin.Exec(context.Background(), "DROP DATABASE IF EXISTS "+name+" WITH (FORCE)")
-		_ = admin.Close(context.Background())
+		_, _ = admin.Querier().Exec(context.Background(), "DROP DATABASE IF EXISTS "+name+" WITH (FORCE)")
+		admin.Close()
 	})
 	u, err := url.Parse(base)
 	if err != nil {
@@ -105,14 +103,14 @@ func migrateTo(t *testing.T, dsn, upto string) {
 func schemaVersion(t *testing.T, dsn string) (int64, bool) {
 	t.Helper()
 	ctx := context.Background()
-	c, err := pgx.Connect(ctx, dsn)
+	c, err := postgres.New(ctx, dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = c.Close(ctx) }()
+	defer c.Close()
 	var v int64
 	var dirty bool
-	if err := c.QueryRow(ctx, "SELECT version, dirty FROM schema_migrations").Scan(&v, &dirty); err != nil {
+	if err := c.Querier().QueryRow(ctx, "SELECT version, dirty FROM schema_migrations").Scan(&v, &dirty); err != nil {
 		t.Fatalf("read schema_migrations: %v", err)
 	}
 	return v, dirty
@@ -145,7 +143,7 @@ func TestMigrateAfterPreflight_CorrectKEK_MigratesAndBoots(t *testing.T) {
 	if v, dirty := schemaVersion(t, dsn); v != headMigration(t) || dirty {
 		t.Fatalf("schema version = %d dirty=%v, want %d clean", v, dirty, headMigration(t))
 	}
-	pool, err := pgxpool.New(ctx, dsn)
+	pool, err := postgres.New(ctx, dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,16 +206,16 @@ type storedRow struct {
 
 // readAll opens the password field of every secret_records / secret_versions
 // row straight from Postgres with env, failing on any unreadable row.
-func readAll(t *testing.T, pool *pgxpool.Pool, env *crypto.Envelope, want []storedRow) {
+func readAll(t *testing.T, pool *postgres.DB, env *crypto.Envelope, want []storedRow) {
 	t.Helper()
 	ctx := context.Background()
 	for _, w := range want {
 		var raw []byte
 		var err error
 		if w.table == "secret_records" {
-			err = pool.QueryRow(ctx, `SELECT record FROM secret_records WHERE secret_id=$1`, w.id).Scan(&raw)
+			err = pool.Querier().QueryRow(ctx, `SELECT record FROM secret_records WHERE secret_id=$1`, w.id).Scan(&raw)
 		} else {
-			err = pool.QueryRow(ctx, `SELECT record FROM secret_versions WHERE secret_id=$1 AND version_no=$2`, w.id, w.version).Scan(&raw)
+			err = pool.Querier().QueryRow(ctx, `SELECT record FROM secret_versions WHERE secret_id=$1 AND version_no=$2`, w.id, w.version).Scan(&raw)
 		}
 		if err != nil {
 			t.Fatalf("load %s %s/%d: %v", w.table, w.id, w.version, err)
@@ -249,7 +247,7 @@ func TestDevStaticRetirement_EndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pool, err := pgxpool.New(ctx, dsn)
+	pool, err := postgres.New(ctx, dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +255,7 @@ func TestDevStaticRetirement_EndToEnd(t *testing.T) {
 
 	// A non-empty store (pgStore treats no types/folders/settings as a fresh
 	// install and persists an empty snapshot over it).
-	if _, err := pool.Exec(ctx, `INSERT INTO security_settings (id, data) VALUES (1, '{}')`); err != nil {
+	if _, err := pool.Querier().Exec(ctx, `INSERT INTO security_settings (id, data) VALUES (1, '{}')`); err != nil {
 		t.Fatal(err)
 	}
 	var want []storedRow
@@ -266,7 +264,7 @@ func TestDevStaticRetirement_EndToEnd(t *testing.T) {
 		id := fmt.Sprintf("secret-%d", i)
 		cur := fmt.Sprintf("pw-%d-v2", i)
 		_, rawCur := devStaticRecord(t, map[string]string{"username": "svc", "password": cur})
-		if _, err := pool.Exec(ctx, `INSERT INTO secret_records (secret_id, record) VALUES ($1,$2)`, id, rawCur); err != nil {
+		if _, err := pool.Querier().Exec(ctx, `INSERT INTO secret_records (secret_id, record) VALUES ($1,$2)`, id, rawCur); err != nil {
 			t.Fatal(err)
 		}
 		want = append(want, storedRow{"secret_records", id, 0, cur})
@@ -276,7 +274,7 @@ func TestDevStaticRetirement_EndToEnd(t *testing.T) {
 			if i == 0 && v == 1 {
 				leftover = raw
 			}
-			if _, err := pool.Exec(ctx,
+			if _, err := pool.Querier().Exec(ctx,
 				`INSERT INTO secret_versions (secret_id, version_no, record, active) VALUES ($1,$2,$3,$4)`,
 				id, v, raw, v == 2); err != nil {
 				t.Fatal(err)
@@ -344,7 +342,7 @@ func TestDevStaticRetirement_EndToEnd(t *testing.T) {
 	readAll(t, pool, kb2.envelope, want)
 
 	// One leftover row (e.g. restored from an old backup) -> refused.
-	if _, err := pool.Exec(ctx, `UPDATE secret_versions SET record=$1 WHERE secret_id='secret-0' AND version_no=1`, leftover); err != nil {
+	if _, err := pool.Querier().Exec(ctx, `UPDATE secret_versions SET record=$1 WHERE secret_id='secret-0' AND version_no=1`, leftover); err != nil {
 		t.Fatal(err)
 	}
 	_, err = bootKeyring(ctx, pool, root, rootRef, true)

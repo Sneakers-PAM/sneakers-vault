@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
+	postgres "github.com/Bugs5382/go-postgres"
 	bredis "github.com/Bugs5382/go-redis"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"github.com/alicebob/miniredis/v2"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 )
 
@@ -26,13 +26,13 @@ var stateTables = []string{
 	"secret_records", "target_raci_rules",
 }
 
-func lostWritePool(t *testing.T) *pgxpool.Pool {
+func lostWritePool(t *testing.T) *postgres.DB {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_DSN")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_DSN not set")
 	}
-	p, err := pgxpool.New(context.Background(), dsn)
+	p, err := postgres.New(context.Background(), dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,22 +86,22 @@ func createViaInterceptor(ctx context.Context, t *testing.T, s *Server, name str
 	return sec.GetSecret().GetId()
 }
 
-func dbHasSecret(ctx context.Context, t *testing.T, p *pgxpool.Pool, id string) bool {
+func dbHasSecret(ctx context.Context, t *testing.T, p *postgres.DB, id string) bool {
 	t.Helper()
 	var n int
-	if err := p.QueryRow(ctx, "SELECT count(*) FROM secrets WHERE id=$1", id).Scan(&n); err != nil {
+	if err := p.Querier().QueryRow(ctx, "SELECT count(*) FROM secrets WHERE id=$1", id).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	return n == 1
 }
 
-func setupLostWrite(t *testing.T) (context.Context, *pgxpool.Pool, *Server, *Server) {
+func setupLostWrite(t *testing.T) (context.Context, *postgres.DB, *Server, *Server) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	p := lostWritePool(t)
 	for _, tbl := range stateTables {
-		if _, err := p.Exec(ctx, "TRUNCATE "+tbl); err != nil {
+		if _, err := p.Querier().Exec(ctx, "TRUNCATE "+tbl); err != nil {
 			t.Fatalf("truncate %s: %v", tbl, err)
 		}
 	}

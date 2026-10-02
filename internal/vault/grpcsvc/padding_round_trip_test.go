@@ -154,7 +154,7 @@ func TestPaddingSurvivesPostgresReload(t *testing.T) {
 	for _, v := range paddedValues {
 		t.Run(strconv.Quote(v), func(t *testing.T) {
 			for _, tbl := range stateTables {
-				if _, err := p.Exec(ctx, "TRUNCATE "+tbl); err != nil {
+				if _, err := p.Querier().Exec(ctx, "TRUNCATE "+tbl); err != nil {
 					t.Fatalf("truncate %s: %v", tbl, err)
 				}
 			}

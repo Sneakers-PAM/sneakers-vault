@@ -8,7 +8,7 @@
 //
 //	catalog   (default) — upsert the full built-in secret-type catalogue
 //	                       (secret_types + extension_catalog + connections) over
-//	                       the app's pgx pool. Requires DATABASE_DSN.
+//	                       the app's go-postgres pool. Requires DATABASE_DSN.
 //	per-type            — create one sample secret of every SYSTEM type via the
 //	                       vault gRPC API. Env: VAULT_ADDR, SEED_FOLDER, SEED_USER.
 //	bulk               — create a large randomized secret population (folders,
@@ -29,7 +29,6 @@ import (
 
 	log "github.com/Bugs5382/go-log"
 	postgres "github.com/Bugs5382/go-postgres"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -53,9 +52,9 @@ func dial(addr string) *grpc.ClientConn {
 }
 
 // openPool connects to DATABASE_DSN via the app's proven go-postgres pool and
-// returns the underlying pgx pool plus a close func. Shared by the catalog and
+// returns it plus a close func. Shared by the catalog and
 // bulk subcommands, which both write directly to Postgres.
-func openPool(ctx context.Context) (*pgxpool.Pool, func(), error) {
+func openPool(ctx context.Context) (*postgres.DB, func(), error) {
 	dsn := os.Getenv("DATABASE_DSN")
 	if dsn == "" {
 		return nil, nil, fmt.Errorf("DATABASE_DSN is required")
@@ -64,7 +63,7 @@ func openPool(ctx context.Context) (*pgxpool.Pool, func(), error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("db connect: %w", err)
 	}
-	return db.Pool(), db.Close, nil
+	return db, db.Close, nil
 }
 
 func main() {
@@ -78,7 +77,7 @@ func main() {
 	var err error
 	switch cmd {
 	case "catalog":
-		var pool *pgxpool.Pool
+		var pool *postgres.DB
 		var closeFn func()
 		if pool, closeFn, err = openPool(ctx); err == nil {
 			defer closeFn()
@@ -87,7 +86,7 @@ func main() {
 	case "per-type":
 		err = seedPerType(ctx)
 	case "bulk":
-		var pool *pgxpool.Pool
+		var pool *postgres.DB
 		var closeFn func()
 		if pool, closeFn, err = openPool(ctx); err == nil {
 			defer closeFn()

@@ -78,7 +78,7 @@ func TestUpdateSecretAppendsNewVersionRetainingOld(t *testing.T) {
 
 	// Two versions exist; v1 retained inactive.
 	var total, active int
-	if err := s.vers.db.QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE active) FROM secret_versions WHERE secret_id=$1`, sid).Scan(&total, &active); err != nil {
+	if err := s.vers.db.Querier().QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE active) FROM secret_versions WHERE secret_id=$1`, sid).Scan(&total, &active); err != nil {
 		t.Fatal(err)
 	}
 	if total != 2 || active != 1 {

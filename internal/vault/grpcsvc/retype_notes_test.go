@@ -261,14 +261,14 @@ func TestChangeSecretType_IntoRotationTypeIsScheduled_Postgres(t *testing.T) {
 		t.Fatalf("rotation_schedule row missing after enabling rotation: ok=%v err=%v", ok, err)
 	}
 	var days int
-	if err := pool.QueryRow(ctx, `SELECT interval_days FROM rotation_schedule WHERE secret_id=$1`, id).Scan(&days); err != nil || days != 90 {
+	if err := pool.Querier().QueryRow(ctx, `SELECT interval_days FROM rotation_schedule WHERE secret_id=$1`, id).Scan(&days); err != nil || days != 90 {
 		t.Fatalf("interval_days = %d (err=%v), want the default policy's 90", days, err)
 	}
 	var hb int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM heartbeat_schedule WHERE secret_id=$1`, id).Scan(&hb); err != nil || hb != 1 {
+	if err := pool.Querier().QueryRow(ctx, `SELECT count(*) FROM heartbeat_schedule WHERE secret_id=$1`, id).Scan(&hb); err != nil || hb != 1 {
 		t.Fatalf("heartbeat_schedule rows = %d (err=%v), want 1", hb, err)
 	}
-	if _, err := pool.Exec(ctx, `UPDATE rotation_schedule SET next_rotation_at = now() - interval '1 minute' WHERE secret_id=$1`, id); err != nil {
+	if _, err := pool.Querier().Exec(ctx, `UPDATE rotation_schedule SET next_rotation_at = now() - interval '1 minute' WHERE secret_id=$1`, id); err != nil {
 		t.Fatal(err)
 	}
 	claimed, err := s.rot.ClaimDue(ctx, 10, 60e9)

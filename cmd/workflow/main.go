@@ -13,6 +13,7 @@ import (
 	log "github.com/Bugs5382/go-log"
 	otel "github.com/Bugs5382/go-otel"
 	postgres "github.com/Bugs5382/go-postgres"
+	otelpg "github.com/Bugs5382/go-postgres/otel"
 	sagapg "github.com/Bugs5382/go-saga-orchestration/store/postgres"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
@@ -73,12 +74,11 @@ func main() {
 		logger.Fatal().Err(err).Msg("migrate saga store")
 	}
 
-	db, err := postgres.New(ctx, cfg.DatabaseDSN)
+	db, err := postgres.New(ctx, cfg.DatabaseDSN, otelpg.WithTracing())
 	if err != nil {
 		logger.Fatal().Err(err).Msg("db connect")
 	}
 	defer db.Close()
-	pool := db.Pool()
 
 	sagaStore, err := sagapg.Open(ctx, cfg.DatabaseDSN)
 	if err != nil {
@@ -95,7 +95,7 @@ func main() {
 		}
 	}()
 
-	st := grpcsvc.NewPGStore(pool)
+	st := grpcsvc.NewPGStore(db.Querier())
 	engine, err := grpcsvc.BuildEngine(sagaStore, st, vault)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("build saga engine")

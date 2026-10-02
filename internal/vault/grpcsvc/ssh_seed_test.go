@@ -84,7 +84,7 @@ func TestSeedIncludesSSHKeyType(t *testing.T) {
 // separate, ssh-specific scheduling call.
 func createScheduledSSHSecret(t *testing.T, s *Server) (actor *vaultv1.ActorContext, secretID string) {
 	t.Helper()
-	s.hb = newHeartbeatStore(hbTestPool(t))
+	s.hb = newHeartbeatStore(hbTestPool(t).Querier())
 	actor = &vaultv1.ActorContext{UserId: "user-carol"}
 	fid := newSharedFolder(t, s)
 	tgt, _ := reachableTarget(t, s)

@@ -13,7 +13,6 @@ import (
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // preflightRootKEK resolves the root KEK and proves it can open the existing
@@ -60,7 +59,7 @@ func preflightRootKEK(ctx context.Context, dsn, environment string) (crypto.KEKP
 // verifyKeyringUnwraps unwraps every kek_keyring generation under root. A
 // database without the kek_keyring table yet passes trivially. Only refs appear in
 // errors, never key material; the unwrapped bytes are discarded immediately.
-func verifyKeyringUnwraps(ctx context.Context, conn *pgx.Conn, root crypto.KEKProvider) error {
+func verifyKeyringUnwraps(ctx context.Context, conn postgres.Querier, root crypto.KEKProvider) error {
 	var exists bool
 	if err := conn.QueryRow(ctx, `SELECT to_regclass('public.kek_keyring') IS NOT NULL`).Scan(&exists); err != nil {
 		return fmt.Errorf("root KEK preflight: probe kek_keyring: %w", err)
@@ -144,8 +143,8 @@ type keyringBoot struct {
 // boot while any row still references dev-static-v1. Otherwise it builds the
 // keyring, loading the dev-static key (decrypt-only) unless disabled, and
 // reports any referenced KeyRef the keyring cannot unwrap.
-func bootKeyring(ctx context.Context, pool *pgxpool.Pool, root crypto.KEKProvider, rootRef string, disableDevStatic bool) (keyringBoot, error) {
-	report, err := grpcsvc.KeyRefCounts(ctx, pool)
+func bootKeyring(ctx context.Context, db *postgres.DB, root crypto.KEKProvider, rootRef string, disableDevStatic bool) (keyringBoot, error) {
+	report, err := grpcsvc.KeyRefCounts(ctx, db)
 	if err != nil {
 		return keyringBoot{}, err
 	}
@@ -154,7 +153,7 @@ func bootKeyring(ctx context.Context, pool *pgxpool.Pool, root crypto.KEKProvide
 			return keyringBoot{report: report}, err
 		}
 	}
-	envelope, kr, ks, err := buildEnvelope(ctx, pool, root, rootRef, !disableDevStatic)
+	envelope, kr, ks, err := buildEnvelope(ctx, db, root, rootRef, !disableDevStatic)
 	if err != nil {
 		return keyringBoot{report: report}, err
 	}

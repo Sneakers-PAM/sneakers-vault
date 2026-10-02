@@ -8,17 +8,16 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	postgres "github.com/Bugs5382/go-postgres"
 )
 
 // rotationStore is the leaderless rotation work queue over rotation_schedule
 // (one row per rotation-capable secret). It mirrors heartbeatStore: due rows are
 // claimed with SELECT ... FOR UPDATE SKIP LOCKED so competing connector replicas
 // never process the same secret. `state` mirrors the RotationState enum as an int.
-type rotationStore struct{ db *pgxpool.Pool }
+type rotationStore struct{ db postgres.Querier }
 
-func newRotationStore(db *pgxpool.Pool) *rotationStore { return &rotationStore{db: db} }
+func newRotationStore(db postgres.Querier) *rotationStore { return &rotationStore{db: db} }
 
 // Enqueue makes a secret due for rotation now (all trigger paths). Upsert: an
 // existing row is pulled forward to now() with the new reason. claimed_until is
@@ -119,7 +118,7 @@ func (r *rotationStore) Remove(ctx context.Context, secretID string) error {
 func (r *rotationStore) Exists(ctx context.Context, secretID string) (bool, error) {
 	var one int
 	err := r.db.QueryRow(ctx, `SELECT 1 FROM rotation_schedule WHERE secret_id = $1`, secretID).Scan(&one)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, postgres.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
@@ -155,7 +154,7 @@ func (r *rotationStore) Claimed(ctx context.Context, secretID string) (bool, err
 	err := r.db.QueryRow(ctx,
 		`SELECT claimed_until IS NOT NULL AND claimed_until > now() FROM rotation_schedule WHERE secret_id = $1`,
 		secretID).Scan(&claimed)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, postgres.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {

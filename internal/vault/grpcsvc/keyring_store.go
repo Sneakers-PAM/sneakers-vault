@@ -8,8 +8,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	postgres "github.com/Bugs5382/go-postgres"
 )
 
 // keyringRow is a single KEK-keyring entry: the wrapped (root-key-encrypted)
@@ -40,17 +39,17 @@ type KeyringAdmin interface {
 // active at a time (enforced by the partial unique index on active=true),
 // giving readers a single unambiguous current KEK while retired generations
 // stay around for decrypt-only use.
-type keyringStore struct{ db *pgxpool.Pool }
+type keyringStore struct{ db *postgres.DB }
 
-func newKeyringStore(db *pgxpool.Pool) *keyringStore { return &keyringStore{db: db} }
+func newKeyringStore(db *postgres.DB) *keyringStore { return &keyringStore{db: db} }
 
 // NewKeyringStore is the exported constructor used by cmd/vault to build the
 // keyringPersist passed to BuildKeyring at boot.
-func NewKeyringStore(db *pgxpool.Pool) *keyringStore { return newKeyringStore(db) }
+func NewKeyringStore(db *postgres.DB) *keyringStore { return newKeyringStore(db) }
 
 // Load returns every keyring row (active and retired), for enumeration/audit.
 func (k *keyringStore) Load(ctx context.Context) ([]keyringRow, error) {
-	rows, err := k.db.Query(ctx, `SELECT ref, wrapped_key, root_ref, active, created_at FROM kek_keyring`)
+	rows, err := k.db.Querier().Query(ctx, `SELECT ref, wrapped_key, root_ref, active, created_at FROM kek_keyring`)
 	if err != nil {
 		return nil, err
 	}
@@ -71,10 +70,10 @@ func (k *keyringStore) Load(ctx context.Context) ([]keyringRow, error) {
 // compute the active generation's age without a second query.
 func (k *keyringStore) Active(ctx context.Context) (keyringRow, bool, error) {
 	var r keyringRow
-	err := k.db.QueryRow(ctx,
+	err := k.db.Querier().QueryRow(ctx,
 		`SELECT ref, wrapped_key, root_ref, active, created_at FROM kek_keyring WHERE active`,
 	).Scan(&r.Ref, &r.WrappedKey, &r.RootRef, &r.Active, &r.CreatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, postgres.ErrNoRows) {
 		return keyringRow{}, false, nil
 	}
 	if err != nil {
@@ -87,27 +86,21 @@ func (k *keyringStore) Active(ctx context.Context) (keyringRow, bool, error) {
 // previously active, in one transaction so a reader never sees zero or two
 // active rows (mirrors versionStore.append's single-active invariant).
 func (k *keyringStore) InsertActive(ctx context.Context, ref string, wrapped []byte, rootRef string) error {
-	tx, err := k.db.Begin(ctx)
-	if err != nil {
+	return k.db.RunInTxQuerier(ctx, func(tx postgres.Querier) error {
+		if _, err := tx.Exec(ctx, `UPDATE kek_keyring SET active=false WHERE active`); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx,
+			`INSERT INTO kek_keyring (ref, wrapped_key, root_ref, active) VALUES ($1,$2,$3,true)`,
+			ref, wrapped, rootRef)
 		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	if _, err := tx.Exec(ctx, `UPDATE kek_keyring SET active=false WHERE active`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx,
-		`INSERT INTO kek_keyring (ref, wrapped_key, root_ref, active) VALUES ($1,$2,$3,true)`,
-		ref, wrapped, rootRef); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	})
 }
 
 // Retire stamps retired_at on the given generation without otherwise changing
 // it (it may already be inactive; retirement is just a record of when a KEK
 // generation was taken fully out of use).
 func (k *keyringStore) Retire(ctx context.Context, ref string) error {
-	_, err := k.db.Exec(ctx, `UPDATE kek_keyring SET retired_at = now() WHERE ref = $1`, ref)
+	_, err := k.db.Querier().Exec(ctx, `UPDATE kek_keyring SET retired_at = now() WHERE ref = $1`, ref)
 	return err
 }

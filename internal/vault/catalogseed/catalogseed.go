@@ -10,7 +10,7 @@
 //     capability, safe to ship to prod).
 //
 // This package depends ONLY on grpcsvc's built-in catalogue accessors, the
-// go-seed idempotent-upsert runner, and a pgx pool — never on the bulk/
+// go-seed idempotent-upsert runner, and a go-postgres pool — never on the bulk/
 // per-type/requests seeding code — so anything built on top of it (like
 // cmd/seed-catalog) inherits that same, narrower dependency surface.
 package catalogseed
@@ -20,26 +20,26 @@ import (
 	"fmt"
 
 	log "github.com/Bugs5382/go-log"
+	"github.com/Bugs5382/go-postgres"
 	seed "github.com/Bugs5382/go-seed"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// rowStep is a pgx-backed analogue of go-seed's SQL RowSpec (whose Executor is
+// rowStep is a Postgres-backed analogue of go-seed's SQL RowSpec (whose Executor is
 // database/sql only): an idempotent Apply plus an Assert that the expected rows
-// landed. Keeps everything on the app's proven pgx pool.
-func rowStep(name, apply string, applyArgs []any, count string, countArgs []any, want int) seed.Step[*pgxpool.Pool] {
+// landed. Keeps everything on the app's go-postgres pool.
+func rowStep(name, apply string, applyArgs []any, count string, countArgs []any, want int) seed.Step[postgres.Querier] {
 	if want < 1 {
 		want = 1
 	}
-	return seed.Step[*pgxpool.Pool]{
+	return seed.Step[postgres.Querier]{
 		Name: name,
-		Apply: func(ctx context.Context, db *pgxpool.Pool) error {
+		Apply: func(ctx context.Context, db postgres.Querier) error {
 			_, err := db.Exec(ctx, apply, applyArgs...)
 			return err
 		},
-		Assert: func(ctx context.Context, db *pgxpool.Pool) error {
+		Assert: func(ctx context.Context, db postgres.Querier) error {
 			var n int
 			if err := db.QueryRow(ctx, count, countArgs...).Scan(&n); err != nil {
 				return err
@@ -60,7 +60,7 @@ func rowStep(name, apply string, applyArgs []any, count string, countArgs []any,
 // so it never back-fills on its own. After running this, restart the vault so it
 // hydrates the new types. Re-running is safe, and it is PROD-SAFE: it only ever
 // touches the real built-in catalogue, never bulk/fake data.
-func Run(ctx context.Context, pool *pgxpool.Pool) error {
+func Run(ctx context.Context, db *postgres.DB) error {
 	logger := log.New("vault-seed")
 
 	// Single source of truth for both catalogues — shared with the vault's own
@@ -70,7 +70,7 @@ func Run(ctx context.Context, pool *pgxpool.Pool) error {
 	types := grpcsvc.BuiltinTypes()    // installed, usable built-in types
 	exts := grpcsvc.ExtensionCatalog() // registered importable packs (not installed)
 
-	runner := seed.New(pool)
+	runner := seed.New(db.Querier())
 	// Built-in types become usable secret types (secret_types).
 	for _, t := range types {
 		raw, err := protojson.Marshal(t)

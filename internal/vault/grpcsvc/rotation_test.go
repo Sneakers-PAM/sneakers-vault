@@ -12,10 +12,10 @@ import (
 	"time"
 	"unicode"
 
+	postgres "github.com/Bugs5382/go-postgres"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/audit"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/workloadid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 )
 
@@ -50,10 +50,10 @@ func newRotationServer(t *testing.T) (*Server, *capAudit, string) {
 	t.Helper()
 	ctx := context.Background()
 	pool := rotTestPool(t)
-	if _, err := pool.Exec(ctx, secretVersionsDDL); err != nil {
+	if _, err := pool.Querier().Exec(ctx, secretVersionsDDL); err != nil {
 		t.Fatalf("bootstrap secret_versions: %v", err)
 	}
-	if _, err := pool.Exec(ctx, "TRUNCATE secret_versions"); err != nil {
+	if _, err := pool.Querier().Exec(ctx, "TRUNCATE secret_versions"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -61,7 +61,7 @@ func newRotationServer(t *testing.T) (*Server, *capAudit, string) {
 	s := newServer(t)
 	s.audit = ca
 	s.vers = newVersionStore(pool)
-	s.rot = newRotationStore(pool)
+	s.rot = newRotationStore(pool.Querier())
 	s.wid = acceptVerifier{principal: workloadid.Principal{WorkerID: "worker-1"}}
 
 	carol := &vaultv1.ActorContext{UserId: "user-carol"}
@@ -186,7 +186,7 @@ func TestCreateSecretSchedulesRotationWhenPolicyHasInterval(t *testing.T) {
 	ctx := context.Background()
 	pool := rotTestPool(t)
 	s := newServer(t)
-	s.rot = newRotationStore(pool)
+	s.rot = newRotationStore(pool.Querier())
 	carol := &vaultv1.ActorContext{UserId: "user-carol"}
 
 	typ, err := s.CreateSecretType(ctx, &vaultv1.CreateSecretTypeRequest{
@@ -244,7 +244,7 @@ func TestCreateSecretNoRotationScheduleForNonRotationCapableType(t *testing.T) {
 	ctx := context.Background()
 	pool := rotTestPool(t)
 	s := newServer(t)
-	s.rot = newRotationStore(pool)
+	s.rot = newRotationStore(pool.Querier())
 	carol := &vaultv1.ActorContext{UserId: "user-carol"}
 	fid := newSharedFolder(t, s)
 
@@ -418,7 +418,7 @@ func TestRevealForRotationTwiceLeavesOneStagedRow(t *testing.T) {
 	}
 
 	var stagedCount int
-	if err := s.vers.db.QueryRow(ctx,
+	if err := s.vers.db.Querier().QueryRow(ctx,
 		`SELECT count(*) FROM secret_versions WHERE secret_id=$1 AND staged`, secID).Scan(&stagedCount); err != nil {
 		t.Fatal(err)
 	}
@@ -487,7 +487,7 @@ func revealNewVer(t *testing.T, s *Server, secID string) (string, int32) {
 
 func versionCounts(t *testing.T, s *Server, secID string) (total, active int) {
 	t.Helper()
-	if err := s.vers.db.QueryRow(context.Background(),
+	if err := s.vers.db.Querier().QueryRow(context.Background(),
 		`SELECT count(*), count(*) FILTER (WHERE active) FROM secret_versions WHERE secret_id=$1`,
 		secID).Scan(&total, &active); err != nil {
 		t.Fatal(err)
@@ -522,7 +522,7 @@ func TestRevealForRotationReturnsVersion(t *testing.T) {
 		t.Fatalf("second reveal version %d must exceed first %d", r2.GetVersion(), r1.GetVersion())
 	}
 	var stagedCount int
-	if err := s.vers.db.QueryRow(ctx,
+	if err := s.vers.db.Querier().QueryRow(ctx,
 		`SELECT count(*) FROM secret_versions WHERE secret_id=$1 AND staged`, secID).Scan(&stagedCount); err != nil {
 		t.Fatal(err)
 	}
@@ -735,7 +735,7 @@ func TestReportRotationCommitOnValidateOK(t *testing.T) {
 	}
 	// Prior version retained inactive (2 versions, 1 active).
 	var total, active int
-	if err := s.vers.db.QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE active) FROM secret_versions WHERE secret_id=$1`, secID).Scan(&total, &active); err != nil {
+	if err := s.vers.db.Querier().QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE active) FROM secret_versions WHERE secret_id=$1`, secID).Scan(&total, &active); err != nil {
 		t.Fatal(err)
 	}
 	if total != 2 || active != 1 {
@@ -852,7 +852,7 @@ func TestReportRotationStagedVersionErrorReturnsInternal(t *testing.T) {
 	_ = revealNew(t, s, secID)
 
 	dsn := os.Getenv("TEST_DATABASE_DSN")
-	brokenPool, err := pgxpool.New(ctx, dsn)
+	brokenPool, err := postgres.New(ctx, dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -883,7 +883,7 @@ func TestReportRotationHotPathRefreshErrorReturnsInternal(t *testing.T) {
 	ctx := context.Background()
 	_ = revealNew(t, s, secID)
 
-	if _, err := s.vers.db.Exec(ctx,
+	if _, err := s.vers.db.Querier().Exec(ctx,
 		`UPDATE secret_versions SET record = jsonb_set(record, '{WrappedDEK}', '"not-valid-base64!!!"')
 		 WHERE secret_id=$1 AND staged AND NOT active`, secID); err != nil {
 		t.Fatal(err)
@@ -1087,7 +1087,7 @@ func TestReportRotationSoftDiscardLeavesInertRow(t *testing.T) {
 	}
 	// The row is retained (soft-discarded), not deleted.
 	var cnt int
-	if err := s.vers.db.QueryRow(ctx,
+	if err := s.vers.db.Querier().QueryRow(ctx,
 		`SELECT count(*) FROM secret_versions WHERE secret_id=$1 AND version_no=$2`, secID, va).Scan(&cnt); err != nil {
 		t.Fatal(err)
 	}

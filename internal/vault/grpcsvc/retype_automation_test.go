@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	postgres "github.com/Bugs5382/go-postgres"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 )
 
@@ -27,7 +27,7 @@ import (
 type retypeFixture struct {
 	s      *Server
 	ca     *capAudit
-	pool   *pgxpool.Pool
+	pool   *postgres.DB
 	folder string
 	target string
 }
@@ -49,7 +49,7 @@ func newRetypeFixture(t *testing.T) *retypeFixture {
 func (fx *retypeFixture) rows(t *testing.T, table, id string) int {
 	t.Helper()
 	var n int
-	if err := fx.pool.QueryRow(context.Background(), `SELECT count(*) FROM `+table+` WHERE secret_id=$1`, id).Scan(&n); err != nil {
+	if err := fx.pool.Querier().QueryRow(context.Background(), `SELECT count(*) FROM `+table+` WHERE secret_id=$1`, id).Scan(&n); err != nil {
 		t.Fatalf("count %s: %v", table, err)
 	}
 	return n
@@ -352,7 +352,7 @@ func TestChangeSecretType_OutOfADRemovesSchedulesAndClaims_Postgres(t *testing.T
 		t.Fatal("precondition: an AD secret with a target is rotation- and heartbeat-scheduled")
 	}
 	// A heartbeat claim in flight: the row (and with it the claim) must go.
-	if _, err := fx.pool.Exec(ctx, `UPDATE heartbeat_schedule SET claimed_until = now() + interval '5 minutes' WHERE secret_id=$1`, id); err != nil {
+	if _, err := fx.pool.Querier().Exec(ctx, `UPDATE heartbeat_schedule SET claimed_until = now() + interval '5 minutes' WHERE secret_id=$1`, id); err != nil {
 		t.Fatal(err)
 	}
 
@@ -380,7 +380,7 @@ func TestChangeSecretType_RefusedWhileARotationIsInFlight_Postgres(t *testing.T)
 		t.Fatalf("CreateSecret: %v", err)
 	}
 	id := c.GetSecret().GetId()
-	if _, err := fx.pool.Exec(ctx, `UPDATE rotation_schedule SET claimed_until = now() + interval '5 minutes' WHERE secret_id=$1`, id); err != nil {
+	if _, err := fx.pool.Querier().Exec(ctx, `UPDATE rotation_schedule SET claimed_until = now() + interval '5 minutes' WHERE secret_id=$1`, id); err != nil {
 		t.Fatal(err)
 	}
 	_, err = fx.s.ChangeSecretTypeForPrincipal(ctx, &vaultv1.ChangeSecretTypeForPrincipalRequest{

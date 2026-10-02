@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
+	postgres "github.com/Bugs5382/go-postgres"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestPGUseStoreRoundTrip(t *testing.T) {
@@ -18,17 +18,17 @@ func TestPGUseStoreRoundTrip(t *testing.T) {
 		t.Skip("TEST_DATABASE_DSN not set")
 	}
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
+	pool, err := postgres.New(ctx, dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
 	for _, q := range []string{`TRUNCATE secret_uses`, `TRUNCATE secret_use_grants`} {
-		if _, err := pool.Exec(ctx, q); err != nil {
+		if _, err := pool.Querier().Exec(ctx, q); err != nil {
 			t.Fatal(err)
 		}
 	}
-	st := &pgUseStore{db: pool}
+	st := &pgUseStore{db: pool.Querier()}
 	use := &vaultv1.SecretUse{Id: "use-1", UserId: "u-ada", TokenId: "utok-1", Argv: []string{"ssh", "h"},
 		State: vaultv1.SecretUseState_SECRET_USE_STATE_PENDING, ExpiresAtUnix: 4102444800}
 	if err := st.PutUse(ctx, use); err != nil {

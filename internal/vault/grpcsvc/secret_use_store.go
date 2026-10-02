@@ -8,9 +8,8 @@ import (
 	"errors"
 	"sync"
 
+	postgres "github.com/Bugs5382/go-postgres"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -96,11 +95,11 @@ func (m *memUseStore) GrantsFor(_ context.Context, userID string) ([]*vaultv1.Us
 	return out, nil
 }
 
-type pgUseStore struct{ db *pgxpool.Pool }
+type pgUseStore struct{ db postgres.Querier }
 
 // SetSecretUses installs the shared use-handle and use-grant store. Called from
 // cmd/vault once the pool is open.
-func (s *Server) SetSecretUses(pool *pgxpool.Pool) { s.uses = &pgUseStore{db: pool} }
+func (s *Server) SetSecretUses(db *postgres.DB) { s.uses = &pgUseStore{db: db.Querier()} }
 
 func (p *pgUseStore) PutUse(ctx context.Context, u *vaultv1.SecretUse) error {
 	raw, err := protojson.Marshal(u)
@@ -121,7 +120,7 @@ func (p *pgUseStore) PutUse(ctx context.Context, u *vaultv1.SecretUse) error {
 func (p *pgUseStore) GetUse(ctx context.Context, id string) (*vaultv1.SecretUse, error) {
 	var raw []byte
 	if err := p.db.QueryRow(ctx, `SELECT data FROM secret_uses WHERE id=$1`, id).Scan(&raw); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, postgres.ErrNoRows) {
 			return nil, errUseNotFound
 		}
 		return nil, err
@@ -165,7 +164,7 @@ func (p *pgUseStore) PutGrant(ctx context.Context, g *vaultv1.UseGrant) error {
 func (p *pgUseStore) GetGrant(ctx context.Context, id string) (*vaultv1.UseGrant, error) {
 	var raw []byte
 	if err := p.db.QueryRow(ctx, `SELECT data FROM secret_use_grants WHERE id=$1`, id).Scan(&raw); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, postgres.ErrNoRows) {
 			return nil, errUseNotFound
 		}
 		return nil, err

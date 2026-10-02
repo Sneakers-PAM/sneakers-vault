@@ -14,28 +14,26 @@ import (
 	postgres "github.com/Bugs5382/go-postgres"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 )
 
 // organizeFreshDB creates an isolated database on the TEST_DATABASE_DSN server,
 // applies the repo migrations, and returns a pool on it (dropped on cleanup).
-func organizeFreshDB(t *testing.T) (string, *pgxpool.Pool) {
+func organizeFreshDB(t *testing.T) (string, *postgres.DB) {
 	t.Helper()
 	base := os.Getenv("TEST_DATABASE_DSN")
 	if base == "" {
 		t.Skip("TEST_DATABASE_DSN not set")
 	}
 	ctx := context.Background()
-	admin, err := pgx.Connect(ctx, base)
+	admin, err := postgres.New(ctx, base)
 	if err != nil {
 		t.Fatalf("connect admin: %v", err)
 	}
 	b := make([]byte, 6)
 	_, _ = rand.Read(b)
 	name := "organize_" + hex.EncodeToString(b)
-	if _, err := admin.Exec(ctx, "CREATE DATABASE "+name); err != nil {
+	if _, err := admin.Querier().Exec(ctx, "CREATE DATABASE "+name); err != nil {
 		t.Fatalf("create db: %v", err)
 	}
 	u, err := url.Parse(base)
@@ -47,14 +45,14 @@ func organizeFreshDB(t *testing.T) (string, *pgxpool.Pool) {
 	if err := postgres.Migrate(dsn, "../../../migrations/vault"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	pool, err := pgxpool.New(ctx, dsn)
+	pool, err := postgres.New(ctx, dsn)
 	if err != nil {
 		t.Fatalf("pool: %v", err)
 	}
 	t.Cleanup(func() {
 		pool.Close()
-		_, _ = admin.Exec(context.Background(), "DROP DATABASE IF EXISTS "+name+" WITH (FORCE)")
-		_ = admin.Close(context.Background())
+		_, _ = admin.Querier().Exec(context.Background(), "DROP DATABASE IF EXISTS "+name+" WITH (FORCE)")
+		admin.Close()
 	})
 	return dsn, pool
 }

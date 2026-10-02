@@ -37,7 +37,7 @@ func sweepFixture(t *testing.T, auditor Auditor, n int) (rotateFixture, map[stri
 
 func versionRefCounts(t *testing.T, v *versionStore) map[string]int {
 	t.Helper()
-	rows, err := v.db.Query(context.Background(), `SELECT record->>'KeyRef', count(*) FROM secret_versions GROUP BY 1`)
+	rows, err := v.db.Querier().Query(context.Background(), `SELECT record->>'KeyRef', count(*) FROM secret_versions GROUP BY 1`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestRotateKek_VersionSweepFailure_IsReportedAndResumable(t *testing.T) {
 
 	bogus := crypto.Record{WrappedDEK: []byte("not-a-real-wrapped-dek-000000000"), KeyRef: "kek-v0-unknown", Fields: map[string]crypto.Sealed{}}
 	raw, _ := json.Marshal(bogus)
-	if _, err := s.vers.db.Exec(ctx,
+	if _, err := s.vers.db.Querier().Exec(ctx,
 		`INSERT INTO secret_versions (secret_id, version_no, record) VALUES ('zzz-bogus', 1, $1)`, raw); err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestRotateKek_VersionSweepFailure_IsReportedAndResumable(t *testing.T) {
 	}
 	assertVersionsReadable(t, s, want)
 
-	if _, err := s.vers.db.Exec(ctx, `DELETE FROM secret_versions WHERE secret_id='zzz-bogus'`); err != nil {
+	if _, err := s.vers.db.Querier().Exec(ctx, `DELETE FROM secret_versions WHERE secret_id='zzz-bogus'`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.RotateKek(ctx, &vaultv1.RotateKekRequest{Actor: admin}); err != nil {
@@ -183,7 +183,7 @@ func TestVersionRewrapBatch_RollsBackWholeBatchOnError(t *testing.T) {
 	s := fx.s
 	ctx := context.Background()
 	bogus, _ := json.Marshal(crypto.Record{WrappedDEK: []byte("x"), KeyRef: "kek-v0-unknown"})
-	if _, err := s.vers.db.Exec(ctx, `INSERT INTO secret_versions (secret_id, version_no, record) VALUES ('zzz', 1, $1)`, bogus); err != nil {
+	if _, err := s.vers.db.Querier().Exec(ctx, `INSERT INTO secret_versions (secret_id, version_no, record) VALUES ('zzz', 1, $1)`, bogus); err != nil {
 		t.Fatal(err)
 	}
 	fx.s.keyring.Add(crypto.WorkingKey{Ref: "kek-v2", Key: bootMustKey(t)}, true)

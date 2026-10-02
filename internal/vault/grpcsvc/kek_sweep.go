@@ -11,8 +11,8 @@ import (
 	"sort"
 	"strings"
 
+	postgres "github.com/Bugs5382/go-postgres"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // DevStaticKeyRef is the KeyRef of the static dev key
@@ -107,11 +107,11 @@ func (r KeyRefReport) String() string {
 //	SELECT 'secret_records' AS t, record->>'KeyRef' AS ref, count(*) FROM secret_records GROUP BY 2
 //	UNION ALL
 //	SELECT 'secret_versions', record->>'KeyRef', count(*) FROM secret_versions GROUP BY 2;
-func KeyRefCounts(ctx context.Context, pool *pgxpool.Pool) (KeyRefReport, error) {
+func KeyRefCounts(ctx context.Context, db *postgres.DB) (KeyRefReport, error) {
 	out := KeyRefReport{}
 	for _, table := range sealedRecordTables {
 		out[table] = map[string]int64{}
-		rows, err := pool.Query(ctx, `SELECT COALESCE(record->>'KeyRef', ''), count(*) FROM `+table+` GROUP BY 1`)
+		rows, err := db.Querier().Query(ctx, `SELECT COALESCE(record->>'KeyRef', ''), count(*) FROM `+table+` GROUP BY 1`)
 		if err != nil {
 			return nil, fmt.Errorf("count KeyRefs in %s: %w", table, err)
 		}
@@ -159,12 +159,20 @@ func CheckDevStaticRetired(r KeyRefReport) error {
 // a row. Any failure rolls the whole batch back: every row stays exactly as
 // it was (still readable under its old ref), never half-written.
 func (v *versionStore) rewrapBatch(ctx context.Context, crypt *crypto.Envelope, activeRef string, limit int) (int, error) {
-	tx, err := v.db.Begin(ctx)
+	var n int
+	err := v.db.RunInTxQuerier(ctx, func(tx postgres.Querier) error {
+		var err error
+		n, err = rewrapRows(ctx, tx, crypt, activeRef, limit)
+		return err
+	})
 	if err != nil {
 		return 0, err
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	return n, nil
+}
 
+// rewrapRows is one rewrapBatch attempt inside its transaction.
+func rewrapRows(ctx context.Context, tx postgres.Querier, crypt *crypto.Envelope, activeRef string, limit int) (int, error) {
 	rows, err := tx.Query(ctx,
 		`SELECT secret_id, version_no, record FROM secret_versions
 		  WHERE record->>'KeyRef' IS DISTINCT FROM $1
@@ -215,9 +223,6 @@ func (v *versionStore) rewrapBatch(ctx context.Context, crypt *crypto.Envelope, 
 			return 0, fmt.Errorf("version %s/%d: update: %w", r.secretID, r.versionNo, err)
 		}
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return 0, err
-	}
 	return len(batch), nil
 }
 
@@ -247,7 +252,7 @@ func (s *Server) sweepVersions(ctx context.Context) (int, error) {
 // (empty without a version store), so retirement never stamps a generation
 // that history rows still need.
 func (v *versionStore) versionRefs(ctx context.Context) (map[string]bool, error) {
-	rows, err := v.db.Query(ctx, `SELECT DISTINCT COALESCE(record->>'KeyRef', '') FROM secret_versions`)
+	rows, err := v.db.Querier().Query(ctx, `SELECT DISTINCT COALESCE(record->>'KeyRef', '') FROM secret_versions`)
 	if err != nil {
 		return nil, err
 	}

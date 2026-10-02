@@ -8,10 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	postgres "github.com/Bugs5382/go-postgres"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -95,49 +94,36 @@ const vaultWriteLockKey int64 = 0x7661756c74
 // before failing the RPC, so a stalled holder can't hang every writer.
 const writeLockTimeout = "15s"
 
-// pgQuerier is the read surface shared by *pgxpool.Pool and pgx.Tx, so the same
-// loaders serve a plain Load and a Load inside the write lock.
-type pgQuerier interface {
-	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
-	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
-}
-
-type pgStore struct{ db *pgxpool.Pool }
+type pgStore struct{ db *postgres.DB }
 
 // NewPGStore returns a Postgres-backed Store over the given pool.
-func NewPGStore(db *pgxpool.Pool) Store { return &pgStore{db: db} }
+func NewPGStore(db *postgres.DB) Store { return &pgStore{db: db} }
 
 // Locked runs fn in one transaction holding the vault write lock. The lock is
 // transaction-scoped, so it is released on commit or rollback. Under READ
 // COMMITTED every statement after the lock sees every write committed before
 // it, since writers commit before they release the lock.
 func (p *pgStore) Locked(ctx context.Context, fn func(ctx context.Context, tx Store) error) error {
-	tx, err := p.db.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, "SET LOCAL lock_timeout = '"+writeLockTimeout+"'"); err != nil {
-		return fmt.Errorf("set lock_timeout: %w", err)
-	}
-	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", vaultWriteLockKey); err != nil {
-		return fmt.Errorf("acquire vault write lock: %w", err)
-	}
-	if err := fn(ctx, pgTxStore{tx: tx}); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	return p.db.RunInTx(ctx, func(tx postgres.Tx) error {
+		if _, err := tx.Exec(ctx, "SET LOCAL lock_timeout = '"+writeLockTimeout+"'"); err != nil {
+			return fmt.Errorf("set lock_timeout: %w", err)
+		}
+		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", vaultWriteLockKey); err != nil {
+			return fmt.Errorf("acquire vault write lock: %w", err)
+		}
+		return fn(ctx, pgTxStore{tx: tx})
+	})
 }
 
 // pgTxStore is the Store view handed to a Locked callback: Load and Persist run
 // inside the lock-holding transaction.
-type pgTxStore struct{ tx pgx.Tx }
+type pgTxStore struct{ tx postgres.Tx }
 
 func (t pgTxStore) Load(ctx context.Context) (*state, bool, error) { return loadState(ctx, t.tx) }
 
 func (t pgTxStore) Persist(ctx context.Context, st *state) error { return persistState(ctx, t.tx, st) }
 
-func loadCollection[T proto.Message](ctx context.Context, db pgQuerier, table string, mk func() T) ([]T, error) {
+func loadCollection[T proto.Message](ctx context.Context, db postgres.Querier, table string, mk func() T) ([]T, error) {
 	rows, err := db.Query(ctx, "SELECT data FROM "+table)
 	if err != nil {
 		return nil, fmt.Errorf("select %s: %w", table, err)
@@ -160,11 +146,13 @@ func loadCollection[T proto.Message](ctx context.Context, db pgQuerier, table st
 	return out, rows.Err()
 }
 
-func (p *pgStore) Load(ctx context.Context) (*state, bool, error) { return loadState(ctx, p.db) }
+func (p *pgStore) Load(ctx context.Context) (*state, bool, error) {
+	return loadState(ctx, p.db.Querier())
+}
 
-func loadState(ctx context.Context, q pgQuerier) (*state, bool, error) {
+func loadState(ctx context.Context, q postgres.Querier) (*state, bool, error) {
 	st := &state{records: map[string]crypto.Record{}}
-	for _, load := range []func(context.Context, pgQuerier, *state) error{loadCollections, loadTargetRulesets, loadSettings, loadRecords} {
+	for _, load := range []func(context.Context, postgres.Querier, *state) error{loadCollections, loadTargetRulesets, loadSettings, loadRecords} {
 		if err := load(ctx, q, st); err != nil {
 			return nil, false, err
 		}
@@ -177,7 +165,7 @@ func loadState(ctx context.Context, q pgQuerier) (*state, bool, error) {
 // target id. A dedicated table (rather than filtering raci_rules in memory,
 // as folder rules do via RaciRule.FolderId): the RaciRule message carries no
 // target_id field, so the correlation has to live in a SQL column instead.
-func loadTargetRulesets(ctx context.Context, q pgQuerier, st *state) error {
+func loadTargetRulesets(ctx context.Context, q postgres.Querier, st *state) error {
 	rows, err := q.Query(ctx, "SELECT target_id, data FROM target_raci_rules")
 	if err != nil {
 		return fmt.Errorf("select target_raci_rules: %w", err)
@@ -200,7 +188,7 @@ func loadTargetRulesets(ctx context.Context, q pgQuerier, st *state) error {
 }
 
 // loadCollections hydrates every protojson-backed entity table into st.
-func loadCollections(ctx context.Context, q pgQuerier, st *state) error {
+func loadCollections(ctx context.Context, q postgres.Querier, st *state) error {
 	var err error
 	if st.types, err = loadCollection(ctx, q, "secret_types", func() *vaultv1.SecretType { return &vaultv1.SecretType{} }); err != nil {
 		return err
@@ -233,7 +221,7 @@ func loadCollections(ctx context.Context, q pgQuerier, st *state) error {
 }
 
 // loadSettings hydrates the singleton security-settings row (absent = nil).
-func loadSettings(ctx context.Context, q pgQuerier, st *state) error {
+func loadSettings(ctx context.Context, q postgres.Querier, st *state) error {
 	var raw []byte
 	switch err := q.QueryRow(ctx, "SELECT data FROM security_settings WHERE id=1").Scan(&raw); err {
 	case nil:
@@ -241,7 +229,7 @@ func loadSettings(ctx context.Context, q pgQuerier, st *state) error {
 		if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(raw, st.settings); err != nil {
 			return fmt.Errorf("unmarshal settings: %w", err)
 		}
-	case pgx.ErrNoRows:
+	case postgres.ErrNoRows:
 		st.settings = nil
 	default:
 		return fmt.Errorf("select settings: %w", err)
@@ -250,7 +238,7 @@ func loadSettings(ctx context.Context, q pgQuerier, st *state) error {
 }
 
 // loadRecords hydrates the envelope-encrypted field sets keyed by secret id.
-func loadRecords(ctx context.Context, q pgQuerier, st *state) error {
+func loadRecords(ctx context.Context, q postgres.Querier, st *state) error {
 	rows, err := q.Query(ctx, "SELECT secret_id, record FROM secret_records")
 	if err != nil {
 		return fmt.Errorf("select records: %w", err)
@@ -271,7 +259,7 @@ func loadRecords(ctx context.Context, q pgQuerier, st *state) error {
 	return rows.Err()
 }
 
-func replaceCollection[T proto.Message](ctx context.Context, tx pgx.Tx, table string, items []T, id func(T) string) error {
+func replaceCollection[T proto.Message](ctx context.Context, tx postgres.Tx, table string, items []T, id func(T) string) error {
 	if _, err := tx.Exec(ctx, "DELETE FROM "+table); err != nil {
 		return fmt.Errorf("clear %s: %w", table, err)
 	}
@@ -294,8 +282,8 @@ func (p *pgStore) Persist(ctx context.Context, st *state) error {
 	return p.Locked(ctx, func(ctx context.Context, tx Store) error { return tx.Persist(ctx, st) })
 }
 
-func persistState(ctx context.Context, tx pgx.Tx, st *state) error {
-	for _, save := range []func(context.Context, pgx.Tx, *state) error{persistCollections, persistTargetRulesets, persistSettings, persistRecords} {
+func persistState(ctx context.Context, tx postgres.Tx, st *state) error {
+	for _, save := range []func(context.Context, postgres.Tx, *state) error{persistCollections, persistTargetRulesets, persistSettings, persistRecords} {
 		if err := save(ctx, tx, st); err != nil {
 			return err
 		}
@@ -306,7 +294,7 @@ func persistState(ctx context.Context, tx pgx.Tx, st *state) error {
 // persistTargetRulesets replaces the target_raci_rules table from st (see
 // loadTargetRulesets for why this is a dedicated table/column rather than a
 // filtered slice like raci_rules).
-func persistTargetRulesets(ctx context.Context, tx pgx.Tx, st *state) error {
+func persistTargetRulesets(ctx context.Context, tx postgres.Tx, st *state) error {
 	if _, err := tx.Exec(ctx, "DELETE FROM target_raci_rules"); err != nil {
 		return fmt.Errorf("clear target_raci_rules: %w", err)
 	}
@@ -325,7 +313,7 @@ func persistTargetRulesets(ctx context.Context, tx pgx.Tx, st *state) error {
 }
 
 // persistCollections replaces every protojson-backed entity table from st.
-func persistCollections(ctx context.Context, tx pgx.Tx, st *state) error {
+func persistCollections(ctx context.Context, tx postgres.Tx, st *state) error {
 	typeID := func(t *vaultv1.SecretType) string { return t.GetId() }
 	if err := replaceCollection(ctx, tx, "secret_types", st.types, typeID); err != nil {
 		return err
@@ -355,7 +343,7 @@ func persistCollections(ctx context.Context, tx pgx.Tx, st *state) error {
 }
 
 // persistSettings replaces the singleton security-settings row (nil = cleared).
-func persistSettings(ctx context.Context, tx pgx.Tx, st *state) error {
+func persistSettings(ctx context.Context, tx postgres.Tx, st *state) error {
 	if _, err := tx.Exec(ctx, "DELETE FROM security_settings"); err != nil {
 		return err
 	}
@@ -371,7 +359,7 @@ func persistSettings(ctx context.Context, tx pgx.Tx, st *state) error {
 }
 
 // persistRecords replaces the envelope-encrypted field sets keyed by secret id.
-func persistRecords(ctx context.Context, tx pgx.Tx, st *state) error {
+func persistRecords(ctx context.Context, tx postgres.Tx, st *state) error {
 	if _, err := tx.Exec(ctx, "DELETE FROM secret_records"); err != nil {
 		return err
 	}

@@ -7,8 +7,8 @@ import (
 	"context"
 	"os"
 
+	postgres "github.com/Bugs5382/go-postgres"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/catalogseed"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // seedCatalog upserts the vault's full built-in secret-type catalogue. The
@@ -19,8 +19,8 @@ import (
 // so a manual dev/qa reseed converges on already-running vault replicas
 // without a restart, same as cmd/seed-catalog's post-deploy path. Best-effort:
 // no REDIS_URL, or an unreachable Redis, only logs a warning.
-func seedCatalog(ctx context.Context, pool *pgxpool.Pool) error {
-	if err := catalogseed.Run(ctx, pool); err != nil {
+func seedCatalog(ctx context.Context, db *postgres.DB) error {
+	if err := catalogseed.Run(ctx, db); err != nil {
 		return err
 	}
 	rc := catalogseed.DialRedis(ctx, os.Getenv("REDIS_URL"))

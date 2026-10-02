@@ -12,9 +12,8 @@ import (
 	"sort"
 	"time"
 
+	postgres "github.com/Bugs5382/go-postgres"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // VersionMeta is one ledger row's non-secret metadata plus the field keys
@@ -48,9 +47,9 @@ type VersionMeta struct {
 // The crypto.Record is stored as JSONB (encoding/json round-trips its []byte and
 // map[string]Sealed fields as base64/objects — the on-wire crypto is unchanged,
 // only its storage envelope differs).
-type versionStore struct{ db *pgxpool.Pool }
+type versionStore struct{ db *postgres.DB }
 
-func newVersionStore(db *pgxpool.Pool) *versionStore { return &versionStore{db: db} }
+func newVersionStore(db *postgres.DB) *versionStore { return &versionStore{db: db} }
 
 // AppendActive writes the next version_no as the active record, demoting any
 // prior active row, in one transaction. Returns the new version_no.
@@ -72,30 +71,25 @@ func (v *versionStore) append(ctx context.Context, secretID string, rec crypto.R
 	if err != nil {
 		return 0, err
 	}
-	tx, err := v.db.Begin(ctx)
-	if err != nil {
-		return 0, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	if active {
-		if _, err := tx.Exec(ctx,
-			`UPDATE secret_versions SET active=false WHERE secret_id=$1 AND active`, secretID); err != nil {
-			return 0, err
-		}
-	}
 	var next int
-	if err := tx.QueryRow(ctx,
-		`SELECT COALESCE(MAX(version_no),0)+1 FROM secret_versions WHERE secret_id=$1`, secretID).Scan(&next); err != nil {
-		return 0, err
-	}
-	if _, err := tx.Exec(ctx,
-		`INSERT INTO secret_versions (secret_id, version_no, record, active, staged, created_by)
-		 VALUES ($1,$2,$3,$4,$5,$6)`,
-		secretID, next, raw, active, staged, by); err != nil {
-		return 0, err
-	}
-	if err := tx.Commit(ctx); err != nil {
+	err = v.db.RunInTxQuerier(ctx, func(tx postgres.Querier) error {
+		if active {
+			if _, err := tx.Exec(ctx,
+				`UPDATE secret_versions SET active=false WHERE secret_id=$1 AND active`, secretID); err != nil {
+				return err
+			}
+		}
+		if err := tx.QueryRow(ctx,
+			`SELECT COALESCE(MAX(version_no),0)+1 FROM secret_versions WHERE secret_id=$1`, secretID).Scan(&next); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx,
+			`INSERT INTO secret_versions (secret_id, version_no, record, active, staged, created_by)
+			 VALUES ($1,$2,$3,$4,$5,$6)`,
+			secretID, next, raw, active, staged, by)
+		return err
+	})
+	if err != nil {
 		return 0, err
 	}
 	return next, nil
@@ -105,22 +99,17 @@ func (v *versionStore) append(ctx context.Context, secretID string, rec crypto.R
 // version, in one transaction. Idempotent by version_no: re-committing an
 // already-active version is a no-op success.
 func (v *versionStore) Commit(ctx context.Context, secretID string, versionNo int) error {
-	tx, err := v.db.Begin(ctx)
-	if err != nil {
+	return v.db.RunInTxQuerier(ctx, func(tx postgres.Querier) error {
+		if _, err := tx.Exec(ctx,
+			`UPDATE secret_versions SET active=false WHERE secret_id=$1 AND active AND version_no<>$2`,
+			secretID, versionNo); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx,
+			`UPDATE secret_versions SET active=true, staged=false WHERE secret_id=$1 AND version_no=$2`,
+			secretID, versionNo)
 		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx,
-		`UPDATE secret_versions SET active=false WHERE secret_id=$1 AND active AND version_no<>$2`,
-		secretID, versionNo); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx,
-		`UPDATE secret_versions SET active=true, staged=false WHERE secret_id=$1 AND version_no=$2`,
-		secretID, versionNo); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	})
 }
 
 // ReplaceStaged atomically soft-discards any prior staged (non-active) version
@@ -145,28 +134,23 @@ func (v *versionStore) ReplaceStaged(ctx context.Context, secretID string, rec c
 	if err != nil {
 		return 0, err
 	}
-	tx, err := v.db.Begin(ctx)
-	if err != nil {
-		return 0, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	if _, err := tx.Exec(ctx,
-		`UPDATE secret_versions SET staged=false WHERE secret_id=$1 AND staged`, secretID); err != nil {
-		return 0, err
-	}
 	var next int
-	if err := tx.QueryRow(ctx,
-		`SELECT COALESCE(MAX(version_no),0)+1 FROM secret_versions WHERE secret_id=$1`, secretID).Scan(&next); err != nil {
-		return 0, err
-	}
-	if _, err := tx.Exec(ctx,
-		`INSERT INTO secret_versions (secret_id, version_no, record, active, staged, created_by)
-		 VALUES ($1,$2,$3,false,true,$4)`,
-		secretID, next, raw, by); err != nil {
-		return 0, err
-	}
-	if err := tx.Commit(ctx); err != nil {
+	err = v.db.RunInTxQuerier(ctx, func(tx postgres.Querier) error {
+		if _, err := tx.Exec(ctx,
+			`UPDATE secret_versions SET staged=false WHERE secret_id=$1 AND staged`, secretID); err != nil {
+			return err
+		}
+		if err := tx.QueryRow(ctx,
+			`SELECT COALESCE(MAX(version_no),0)+1 FROM secret_versions WHERE secret_id=$1`, secretID).Scan(&next); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx,
+			`INSERT INTO secret_versions (secret_id, version_no, record, active, staged, created_by)
+			 VALUES ($1,$2,$3,false,true,$4)`,
+			secretID, next, raw, by)
+		return err
+	})
+	if err != nil {
 		return 0, err
 	}
 	return next, nil
@@ -179,7 +163,7 @@ func (v *versionStore) ReplaceStaged(ctx context.Context, secretID string, rec c
 // re-handed to a later reveal. Retained rows (staged=false, active=false) read
 // as "discarded".
 func (v *versionStore) DiscardStaged(ctx context.Context, secretID string) error {
-	_, err := v.db.Exec(ctx,
+	_, err := v.db.Querier().Exec(ctx,
 		`UPDATE secret_versions SET staged=false WHERE secret_id=$1 AND staged`, secretID)
 	return err
 }
@@ -194,10 +178,10 @@ func (v *versionStore) DiscardStaged(ctx context.Context, secretID string) error
 // identically by callers. A single query — no row means exists=false with all
 // flags false.
 func (v *versionStore) VersionStatus(ctx context.Context, secretID string, versionNo int) (active bool, staged bool, exists bool, err error) {
-	err = v.db.QueryRow(ctx,
+	err = v.db.Querier().QueryRow(ctx,
 		`SELECT active, staged FROM secret_versions WHERE secret_id=$1 AND version_no=$2`,
 		secretID, versionNo).Scan(&active, &staged)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, postgres.ErrNoRows) {
 		return false, false, false, nil
 	}
 	if err != nil {
@@ -218,7 +202,7 @@ func (v *versionStore) VersionStatus(ctx context.Context, secretID string, versi
 // lets ReportRotation make the consecutive-failure bump atomic — only the caller
 // that observes 1 bumps; the loser observes 0 and returns an idempotent ok.
 func (v *versionStore) DiscardVersion(ctx context.Context, secretID string, versionNo int) (int64, error) {
-	tag, err := v.db.Exec(ctx,
+	tag, err := v.db.Querier().Exec(ctx,
 		`UPDATE secret_versions SET staged=false WHERE secret_id=$1 AND version_no=$2 AND staged`,
 		secretID, versionNo)
 	if err != nil {
@@ -232,9 +216,9 @@ func (v *versionStore) DiscardVersion(ctx context.Context, secretID string, vers
 // active version.
 func (v *versionStore) ActiveRecord(ctx context.Context, secretID string) (crypto.Record, bool, error) {
 	var raw []byte
-	err := v.db.QueryRow(ctx,
+	err := v.db.Querier().QueryRow(ctx,
 		`SELECT record FROM secret_versions WHERE secret_id=$1 AND active`, secretID).Scan(&raw)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, postgres.ErrNoRows) {
 		return crypto.Record{}, false, nil
 	}
 	if err != nil {
@@ -259,7 +243,7 @@ func (v *versionStore) ActiveRecord(ctx context.Context, secretID string) (crypt
 // between versions counts as changed. When crypt is nil (a store built without an
 // envelope) the change set falls back to the full key set.
 func (v *versionStore) List(ctx context.Context, secretID string, crypt *crypto.Envelope) ([]VersionMeta, error) {
-	rows, err := v.db.Query(ctx,
+	rows, err := v.db.Querier().Query(ctx,
 		`SELECT version_no, created_by, created_at, active, record
 		   FROM secret_versions WHERE secret_id=$1 ORDER BY version_no DESC`, secretID)
 	if err != nil {
@@ -361,10 +345,10 @@ func changedFieldKeys(cur, prior map[string]string) []string {
 // it, so only the requested historical value is ever materialised.
 func (v *versionStore) LoadVersion(ctx context.Context, secretID string, versionNo int) (crypto.Record, bool, error) {
 	var raw []byte
-	err := v.db.QueryRow(ctx,
+	err := v.db.Querier().QueryRow(ctx,
 		`SELECT record FROM secret_versions WHERE secret_id=$1 AND version_no=$2`,
 		secretID, versionNo).Scan(&raw)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, postgres.ErrNoRows) {
 		return crypto.Record{}, false, nil
 	}
 	if err != nil {
@@ -382,10 +366,10 @@ func (v *versionStore) LoadVersion(ctx context.Context, secretID string, version
 // to Commit.
 func (v *versionStore) StagedVersion(ctx context.Context, secretID string) (int, bool, error) {
 	var n int
-	err := v.db.QueryRow(ctx,
+	err := v.db.Querier().QueryRow(ctx,
 		`SELECT version_no FROM secret_versions WHERE secret_id=$1 AND staged AND NOT active
 		 ORDER BY version_no DESC LIMIT 1`, secretID).Scan(&n)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, postgres.ErrNoRows) {
 		return 0, false, nil
 	}
 	if err != nil {
@@ -397,6 +381,6 @@ func (v *versionStore) StagedVersion(ctx context.Context, secretID string) (int,
 // DeleteAll drops every version of the secret. A hard delete is meant to be
 // unrecoverable, and each row holds a sealed copy of the value.
 func (v *versionStore) DeleteAll(ctx context.Context, secretID string) error {
-	_, err := v.db.Exec(ctx, `DELETE FROM secret_versions WHERE secret_id=$1`, secretID)
+	_, err := v.db.Querier().Exec(ctx, `DELETE FROM secret_versions WHERE secret_id=$1`, secretID)
 	return err
 }

@@ -6,7 +6,7 @@ package grpcsvc
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	postgres "github.com/Bugs5382/go-postgres"
 )
 
 // breakGlassStore is the append-only ledger of emergency (break-glass) reveals.
@@ -14,9 +14,9 @@ import (
 // whether the forced post-use rotation was scheduled / the owner notified. It
 // never stores field values — the reveal is recorded as a high-severity audit
 // event; this table is the operational record of the break-glass action itself.
-type breakGlassStore struct{ db *pgxpool.Pool }
+type breakGlassStore struct{ db postgres.Querier }
 
-func newBreakGlassStore(db *pgxpool.Pool) *breakGlassStore { return &breakGlassStore{db: db} }
+func newBreakGlassStore(db postgres.Querier) *breakGlassStore { return &breakGlassStore{db: db} }
 
 // Insert appends one break-glass event. Caller supplies the id (generated under
 // the server lock) so the row is deterministic and never collides.

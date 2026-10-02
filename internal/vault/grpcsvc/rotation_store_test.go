@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	postgres "github.com/Bugs5382/go-postgres"
 )
 
 // rotationScheduleDDL mirrors the rotation_schedule table in
@@ -29,21 +29,21 @@ CREATE TABLE IF NOT EXISTS rotation_schedule (
 CREATE INDEX IF NOT EXISTS rotation_schedule_due ON rotation_schedule (next_rotation_at);
 `
 
-func rotTestPool(t *testing.T) *pgxpool.Pool {
+func rotTestPool(t *testing.T) *postgres.DB {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_DSN")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_DSN not set")
 	}
-	p, err := pgxpool.New(context.Background(), dsn)
+	p, err := postgres.New(context.Background(), dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(p.Close)
-	if _, err := p.Exec(context.Background(), rotationScheduleDDL); err != nil {
+	if _, err := p.Querier().Exec(context.Background(), rotationScheduleDDL); err != nil {
 		t.Fatalf("bootstrap rotation_schedule: %v", err)
 	}
-	_, _ = p.Exec(context.Background(), "TRUNCATE rotation_schedule")
+	_, _ = p.Querier().Exec(context.Background(), "TRUNCATE rotation_schedule")
 	return p
 }
 
@@ -51,7 +51,7 @@ const stROTATING = 4 // vaultv1.RotationState_ROTATION_STATE_ROTATING
 
 func TestRotationStoreEnqueueClaimReschedule(t *testing.T) {
 	ctx := context.Background()
-	r := newRotationStore(rotTestPool(t))
+	r := newRotationStore(rotTestPool(t).Querier())
 	if err := r.Enqueue(ctx, "sec-1", "manual", 30); err != nil {
 		t.Fatalf("Enqueue: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestRotationStoreEnqueueClaimReschedule(t *testing.T) {
 
 func TestRotationStoreConcurrentClaimNoCollision(t *testing.T) {
 	ctx := context.Background()
-	r := newRotationStore(rotTestPool(t))
+	r := newRotationStore(rotTestPool(t).Querier())
 	const n = 40
 	for i := 0; i < n; i++ {
 		if err := r.Enqueue(ctx, fmt.Sprintf("sec-%d", i), "manual", 0); err != nil {
@@ -139,7 +139,7 @@ func TestRotationStoreConcurrentClaimNoCollision(t *testing.T) {
 
 func TestRotationStoreEnsureScheduledIntervalGate(t *testing.T) {
 	ctx := context.Background()
-	r := newRotationStore(rotTestPool(t))
+	r := newRotationStore(rotTestPool(t).Querier())
 	// interval 0 → row exists but not due (next_rotation_at NULL).
 	if err := r.EnsureScheduled(ctx, "sec-0", 0); err != nil {
 		t.Fatal(err)
@@ -164,7 +164,7 @@ func TestRotationStoreEnsureScheduledIntervalGate(t *testing.T) {
 
 func TestRotationStoreFailureCounters(t *testing.T) {
 	ctx := context.Background()
-	r := newRotationStore(rotTestPool(t))
+	r := newRotationStore(rotTestPool(t).Querier())
 	if err := r.Enqueue(ctx, "sec-1", "manual", 0); err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestRotationStoreFailureCounters(t *testing.T) {
 
 func TestRotationStoreInFlightOnConnection(t *testing.T) {
 	ctx := context.Background()
-	r := newRotationStore(rotTestPool(t))
+	r := newRotationStore(rotTestPool(t).Querier())
 	if err := r.Enqueue(ctx, "sec-a", "manual", 0); err != nil {
 		t.Fatal(err)
 	}
@@ -226,14 +226,14 @@ func TestRotationStoreInFlightOnConnection(t *testing.T) {
 func TestHeartbeatClaimSkipsInFlightRotation(t *testing.T) {
 	ctx := context.Background()
 	pool := rotTestPool(t) // bootstraps + truncates rotation_schedule
-	if _, err := pool.Exec(ctx, heartbeatScheduleDDL); err != nil {
+	if _, err := pool.Querier().Exec(ctx, heartbeatScheduleDDL); err != nil {
 		t.Fatalf("bootstrap heartbeat_schedule: %v", err)
 	}
-	if _, err := pool.Exec(ctx, "TRUNCATE heartbeat_schedule"); err != nil {
+	if _, err := pool.Querier().Exec(ctx, "TRUNCATE heartbeat_schedule"); err != nil {
 		t.Fatal(err)
 	}
-	hs := newHeartbeatStore(pool)
-	rs := newRotationStore(pool)
+	hs := newHeartbeatStore(pool.Querier())
+	rs := newRotationStore(pool.Querier())
 
 	if err := hs.Ensure(ctx, "sec-1", 300); err != nil {
 		t.Fatal(err)
@@ -263,7 +263,7 @@ func TestHeartbeatClaimSkipsInFlightRotation(t *testing.T) {
 
 func TestRotationStoreRemoveAndClearClaim(t *testing.T) {
 	ctx := context.Background()
-	r := newRotationStore(rotTestPool(t))
+	r := newRotationStore(rotTestPool(t).Querier())
 	if err := r.Enqueue(ctx, "sec-1", "manual", 0); err != nil {
 		t.Fatal(err)
 	}

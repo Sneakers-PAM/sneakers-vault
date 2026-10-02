@@ -8,15 +8,14 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	postgres "github.com/Bugs5382/go-postgres"
 )
 
 // heartbeatStore is the leaderless heartbeat work queue over its own
 // row-queryable table (NOT the JSONB snapshot store). Claims use SKIP LOCKED.
-type heartbeatStore struct{ db *pgxpool.Pool }
+type heartbeatStore struct{ db postgres.Querier }
 
-func newHeartbeatStore(db *pgxpool.Pool) *heartbeatStore { return &heartbeatStore{db: db} }
+func newHeartbeatStore(db postgres.Querier) *heartbeatStore { return &heartbeatStore{db: db} }
 
 // Ensure upserts a schedule row for a heartbeat-capable secret (due now).
 func (h *heartbeatStore) Ensure(ctx context.Context, secretID string, intervalSeconds int) error {
@@ -93,7 +92,7 @@ func (h *heartbeatStore) Remove(ctx context.Context, secretID string) error {
 func (h *heartbeatStore) Exists(ctx context.Context, secretID string) (bool, error) {
 	var one int
 	err := h.db.QueryRow(ctx, `SELECT 1 FROM heartbeat_schedule WHERE secret_id = $1`, secretID).Scan(&one)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, postgres.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
@@ -114,7 +113,7 @@ func (h *heartbeatStore) RequestNow(ctx context.Context, secretID string, minGap
 	if err == nil {
 		return true, true, nil
 	}
-	if !errors.Is(err, pgx.ErrNoRows) {
+	if !errors.Is(err, postgres.ErrNoRows) {
 		return false, false, err
 	}
 	exists, err = h.Exists(ctx, secretID)
@@ -127,7 +126,7 @@ func (h *heartbeatStore) Pending(ctx context.Context, secretID string) (bool, er
 	err := h.db.QueryRow(ctx,
 		`SELECT next_heartbeat_at <= now() OR (claimed_until IS NOT NULL AND claimed_until > now())
 		 FROM heartbeat_schedule WHERE secret_id = $1`, secretID).Scan(&pending)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, postgres.ErrNoRows) {
 		return false, nil
 	}
 	return pending, err
@@ -149,7 +148,7 @@ func (h *heartbeatStore) Resume(ctx context.Context, secretID string) (resumed b
 	err = h.db.QueryRow(ctx,
 		`UPDATE heartbeat_schedule SET next_heartbeat_at = now()
 		 WHERE secret_id = $1 AND next_heartbeat_at = 'infinity' RETURNING 1`, secretID).Scan(&one)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, postgres.ErrNoRows) {
 		return false, nil
 	}
 	return err == nil, err
@@ -160,7 +159,7 @@ func (h *heartbeatStore) Paused(ctx context.Context, secretID string) (bool, err
 	var paused bool
 	err := h.db.QueryRow(ctx,
 		`SELECT next_heartbeat_at = 'infinity' FROM heartbeat_schedule WHERE secret_id = $1`, secretID).Scan(&paused)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, postgres.ErrNoRows) {
 		return false, nil
 	}
 	return paused, err

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	log "github.com/Bugs5382/go-log"
+	postgres "github.com/Bugs5382/go-postgres"
 	bredis "github.com/Bugs5382/go-redis"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/audit"
@@ -27,7 +28,6 @@ import (
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/safeconv"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/workloadid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -426,8 +426,8 @@ func (s *Server) SetNotifier(n Notifier) { s.notifier = n }
 
 // SetHeartbeat installs the heartbeat queue (pool-backed) + worker-identity
 // verifier (called from cmd/vault after the pool is opened).
-func (s *Server) SetHeartbeat(pool *pgxpool.Pool, wid workloadid.WorkloadIdentityVerifier) {
-	s.hb = newHeartbeatStore(pool)
+func (s *Server) SetHeartbeat(db *postgres.DB, wid workloadid.WorkloadIdentityVerifier) {
+	s.hb = newHeartbeatStore(db.Querier())
 	s.wid = wid
 }
 
@@ -435,14 +435,14 @@ func (s *Server) SetHeartbeat(pool *pgxpool.Pool, wid workloadid.WorkloadIdentit
 // pool-backed) and the worker-identity verifier (shared with heartbeat). Called
 // from cmd/vault after the pool is opened. Idempotent for the version store so
 // it can safely run alongside SetHeartbeat regardless of call order.
-func (s *Server) SetRotation(pool *pgxpool.Pool, wid workloadid.WorkloadIdentityVerifier) {
+func (s *Server) SetRotation(db *postgres.DB, wid workloadid.WorkloadIdentityVerifier) {
 	if s.vers == nil {
-		s.vers = newVersionStore(pool)
+		s.vers = newVersionStore(db)
 	}
-	s.rot = newRotationStore(pool)
+	s.rot = newRotationStore(db.Querier())
 	// Break-glass shares the same pool: its ledger insert and forced-rotation
 	// enqueue happen together in the BreakGlassSecret handler.
-	s.bg = newBreakGlassStore(pool)
+	s.bg = newBreakGlassStore(db.Querier())
 	if wid != nil {
 		s.wid = wid
 	}

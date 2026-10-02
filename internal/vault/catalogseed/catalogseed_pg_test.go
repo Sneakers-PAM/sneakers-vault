@@ -16,8 +16,6 @@ import (
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -25,21 +23,21 @@ import (
 const adTypeID = "type-active-directory"
 
 // freshDB creates an isolated, migrated database on the TEST_DATABASE_DSN server.
-func freshDB(t *testing.T) *pgxpool.Pool {
+func freshDB(t *testing.T) *postgres.DB {
 	t.Helper()
 	base := os.Getenv("TEST_DATABASE_DSN")
 	if base == "" {
 		t.Skip("TEST_DATABASE_DSN not set")
 	}
 	ctx := context.Background()
-	admin, err := pgx.Connect(ctx, base)
+	admin, err := postgres.New(ctx, base)
 	if err != nil {
 		t.Fatalf("connect admin: %v", err)
 	}
 	b := make([]byte, 6)
 	_, _ = rand.Read(b)
 	name := "catalog_" + hex.EncodeToString(b)
-	if _, err := admin.Exec(ctx, "CREATE DATABASE "+name); err != nil {
+	if _, err := admin.Querier().Exec(ctx, "CREATE DATABASE "+name); err != nil {
 		t.Fatalf("create db: %v", err)
 	}
 	u, err := url.Parse(base)
@@ -50,14 +48,14 @@ func freshDB(t *testing.T) *pgxpool.Pool {
 	if err := postgres.Migrate(u.String(), "../../../migrations/vault"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	pool, err := pgxpool.New(ctx, u.String())
+	pool, err := postgres.New(ctx, u.String())
 	if err != nil {
 		t.Fatalf("pool: %v", err)
 	}
 	t.Cleanup(func() {
 		pool.Close()
-		_, _ = admin.Exec(context.Background(), "DROP DATABASE IF EXISTS "+name+" WITH (FORCE)")
-		_ = admin.Close(context.Background())
+		_, _ = admin.Querier().Exec(context.Background(), "DROP DATABASE IF EXISTS "+name+" WITH (FORCE)")
+		admin.Close()
 	})
 	return pool
 }
@@ -114,13 +112,13 @@ func adFieldKeys(t *testing.T, s *grpcsvc.Server) []string {
 
 type rowSnapshot struct{ secret, record string }
 
-func secretRows(t *testing.T, pool *pgxpool.Pool, id string) rowSnapshot {
+func secretRows(t *testing.T, pool *postgres.DB, id string) rowSnapshot {
 	t.Helper()
 	var r rowSnapshot
-	if err := pool.QueryRow(context.Background(), `SELECT data::text FROM secrets WHERE id=$1`, id).Scan(&r.secret); err != nil {
+	if err := pool.Querier().QueryRow(context.Background(), `SELECT data::text FROM secrets WHERE id=$1`, id).Scan(&r.secret); err != nil {
 		t.Fatalf("read secrets row: %v", err)
 	}
-	if err := pool.QueryRow(context.Background(), `SELECT record::text FROM secret_records WHERE secret_id=$1`, id).Scan(&r.record); err != nil {
+	if err := pool.Querier().QueryRow(context.Background(), `SELECT record::text FROM secret_records WHERE secret_id=$1`, id).Scan(&r.record); err != nil {
 		t.Fatalf("read secret_records row: %v", err)
 	}
 	return r
@@ -145,7 +143,7 @@ func TestRunUpgradesADWithNetbiosAndKeepsExistingSecrets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `UPDATE secret_types SET data=$2::jsonb WHERE id=$1`, adTypeID, old); err != nil {
+	if _, err := pool.Querier().Exec(ctx, `UPDATE secret_types SET data=$2::jsonb WHERE id=$1`, adTypeID, old); err != nil {
 		t.Fatalf("install the pre-upgrade AD type: %v", err)
 	}
 

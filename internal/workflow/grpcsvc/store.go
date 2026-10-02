@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Bugs5382/go-postgres"
 	workflowv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/workflow/v1"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func nowRFC3339() string { return time.Now().UTC().Format(time.RFC3339) }
@@ -231,10 +231,10 @@ func (m *memStore) CountLeases(context.Context) (int, error) {
 
 // ---- Postgres store ---------------------------------------------------------
 
-type pgStore struct{ db *pgxpool.Pool }
+type pgStore struct{ db postgres.Querier }
 
 // NewPGStore returns a Postgres-backed Store.
-func NewPGStore(db *pgxpool.Pool) Store { return &pgStore{db: db} }
+func NewPGStore(db postgres.Querier) Store { return &pgStore{db: db} }
 
 const leaseCols = `id, secret_id, user_id, issued_at, expires_at, returned, run_id`
 

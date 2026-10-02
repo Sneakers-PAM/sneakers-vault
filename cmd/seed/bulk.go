@@ -14,9 +14,9 @@ import (
 	"time"
 
 	log "github.com/Bugs5382/go-log"
+	postgres "github.com/Bugs5382/go-postgres"
 	seed "github.com/Bugs5382/go-seed"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // appLog is a package-level logger so it's addressable (go-log's Info/Fatal are
@@ -36,11 +36,11 @@ var connIDs = []string{"conn-ssh-default", "conn-winrm-default", "conn-ldaps"}
 
 const targetCount = 30
 
-// seeder is the go-seed target: the gRPC client + pgx pool plus the state earlier
+// seeder is the go-seed target: the gRPC client + Postgres pool plus the state earlier
 // steps populate for later ones.
 type seeder struct {
 	vc     vaultv1.VaultServiceClient
-	pool   *pgxpool.Pool
+	pool   postgres.Querier
 	alan   *vaultv1.ActorContext
 	rng    *mrand.Rand
 	target int
@@ -485,7 +485,7 @@ func randomizeStep() seed.Step[*seeder] {
 // re-running only creates the shortfall, so it converges on the target instead of
 // duplicating. Secrets are created through the vault gRPC API (so their sensitive
 // fields seal correctly); the status fields the CreateSecret RPC cannot set are
-// randomized directly in the secrets jsonb over a pgx pool.
+// randomized directly in the secrets jsonb over the go-postgres pool.
 //
 // IMPORTANT: the running vault holds its state in memory and persists a full
 // snapshot on every mutation, so a direct DB edit is only reflected after a
@@ -496,7 +496,7 @@ func randomizeStep() seed.Step[*seeder] {
 //
 // DEV/QA-ONLY. Env: VAULT_ADDR (default vault:9091), DATABASE_DSN (required),
 // SECRET_TARGET (default 550).
-func seedBulk(ctx context.Context, pool *pgxpool.Pool) error {
+func seedBulk(ctx context.Context, db *postgres.DB) error {
 	logger := appLog
 
 	targetN := 550
@@ -513,7 +513,7 @@ func seedBulk(ctx context.Context, pool *pgxpool.Pool) error {
 
 	s := &seeder{
 		vc:         vc,
-		pool:       pool,
+		pool:       db.Querier(),
 		alan:       &vaultv1.ActorContext{UserId: "user-turing", IsSiteAdmin: true, IsRoot: true},
 		rng:        mrand.New(mrand.NewSource(time.Now().UnixNano())), // #nosec G404 -- non-crypto demo/faker data, not security-sensitive
 		target:     targetN,

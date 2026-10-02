@@ -173,7 +173,7 @@ func TestBreakGlassLedgerAndRotationBestEffort(t *testing.T) {
 	ctx := context.Background()
 	carol := &vaultv1.ActorContext{UserId: "user-carol"}
 
-	s.rot.db.Close() // also bg.db: same pool (see newBreakGlassServer)
+	s.vers.db.Close() // also rot.db and bg.db: same pool (see newRotationServer)
 
 	resp, err := s.BreakGlassSecret(ctx, &vaultv1.BreakGlassSecretRequest{
 		Actor: carol, SecretId: secID, Reason: "prod outage, pool down",
