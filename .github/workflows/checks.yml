@@ -17,3 +17,17 @@ jobs:
   checks:
     if: github.event.pull_request.draft != true
     uses: Sneakers-PAM/.github/.github/workflows/scrub.yml@main
+    with:
+      # Public module hosts that appear in go.mod and go.sum: gonum.org and
+      # sslmate.com. docusign.com is the vendor's public sign-in host, the
+      # default in the built-in Docusign extension pack. fx.ca is not a host: it
+      # is a Go field access (a test fixture's capture-audit field). The long
+      # name is not a host either: it is how the host-name pattern reads the end
+      # of the generated descriptor in gen/go (a message name, three protobuf
+      # length bytes that happen to be letters, then github.com).
+      allowed-domains: >-
+        gonum.org
+        sslmate.com
+        docusign.com
+        fx.ca
+        x1a9.sneakers.vault.v1.getheartbeatstatusforprincipalresponsebizggithub.com
