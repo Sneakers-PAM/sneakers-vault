@@ -25,6 +25,7 @@ audit and notify are covered in [Calling other services](#calling-other-services
 | Connector | `ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeartbeat`, `EnqueueRotation`, `ClaimDueRotations`, `RevealForRotation`, `ReportRotation` |
 | Instance settings | `ListPasswordPolicies`, `SavePasswordPolicy`, `DeletePasswordPolicy`, `GetSecuritySettings`, `UpdateSecuritySettings`, `SeedBuiltins` |
 | Keys | `GenerateKeyPair`, `RotateKek` |
+| Import | `SealForImport` |
 
 ### Rules the vault enforces
 
@@ -136,6 +137,12 @@ audit and notify are covered in [Calling other services](#calling-other-services
 - **Security settings:** before first-run setup has stored any (a store outside `dev`, `local`
   and `development` starts empty), `GetSecuritySettings` returns the defaults setup installs, and
   `UpdateSecuritySettings` starts from them.
+- **Import:** `SealForImport` seals up to 500 field sets per call under the active working key and
+  returns the envelopes in the form `secret_records` and `secret_versions` store, without storing
+  anything. `sneakers-migrate import` uses it to re-wrap imported secrets, so the root key never
+  leaves the vault. Only the migrate caller may call it, as itself (it sends no actor; the vault
+  acts as `system:migrate`). With workload authentication disabled it's refused. Each call is
+  audited as `vault.import.seal` with the item count.
 - **Delete:** with `ENVIRONMENT` set to `prod` or `production`, hard delete needs a human site
   admin or root.
 
@@ -214,8 +221,9 @@ refused with `PermissionDenied`. Any caller or method not listed is refused.
 
 | Service | Methods | Caller | Access |
 |---|---|---|---|
-| vault | every method except the connector pull-API | gateway | on behalf |
+| vault | every method except the connector pull-API and `SealForImport` | gateway | on behalf |
 | vault | `RevealSecretField` | sshbroker | on behalf |
+| vault | `SealForImport`, `RevealSecretField`, `GetSecret`, `ListTargets`, `ListConnections` | migrate (the sneakers-migrate Job) | self, as `system:migrate` (root) |
 | vault | `GetMySecretAccess` | workflow | on behalf (the check-out check) |
 | vault | `GetSecret`, `ListSecretTypes`, `GetSecretRuleset`, `SetSecretRuleset`, `MoveFolder`, `UpdateSecret`, `EnqueueRotation`, `GetSecuritySettings` | workflow | self |
 | vault | `ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeartbeat`, `ClaimDueRotations`, `RevealForRotation`, `ReportRotation` | connector | self |

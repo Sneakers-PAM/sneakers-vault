@@ -22,7 +22,19 @@ const (
 	CallerWorkflow  = "workflow"
 	CallerSSHBroker = "sshbroker"
 	CallerConnector = "connector"
+	// CallerMigrate is the sneakers-migrate Job: it seals imported values and
+	// reads back samples and targets to verify the import.
+	CallerMigrate = "migrate"
 )
+
+// migrateMethods are the calls sneakers-migrate makes as itself, besides
+// SealForImport, to verify an import.
+var migrateMethods = []string{
+	vaultv1.VaultService_RevealSecretField_FullMethodName,
+	vaultv1.VaultService_GetSecret_FullMethodName,
+	vaultv1.VaultService_ListTargets_FullMethodName,
+	vaultv1.VaultService_ListConnections_FullMethodName,
+}
 
 // connectorMethods are the connector pull-API. The connector calls them as
 // itself; they carry its worker identity, never an actor.
@@ -53,7 +65,8 @@ var workflowMethods = []string{
 // CallerPolicy is the vault's per-method allow-list. The gateway passes the
 // signed-in user's actor on every user-facing method; the SSH broker passes
 // the session user's actor to reveal the key it connects with; the workflow
-// and the connector act only as themselves. Anything else is refused.
+// the connector and sneakers-migrate act only as themselves. Anything else is
+// refused.
 func CallerPolicy() workloadauth.Policy {
 	p := workloadauth.Policy{}
 	connector := map[string]bool{}
@@ -71,6 +84,10 @@ func CallerPolicy() workloadauth.Policy {
 		p[m][CallerWorkflow] = workloadauth.Self
 	}
 	p[vaultv1.VaultService_RevealSecretField_FullMethodName][CallerSSHBroker] = workloadauth.OnBehalf
+	p[vaultv1.VaultService_SealForImport_FullMethodName] = map[string]workloadauth.Access{CallerMigrate: workloadauth.Self}
+	for _, m := range migrateMethods {
+		p[m][CallerMigrate] = workloadauth.Self
+	}
 	// The check-out check asks for the user's own RACI decision.
 	p[vaultv1.VaultService_GetMySecretAccess_FullMethodName][CallerWorkflow] = workloadauth.OnBehalf
 	return p
@@ -82,6 +99,8 @@ func CallerPolicy() workloadauth.Policy {
 // workflow decided who may have them before it calls.
 var selfActors = map[string]*vaultv1.ActorContext{
 	CallerWorkflow: {UserId: "system:" + CallerWorkflow, IsRoot: true},
+	// The import tool seals and verifies across every folder.
+	CallerMigrate: {UserId: "system:" + CallerMigrate, IsRoot: true},
 }
 
 // SelfActorUnary fills in the actor for a caller authenticated as Self: the
