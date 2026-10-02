@@ -28,6 +28,9 @@ func (s *Server) ListAvailableExtensions(_ context.Context, _ *vaultv1.ListAvail
 
 // ImportExtension installs a catalogued pack by id as an EXTENSION-origin type.
 func (s *Server) ImportExtension(ctx context.Context, req *vaultv1.ImportExtensionRequest) (*vaultv1.ImportExtensionResponse, error) {
+	if err := s.requireSiteAdmin(ctx, req.GetActor(), "ImportExtension"); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.findType(req.GetId()) != nil {
@@ -82,6 +85,9 @@ func kindFromString(s string) vaultv1.FieldKind {
 // ImportExtensionFromJson validates a pasted pack and installs it as an
 // EXTENSION-origin type, so an import can never masquerade as an editable custom.
 func (s *Server) ImportExtensionFromJson(ctx context.Context, req *vaultv1.ImportExtensionFromJsonRequest) (*vaultv1.ImportExtensionFromJsonResponse, error) {
+	if err := s.requireSiteAdmin(ctx, req.GetActor(), "ImportExtensionFromJson"); err != nil {
+		return nil, err
+	}
 	var p extPack
 	if err := json.Unmarshal([]byte(req.GetJson()), &p); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "not valid JSON")

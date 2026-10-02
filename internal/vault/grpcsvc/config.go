@@ -53,8 +53,8 @@ func (s *Server) SaveConnection(ctx context.Context, req *vaultv1.SaveConnection
 		return nil, status.Error(codes.InvalidArgument, "connection name is required")
 	}
 	// Connections are shared infrastructure, managed in the admin app only.
-	if !isHumanAdmin(req.GetActor()) {
-		return nil, status.Error(codes.PermissionDenied, "connections are managed by a site admin")
+	if err := s.requireSiteAdmin(ctx, req.GetActor(), "SaveConnection"); err != nil {
+		return nil, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -257,7 +257,7 @@ func TestGetSecretFieldsExcludesSensitive(t *testing.T) {
 
 func TestDeleteSystemTypeBlocked(t *testing.T) {
 	s := newServer(t)
-	_, err := s.DeleteSecretType(context.Background(), &vaultv1.DeleteSecretTypeRequest{Id: "type-password"})
+	_, err := s.DeleteSecretType(context.Background(), &vaultv1.DeleteSecretTypeRequest{Actor: siteAdmin, Id: "type-password"})
 	if code(err) != codes.FailedPrecondition {
 		t.Fatalf("delete system type: want FailedPrecondition, got %v", err)
 	}
@@ -266,7 +266,7 @@ func TestDeleteSystemTypeBlocked(t *testing.T) {
 func TestDeleteTypeInUseBlocked(t *testing.T) {
 	s := newServer(t)
 	// type-windows-domain is used by the seed secret.
-	_, err := s.DeleteSecretType(context.Background(), &vaultv1.DeleteSecretTypeRequest{Id: "type-windows-domain"})
+	_, err := s.DeleteSecretType(context.Background(), &vaultv1.DeleteSecretTypeRequest{Actor: siteAdmin, Id: "type-windows-domain"})
 	if code(err) != codes.FailedPrecondition {
 		t.Fatalf("delete in-use type: want FailedPrecondition, got %v", err)
 	}
@@ -274,7 +274,7 @@ func TestDeleteTypeInUseBlocked(t *testing.T) {
 
 func TestCloneProducesEditableCustom(t *testing.T) {
 	s := newServer(t)
-	resp, err := s.CloneSecretType(context.Background(), &vaultv1.CloneSecretTypeRequest{Id: "type-password"})
+	resp, err := s.CloneSecretType(context.Background(), &vaultv1.CloneSecretTypeRequest{Actor: siteAdmin, Id: "type-password"})
 	if err != nil {
 		t.Fatalf("CloneSecretType: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestCloneProducesEditableCustom(t *testing.T) {
 		t.Fatalf("clone origin = %v, want CUSTOM", resp.GetType().GetOrigin())
 	}
 	// The clone is now deletable (custom, unused).
-	del, err := s.DeleteSecretType(context.Background(), &vaultv1.DeleteSecretTypeRequest{Id: resp.GetType().GetId()})
+	del, err := s.DeleteSecretType(context.Background(), &vaultv1.DeleteSecretTypeRequest{Actor: siteAdmin, Id: resp.GetType().GetId()})
 	if err != nil || !del.GetRemoved() {
 		t.Fatalf("delete cloned custom type: removed=%v err=%v", del.GetRemoved(), err)
 	}

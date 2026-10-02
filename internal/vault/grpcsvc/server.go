@@ -794,7 +794,13 @@ func (s *Server) canConnectTarget(a *vaultv1.ActorContext, t *vaultv1.Target) bo
 // to carry is_site_admin=true (spoofed, or a gateway bug) must never be
 // treated as admin. Any admin-authority check that consults these flags
 // should go through this helper rather than reading them directly.
+//
+// The actor must also name a real user: an empty or "system" user id (a
+// gateway that lost the id, or a seed actor) never passes as an admin.
 func isHumanAdmin(a *vaultv1.ActorContext) bool {
+	if uid := a.GetUserId(); uid == "" || uid == "system" {
+		return false
+	}
 	return a.GetPrincipalKind() == vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN && (a.GetIsSiteAdmin() || a.GetIsRoot())
 }
 
@@ -1060,6 +1066,9 @@ func (s *Server) ensurePersonalFolder(userID string) bool {
 // afterwards (not just newly-added), so an idempotent re-run reports the same
 // numbers. Registered as a mutating method so PersistUnary persists the result.
 func (s *Server) SeedBuiltins(ctx context.Context, req *vaultv1.SeedBuiltinsRequest) (*vaultv1.SeedBuiltinsResponse, error) {
+	if err := s.requireSiteAdmin(ctx, req.GetActor(), "SeedBuiltins"); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	actor := req.GetActor()

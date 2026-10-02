@@ -27,19 +27,26 @@ type fakeVaultClient struct {
 	// everyone else may read. checkoutOff lists secrets whose type has
 	// check-out off; every other secret's type allows it.
 	noRead      map[string]bool
+	noApprove   map[string]bool // "secretID|userID" without RACI A
 	checkoutOff map[string]bool
 	// accessActors records the actor of each GetMySecretAccess call.
 	accessActors []*vaultv1.ActorContext
 }
 
 func newFakeVaultClient() *fakeVaultClient {
-	return &fakeVaultClient{rulesets: map[string][]*vaultv1.RaciRule{}, noRead: map[string]bool{}, checkoutOff: map[string]bool{}}
+	return &fakeVaultClient{rulesets: map[string][]*vaultv1.RaciRule{}, noRead: map[string]bool{}, noApprove: map[string]bool{}, checkoutOff: map[string]bool{}}
 }
 
 func (f *fakeVaultClient) denyRead(secretID, userID string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.noRead[secretID+"|"+userID] = true
+}
+
+func (f *fakeVaultClient) denyApprove(secretID, userID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.noApprove[secretID+"|"+userID] = true
 }
 
 func (f *fakeVaultClient) disableCheckout(secretID string) {
@@ -52,8 +59,9 @@ func (f *fakeVaultClient) GetMySecretAccess(_ context.Context, in *vaultv1.GetMy
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.accessActors = append(f.accessActors, in.GetActor())
-	read := !f.noRead[in.GetSecretId()+"|"+in.GetActor().GetUserId()]
-	return &vaultv1.GetMySecretAccessResponse{Access: &vaultv1.FolderAccess{Read: read, Reveal: read}}, nil
+	key := in.GetSecretId() + "|" + in.GetActor().GetUserId()
+	read := !f.noRead[key]
+	return &vaultv1.GetMySecretAccessResponse{Access: &vaultv1.FolderAccess{Read: read, Reveal: read, Approve: !f.noApprove[key]}}, nil
 }
 
 func (f *fakeVaultClient) GetSecret(_ context.Context, in *vaultv1.GetSecretRequest, _ ...grpc.CallOption) (*vaultv1.GetSecretResponse, error) {
@@ -116,4 +124,12 @@ func (f *fakeVaultClient) lastCall() *vaultv1.EnqueueRotationRequest {
 		return nil
 	}
 	return f.calls[len(f.calls)-1]
+}
+
+func (f *fakeVaultClient) MoveFolder(_ context.Context, in *vaultv1.MoveFolderRequest, _ ...grpc.CallOption) (*vaultv1.MoveFolderResponse, error) {
+	return &vaultv1.MoveFolderResponse{Folder: &vaultv1.Folder{Id: in.GetId(), ParentId: in.GetNewParentId()}}, nil
+}
+
+func (f *fakeVaultClient) UpdateSecret(_ context.Context, in *vaultv1.UpdateSecretRequest, _ ...grpc.CallOption) (*vaultv1.UpdateSecretResponse, error) {
+	return &vaultv1.UpdateSecretResponse{Secret: &vaultv1.Secret{Id: in.GetId(), FolderId: in.GetDestFolderId()}}, nil
 }

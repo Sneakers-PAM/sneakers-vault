@@ -26,7 +26,7 @@ func findPolicy(policies []*vaultv1.PasswordPolicy, id string) *vaultv1.Password
 func TestBuiltinDefaultPolicyHardLocked(t *testing.T) {
 	s := newServer(t)
 	ctx := context.Background()
-	actor := &vaultv1.ActorContext{UserId: "user-carol"}
+	actor := siteAdmin
 
 	// Create a custom policy and re-point the org default at it.
 	saved, err := s.SavePasswordPolicy(ctx, &vaultv1.SavePasswordPolicyRequest{

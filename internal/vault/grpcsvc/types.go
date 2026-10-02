@@ -18,6 +18,9 @@ func (s *Server) ListSecretTypes(_ context.Context, _ *vaultv1.ListSecretTypesRe
 }
 
 func (s *Server) CreateSecretType(ctx context.Context, req *vaultv1.CreateSecretTypeRequest) (*vaultv1.CreateSecretTypeResponse, error) {
+	if err := s.requireSiteAdmin(ctx, req.GetActor(), "CreateSecretType"); err != nil {
+		return nil, err
+	}
 	if req.GetType() == nil || req.GetType().GetName() == "" {
 		return nil, status.Error(codes.InvalidArgument, "type name is required")
 	}
@@ -39,6 +42,9 @@ func (s *Server) CreateSecretType(ctx context.Context, req *vaultv1.CreateSecret
 }
 
 func (s *Server) UpdateSecretType(ctx context.Context, req *vaultv1.UpdateSecretTypeRequest) (*vaultv1.UpdateSecretTypeResponse, error) {
+	if err := s.requireSiteAdmin(ctx, req.GetActor(), "UpdateSecretType"); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	t := s.findType(req.GetId())
@@ -63,6 +69,9 @@ func (s *Server) UpdateSecretType(ctx context.Context, req *vaultv1.UpdateSecret
 }
 
 func (s *Server) DeleteSecretType(ctx context.Context, req *vaultv1.DeleteSecretTypeRequest) (*vaultv1.DeleteSecretTypeResponse, error) {
+	if err := s.requireSiteAdmin(ctx, req.GetActor(), "DeleteSecretType"); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	t := s.findType(req.GetId())
@@ -81,6 +90,9 @@ func (s *Server) DeleteSecretType(ctx context.Context, req *vaultv1.DeleteSecret
 }
 
 func (s *Server) CloneSecretType(ctx context.Context, req *vaultv1.CloneSecretTypeRequest) (*vaultv1.CloneSecretTypeResponse, error) {
+	if err := s.requireSiteAdmin(ctx, req.GetActor(), "CloneSecretType"); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	src := s.findType(req.GetId())

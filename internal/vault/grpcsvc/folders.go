@@ -160,6 +160,9 @@ func (s *Server) RenameFolder(ctx context.Context, req *vaultv1.RenameFolderRequ
 	if f == nil {
 		return nil, errNotFound("folder")
 	}
+	if err := s.requireFolderOwner(ctx, req.GetActor(), f, "RenameFolder"); err != nil {
+		return nil, err
+	}
 	f.Name = req.GetName()
 	s.emit(ctx, req.GetActor().GetUserId(), "folder.rename", f.Id, false)
 	return &vaultv1.RenameFolderResponse{Folder: f}, nil
@@ -314,9 +317,24 @@ func (s *Server) removeFolders(ids map[string]bool) {
 	s.folders = out
 }
 
-func (s *Server) ReorderFolders(_ context.Context, req *vaultv1.ReorderFoldersRequest) (*vaultv1.ReorderFoldersResponse, error) {
+// ReorderFolders orders a parent's children: the parent's owner may, and for
+// top-level folders only a site admin.
+func (s *Server) ReorderFolders(ctx context.Context, req *vaultv1.ReorderFoldersRequest) (*vaultv1.ReorderFoldersResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if req.GetParentId() == "" {
+		if err := s.requireSiteAdmin(ctx, req.GetActor(), "ReorderFolders"); err != nil {
+			return nil, err
+		}
+	} else {
+		parent := s.findFolder(req.GetParentId())
+		if parent == nil {
+			return nil, errNotFound("folder")
+		}
+		if err := s.requireFolderOwner(ctx, req.GetActor(), parent, "ReorderFolders"); err != nil {
+			return nil, err
+		}
+	}
 	for i, id := range req.GetOrderedIds() {
 		if f := s.findFolder(id); f != nil && f.ParentId == req.GetParentId() {
 			f.Order = int32(i)
@@ -377,6 +395,9 @@ func (s *Server) AddFolderRule(ctx context.Context, req *vaultv1.AddFolderRuleRe
 	if folder.Scope == vaultv1.FolderScope_FOLDER_SCOPE_PERSONAL {
 		return nil, status.Error(codes.FailedPrecondition, "personal folders cannot have RBAC rules")
 	}
+	if err := s.requireFolderOwner(ctx, req.GetActor(), folder, "AddFolderRule"); err != nil {
+		return nil, err
+	}
 	rule := &vaultv1.FolderAccessRule{
 		Id: s.nextID("rule"), FolderId: in.GetFolderId(),
 		SubjectKind: in.GetSubjectKind(), SubjectId: in.GetSubjectId(), Role: in.GetRole(),
@@ -398,6 +419,12 @@ func (s *Server) RemoveFolderRule(ctx context.Context, req *vaultv1.RemoveFolder
 			folderID = r.GetFolderId()
 			break
 		}
+	}
+	if folderID == "" {
+		return &vaultv1.RemoveFolderRuleResponse{}, nil
+	}
+	if err := s.requireFolderOwner(ctx, req.GetActor(), s.findFolder(folderID), "RemoveFolderRule"); err != nil {
+		return nil, err
 	}
 	out := s.rules[:0]
 	for _, r := range s.rules {
