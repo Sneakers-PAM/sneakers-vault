@@ -22,12 +22,19 @@ only works against a callee with authentication off (local development).
 
 | Variable | Required | Default | Meaning |
 |---|---|---|---|
-| `WORKLOAD_OIDC_ISSUER` | yes | | The cluster's ServiceAccount issuer. The token's `iss` must equal it exactly. Must be `https://`. Unset turns authentication off. |
+| `WORKLOAD_OIDC_ISSUER` | yes | | The cluster's ServiceAccount issuer. The token's `iss` must equal it exactly. Must be `https://`. |
 | `WORKLOAD_OIDC_JWKS_URL` | no | discovered | JWKS URL. When unset, it's read from `jwks_uri` in `<issuer>/.well-known/openid-configuration`. Must be `https://`. |
 | `WORKLOAD_OIDC_CA_FILE` | no | system roots | Extra PEM CA bundle trusted for discovery and the JWKS fetch. |
 | `WORKLOAD_OIDC_BEARER_FILE` | no | | Bearer token sent on discovery and the JWKS fetch, re-read on every fetch. |
 | `WORKLOAD_AUDIENCE` | no | `sneakers` | The token's `aud` must contain it. |
 | `WORKLOAD_ALLOWED_SERVICEACCOUNTS` | yes | | Comma list of `<namespace>/<serviceaccount>`: the callee's callers in the call graph. |
+| `WORKLOAD_AUTH` | no | | `disabled` turns authentication off. No other value is accepted. |
+
+Authentication fails closed. `ServerConfigFromEnv` refuses to start a callee with no
+`WORKLOAD_OIDC_ISSUER`, in every environment, unless `WORKLOAD_AUTH=disabled` is set. With that
+flag every caller that reaches the port is trusted, so it's for local development and mock tooling
+only: the charts never set it, and `WarnDisabled` logs a warning at start and every 5 minutes.
+Setting both the issuer and the flag is refused too.
 
 The verifier checks the signature (`RS256` or `ES256`, key by `kid`), `iss`, `aud`, `exp`, `nbf`
 and `iat` (60 s skew), that `sub` is a service account on the list, and that the `kubernetes.io`
