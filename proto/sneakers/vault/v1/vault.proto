@@ -730,6 +730,19 @@ message RotateKekResponse {
   int32 rewrapped  = 2;    // number of records re-wrapped by the sweep
 }
 
+// Seals field sets for an import (sneakers-migrate) without creating a secret:
+// each item is sealed under the active working KEK, as CreateSecret seals a new
+// secret's fields, and returned as the stored envelope (JSON). Vault stores
+// nothing. Only the migrate caller, acting as itself, may call it.
+message SealForImportRequest {
+  ActorContext actor = 1;                // filled in by the vault; a caller sends none
+  repeated SealForImportItem items = 2;  // at most 500 per call
+}
+message SealForImportItem { map<string, string> fields = 1; }
+message SealForImportResponse {
+  repeated bytes records = 1;  // one sealed envelope per item, in request order
+}
+
 // One prior (or current) entry in a secret's append-only version ledger. Every
 // edit and rotation appends a version; field_keys lists the keys present in that
 // version's record (for the UI) but NEVER any values — an old value is fetched
@@ -1318,6 +1331,8 @@ service VaultService {
   // Rotates the active working-KEK: mints a new KEK, activates it, and
   // sweeps existing records to re-wrap their DEKs under it.
   rpc RotateKek(RotateKekRequest) returns (RotateKekResponse);
+  // Seals field sets for an import without storing them (migrate caller only).
+  rpc SealForImport(SealForImportRequest) returns (SealForImportResponse);
   rpc PrepareSecretUse(PrepareSecretUseRequest) returns (PrepareSecretUseResponse);
   rpc GetSecretUse(GetSecretUseRequest) returns (GetSecretUseResponse);
   rpc ListPendingSecretUses(ListPendingSecretUsesRequest) returns (ListPendingSecretUsesResponse);

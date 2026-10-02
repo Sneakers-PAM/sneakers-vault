@@ -106,6 +106,7 @@ const (
 	VaultService_SeedBuiltins_FullMethodName                    = "/sneakers.vault.v1.VaultService/SeedBuiltins"
 	VaultService_GenerateKeyPair_FullMethodName                 = "/sneakers.vault.v1.VaultService/GenerateKeyPair"
 	VaultService_RotateKek_FullMethodName                       = "/sneakers.vault.v1.VaultService/RotateKek"
+	VaultService_SealForImport_FullMethodName                   = "/sneakers.vault.v1.VaultService/SealForImport"
 	VaultService_PrepareSecretUse_FullMethodName                = "/sneakers.vault.v1.VaultService/PrepareSecretUse"
 	VaultService_GetSecretUse_FullMethodName                    = "/sneakers.vault.v1.VaultService/GetSecretUse"
 	VaultService_ListPendingSecretUses_FullMethodName           = "/sneakers.vault.v1.VaultService/ListPendingSecretUses"
@@ -244,6 +245,8 @@ type VaultServiceClient interface {
 	// Rotates the active working-KEK: mints a new KEK, activates it, and
 	// sweeps existing records to re-wrap their DEKs under it.
 	RotateKek(ctx context.Context, in *RotateKekRequest, opts ...grpc.CallOption) (*RotateKekResponse, error)
+	// Seals field sets for an import without storing them (migrate caller only).
+	SealForImport(ctx context.Context, in *SealForImportRequest, opts ...grpc.CallOption) (*SealForImportResponse, error)
 	PrepareSecretUse(ctx context.Context, in *PrepareSecretUseRequest, opts ...grpc.CallOption) (*PrepareSecretUseResponse, error)
 	GetSecretUse(ctx context.Context, in *GetSecretUseRequest, opts ...grpc.CallOption) (*GetSecretUseResponse, error)
 	ListPendingSecretUses(ctx context.Context, in *ListPendingSecretUsesRequest, opts ...grpc.CallOption) (*ListPendingSecretUsesResponse, error)
@@ -1107,6 +1110,16 @@ func (c *vaultServiceClient) RotateKek(ctx context.Context, in *RotateKekRequest
 	return out, nil
 }
 
+func (c *vaultServiceClient) SealForImport(ctx context.Context, in *SealForImportRequest, opts ...grpc.CallOption) (*SealForImportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SealForImportResponse)
+	err := c.cc.Invoke(ctx, VaultService_SealForImport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vaultServiceClient) PrepareSecretUse(ctx context.Context, in *PrepareSecretUseRequest, opts ...grpc.CallOption) (*PrepareSecretUseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PrepareSecretUseResponse)
@@ -1360,6 +1373,8 @@ type VaultServiceServer interface {
 	// Rotates the active working-KEK: mints a new KEK, activates it, and
 	// sweeps existing records to re-wrap their DEKs under it.
 	RotateKek(context.Context, *RotateKekRequest) (*RotateKekResponse, error)
+	// Seals field sets for an import without storing them (migrate caller only).
+	SealForImport(context.Context, *SealForImportRequest) (*SealForImportResponse, error)
 	PrepareSecretUse(context.Context, *PrepareSecretUseRequest) (*PrepareSecretUseResponse, error)
 	GetSecretUse(context.Context, *GetSecretUseRequest) (*GetSecretUseResponse, error)
 	ListPendingSecretUses(context.Context, *ListPendingSecretUsesRequest) (*ListPendingSecretUsesResponse, error)
@@ -1634,6 +1649,9 @@ func (UnimplementedVaultServiceServer) GenerateKeyPair(context.Context, *Generat
 }
 func (UnimplementedVaultServiceServer) RotateKek(context.Context, *RotateKekRequest) (*RotateKekResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RotateKek not implemented")
+}
+func (UnimplementedVaultServiceServer) SealForImport(context.Context, *SealForImportRequest) (*SealForImportResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SealForImport not implemented")
 }
 func (UnimplementedVaultServiceServer) PrepareSecretUse(context.Context, *PrepareSecretUseRequest) (*PrepareSecretUseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PrepareSecretUse not implemented")
@@ -3207,6 +3225,24 @@ func _VaultService_RotateKek_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VaultService_SealForImport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SealForImportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).SealForImport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_SealForImport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).SealForImport(ctx, req.(*SealForImportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VaultService_PrepareSecretUse_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PrepareSecretUseRequest)
 	if err := dec(in); err != nil {
@@ -3783,6 +3819,10 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RotateKek",
 			Handler:    _VaultService_RotateKek_Handler,
+		},
+		{
+			MethodName: "SealForImport",
+			Handler:    _VaultService_SealForImport_Handler,
 		},
 		{
 			MethodName: "PrepareSecretUse",
