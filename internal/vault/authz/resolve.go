@@ -45,8 +45,12 @@ func decideAction(u EvalSubject, chain []CategoryRuleset, act Action) RuleDecisi
 			}
 		}
 	}
-	return RuleDecision{false, "no rule → default deny"}
+	return RuleDecision{false, ReasonDefaultDeny}
 }
+
+// ReasonDefaultDeny is the reason of a decision no rule matched: nothing
+// granted the action and nothing explicitly denied it.
+const ReasonDefaultDeny = "no rule → default deny"
 
 func ruleReason(catIdx, ruleIdx int, catName, effect string, s RuleSubject) string {
 	loc := "rule #" + itoa(ruleIdx+1)

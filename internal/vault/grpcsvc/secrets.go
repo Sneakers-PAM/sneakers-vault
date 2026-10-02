@@ -47,19 +47,28 @@ func (s *Server) ListSecretsInFolder(_ context.Context, req *vaultv1.ListSecrets
 		if sec.GetRetired() && !req.GetIncludeRetired() {
 			continue
 		}
-		out = append(out, sec)
+		visible, canRead := s.secretVisibility(req.GetActor(), sec)
+		if !visible {
+			continue
+		}
+		out = append(out, withCanRead(sec, canRead))
 	}
 	return &vaultv1.ListSecretsInFolderResponse{Secrets: out}, nil
 }
 
-func (s *Server) GetSecret(_ context.Context, req *vaultv1.GetSecretRequest) (*vaultv1.GetSecretResponse, error) {
+func (s *Server) GetSecret(ctx context.Context, req *vaultv1.GetSecretRequest) (*vaultv1.GetSecretResponse, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	sec := s.findSecret(req.GetId())
 	if sec == nil {
 		return nil, errNotFound("secret")
 	}
-	return &vaultv1.GetSecretResponse{Secret: sec}, nil
+	visible, canRead := s.secretVisibility(req.GetActor(), sec)
+	if !visible {
+		s.auditReadDenied(ctx, req.GetActor(), sec.GetId(), "get")
+		return nil, errNotFound("secret")
+	}
+	return &vaultv1.GetSecretResponse{Secret: withCanRead(sec, canRead)}, nil
 }
 
 func (s *Server) CreateSecret(ctx context.Context, req *vaultv1.CreateSecretRequest) (*vaultv1.CreateSecretResponse, error) {
@@ -368,12 +377,18 @@ func (s *Server) setHeartbeatOptOut(ctx context.Context, sec *vaultv1.Secret, op
 
 // GetSecretFields returns only the NON-sensitive field values (safe without an
 // audited reveal).
-func (s *Server) GetSecretFields(_ context.Context, req *vaultv1.GetSecretFieldsRequest) (*vaultv1.GetSecretFieldsResponse, error) {
+func (s *Server) GetSecretFields(ctx context.Context, req *vaultv1.GetSecretFieldsRequest) (*vaultv1.GetSecretFieldsResponse, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	sec := s.findSecret(req.GetId())
 	if sec == nil {
 		return nil, errNotFound("secret")
+	}
+	// Field values, even non-sensitive ones (usernames, URLs, notes), are
+	// data: they need read on the secret.
+	if !s.canRead(req.GetActor(), sec) {
+		s.auditReadDenied(ctx, req.GetActor(), sec.GetId(), "fields")
+		return nil, status.Error(codes.PermissionDenied, "not permitted to read this secret")
 	}
 	t := s.findType(sec.TypeId)
 	rec, ok := s.records[sec.Id]

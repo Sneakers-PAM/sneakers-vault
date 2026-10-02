@@ -285,6 +285,10 @@ message Secret {
   // and allow_api_for_sensitive instead. Set by a person only.
   bool require_token_approval = 22;
   string last_heartbeat_detail = 23;    // the connector's reason for the last heartbeat result (never a value), truncated
+  // Output only, from ListSecretsInFolder and GetSecret: whether the caller
+  // may read this secret. A secret the caller can see but not read is shown
+  // locked, so they can request access.
+  bool can_read = 31;
 }
 
 // ---- Request/response messages ----------------------------------------------

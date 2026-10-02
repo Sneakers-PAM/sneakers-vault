@@ -33,7 +33,7 @@ func (s *Server) ListFolders(_ context.Context, req *vaultv1.ListFoldersRequest)
 	// (which notifies the owner), never by blanket admin visibility.
 	out := make([]*vaultv1.Folder, 0, len(s.folders))
 	for _, f := range s.folders {
-		if f.Scope != vaultv1.FolderScope_FOLDER_SCOPE_PERSONAL || f.IsMasterPersonal || f.OwnerUserId == actor {
+		if folderVisible(actor, f) {
 			// Clone so the derived subtree count never mutates stored state.
 			cp := proto.Clone(f).(*vaultv1.Folder)
 			cp.SubtreeSecretCount = s.activeSubtreeSecretCount(f.GetId())
@@ -451,4 +451,10 @@ func (s *Server) childCount(parentID string) int {
 		}
 	}
 	return n
+}
+
+// folderVisible is ListFolders' rule: shared folders and the master personal
+// root are visible to everyone, a personal folder only to its owner.
+func folderVisible(userID string, f *vaultv1.Folder) bool {
+	return f.GetScope() != vaultv1.FolderScope_FOLDER_SCOPE_PERSONAL || f.GetIsMasterPersonal() || (userID != "" && f.GetOwnerUserId() == userID)
 }
