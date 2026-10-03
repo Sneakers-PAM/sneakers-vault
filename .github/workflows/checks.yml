@@ -4,8 +4,10 @@ name: checks
 # status, so the caller job keeps the id `checks`. `edited` reruns it when the
 # PR title or body changes.
 #
-# proto-sync checks the callee proto pins in proto-refs.env on each PR, and on
-# the schedule opens a PR that bumps stale ones; only that job can write.
+# proto-sync checks the callee proto pins in proto-refs.env on each PR (each
+# must be on its owner's main), and that go.mod has no replace directive and
+# no owner package at a pseudo-version. On the schedule it opens a PR that
+# bumps stale pins; only that job can write.
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
@@ -43,14 +45,14 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft != true
     permissions:
       contents: read
-    uses: Sneakers-PAM/.github/.github/workflows/proto-sync.yml@9fcdeecfb1bc9135c89d271d27654af41f7f7391
+    uses: Sneakers-PAM/.github/.github/workflows/proto-sync.yml@77dd2ac5815c0adb982872341813ada8511a3ab5
     with:
-      tools-ref: 9fcdeecfb1bc9135c89d271d27654af41f7f7391
+      tools-ref: 77dd2ac5815c0adb982872341813ada8511a3ab5
   proto-refresh:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
       pull-requests: write
-    uses: Sneakers-PAM/.github/.github/workflows/proto-sync.yml@9fcdeecfb1bc9135c89d271d27654af41f7f7391
+    uses: Sneakers-PAM/.github/.github/workflows/proto-sync.yml@77dd2ac5815c0adb982872341813ada8511a3ab5
     with:
-      tools-ref: 9fcdeecfb1bc9135c89d271d27654af41f7f7391
+      tools-ref: 77dd2ac5815c0adb982872341813ada8511a3ab5

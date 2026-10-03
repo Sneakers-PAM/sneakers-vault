@@ -71,3 +71,10 @@ Follow the logging rules in `CLAUDE.md`. In short:
 - No real identifiers anywhere: fixtures use example.org, 192.0.2.0/24, 2001:db8::/32 and invented
   names. Test keys are generated at test time; never commit key material.
 - The built-in catalogue is additive only: append new types, never reorder or alter existing ones.
+- `go.mod` holds tagged releases only: no `replace` directive, and no pseudo-version (`@main`,
+  `@<sha>`) of a `github.com/Bugs5382/*` or `github.com/Sneakers-PAM/*` module; the
+  `proto-sync / check` job fails on either. To compile and test against a local package checkout,
+  use a git-ignored `go.work` beside `go.mod` (`go work init . ../go-<pkg>`, which writes
+  `use . ../go-<pkg>`); `go.work` and `go.work.sum` are in `.gitignore`. For local callee protos,
+  point `SNEAKERS_AUDIT_PROTO_DIR` and `SNEAKERS_NOTIFY_PROTO_DIR` at a local `proto/` directory
+  when running `scripts/proto-generate.sh`, rather than editing a pin in `proto-refs.env`.
