@@ -71,8 +71,12 @@ audit and notify are covered in [Calling other services](#calling-other-services
   (off by default, which keeps super-sensitive fields from them).
 - **Moves:** personal to shared is free. Shared to personal needs a site admin; for anyone else the
   vault moves nothing, answers `approval_required`, and the caller files a move request with the
-  workflow service.
+  workflow service. A move is audited as `secret.move` (or `secret.move.principal`) with
+  `from_folder_id` and `to_folder_id`, and mints no version.
 - **Versions:** every edit and rotation appends a version. A save that changes nothing mints none.
+  A field the record never stored and one stored as empty are the same value, so an editor that
+  re-sends empty fields (on a folder move, say) adds no version, and the change list never names
+  such a field.
 - **Version history (recovery):** `ListSecretVersions` gives a human reader the change list
   (version numbers, authors, times, changed field keys), never values; machine principals are
   refused. Revealing a field of any version (`RevealSecretVersionField`) and
