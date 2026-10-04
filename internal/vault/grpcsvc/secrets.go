@@ -201,8 +201,12 @@ func (s *Server) UpdateSecret(ctx context.Context, req *vaultv1.UpdateSecretRequ
 				return nil, status.Error(codes.PermissionDenied, "moving a secret into a personal folder requires site-admin approval")
 			}
 		}
+		from := sec.FolderId
 		sec.FolderId = dest
-		s.emit(ctx, req.GetActor().GetUserId(), "secret.move", sec.Id, false)
+		s.emitAttrs(ctx, req.GetActor().GetUserId(), "secret.move", sec.Id, false, map[string]string{
+			"from_folder_id": from,
+			"to_folder_id":   dest,
+		})
 	}
 	if req.GetName() != "" {
 		sec.Name = req.GetName()
@@ -237,6 +241,12 @@ func (s *Server) UpdateSecret(ctx context.Context, req *vaultv1.UpdateSecretRequ
 			merged[k] = v
 		}
 		for k, v := range patch {
+			// The editor sends "" for every type field the record never stored.
+			// Absent and empty read the same everywhere, so storing the key
+			// would mint a version that changed nothing.
+			if _, stored := cur[k]; !stored && v == "" {
+				continue
+			}
 			merged[k] = v
 		}
 		if !stringMapsEqual(cur, merged) {

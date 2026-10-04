@@ -317,19 +317,36 @@ func fieldFingerprints(crypt *crypto.Envelope, rec crypto.Record) (map[string]st
 	return out, nil
 }
 
+// emptyFingerprint is the fingerprint of an empty value.
+var emptyFingerprint = func() string {
+	sum := sha256.Sum256(nil)
+	return hex.EncodeToString(sum[:])
+}()
+
 // changedFieldKeys returns the sorted keys whose fingerprint differs between cur
-// and prior: added keys, removed keys, and keys whose value hash changed. A nil
-// prior (the oldest version) reports every current key as changed.
+// and prior: added keys, removed keys, and keys whose value hash changed. A key
+// missing on one side compares as an empty value, so adding or dropping an
+// empty field is not a change. A nil prior (the oldest version) reports every
+// current key as changed.
 func changedFieldKeys(cur, prior map[string]string) []string {
 	changed := make(map[string]struct{})
-	for k, h := range cur {
-		if ph, ok := prior[k]; !ok || ph != h {
+	if prior == nil {
+		for k := range cur {
 			changed[k] = struct{}{}
 		}
-	}
-	for k := range prior {
-		if _, ok := cur[k]; !ok {
-			changed[k] = struct{}{}
+	} else {
+		fingerprintOf := func(m map[string]string, k string) string {
+			if h, ok := m[k]; ok {
+				return h
+			}
+			return emptyFingerprint
+		}
+		for _, m := range []map[string]string{cur, prior} {
+			for k := range m {
+				if fingerprintOf(cur, k) != fingerprintOf(prior, k) {
+					changed[k] = struct{}{}
+				}
+			}
 		}
 	}
 	keys := make([]string, 0, len(changed))
