@@ -67,6 +67,7 @@ const (
 	VaultService_RevealSecretField_FullMethodName               = "/sneakers.vault.v1.VaultService/RevealSecretField"
 	VaultService_RevealSecretFieldForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/RevealSecretFieldForPrincipal"
 	VaultService_ListSecretsForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/ListSecretsForPrincipal"
+	VaultService_GetSecretForPrincipal_FullMethodName           = "/sneakers.vault.v1.VaultService/GetSecretForPrincipal"
 	VaultService_CreateSecretForPrincipal_FullMethodName        = "/sneakers.vault.v1.VaultService/CreateSecretForPrincipal"
 	VaultService_GenerateSecretForPrincipal_FullMethodName      = "/sneakers.vault.v1.VaultService/GenerateSecretForPrincipal"
 	VaultService_MoveSecretForPrincipal_FullMethodName          = "/sneakers.vault.v1.VaultService/MoveSecretForPrincipal"
@@ -195,6 +196,7 @@ type VaultServiceClient interface {
 	// + full audit, no interactive checkout/MFA.
 	RevealSecretFieldForPrincipal(ctx context.Context, in *RevealSecretFieldForPrincipalRequest, opts ...grpc.CallOption) (*RevealSecretFieldForPrincipalResponse, error)
 	ListSecretsForPrincipal(ctx context.Context, in *ListSecretsForPrincipalRequest, opts ...grpc.CallOption) (*ListSecretsForPrincipalResponse, error)
+	GetSecretForPrincipal(ctx context.Context, in *GetSecretForPrincipalRequest, opts ...grpc.CallOption) (*GetSecretForPrincipalResponse, error)
 	CreateSecretForPrincipal(ctx context.Context, in *CreateSecretForPrincipalRequest, opts ...grpc.CallOption) (*CreateSecretForPrincipalResponse, error)
 	GenerateSecretForPrincipal(ctx context.Context, in *GenerateSecretForPrincipalRequest, opts ...grpc.CallOption) (*GenerateSecretForPrincipalResponse, error)
 	MoveSecretForPrincipal(ctx context.Context, in *MoveSecretForPrincipalRequest, opts ...grpc.CallOption) (*MoveSecretForPrincipalResponse, error)
@@ -739,6 +741,16 @@ func (c *vaultServiceClient) ListSecretsForPrincipal(ctx context.Context, in *Li
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListSecretsForPrincipalResponse)
 	err := c.cc.Invoke(ctx, VaultService_ListSecretsForPrincipal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) GetSecretForPrincipal(ctx context.Context, in *GetSecretForPrincipalRequest, opts ...grpc.CallOption) (*GetSecretForPrincipalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSecretForPrincipalResponse)
+	err := c.cc.Invoke(ctx, VaultService_GetSecretForPrincipal_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1429,6 +1441,7 @@ type VaultServiceServer interface {
 	// + full audit, no interactive checkout/MFA.
 	RevealSecretFieldForPrincipal(context.Context, *RevealSecretFieldForPrincipalRequest) (*RevealSecretFieldForPrincipalResponse, error)
 	ListSecretsForPrincipal(context.Context, *ListSecretsForPrincipalRequest) (*ListSecretsForPrincipalResponse, error)
+	GetSecretForPrincipal(context.Context, *GetSecretForPrincipalRequest) (*GetSecretForPrincipalResponse, error)
 	CreateSecretForPrincipal(context.Context, *CreateSecretForPrincipalRequest) (*CreateSecretForPrincipalResponse, error)
 	GenerateSecretForPrincipal(context.Context, *GenerateSecretForPrincipalRequest) (*GenerateSecretForPrincipalResponse, error)
 	MoveSecretForPrincipal(context.Context, *MoveSecretForPrincipalRequest) (*MoveSecretForPrincipalResponse, error)
@@ -1663,6 +1676,9 @@ func (UnimplementedVaultServiceServer) RevealSecretFieldForPrincipal(context.Con
 }
 func (UnimplementedVaultServiceServer) ListSecretsForPrincipal(context.Context, *ListSecretsForPrincipalRequest) (*ListSecretsForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSecretsForPrincipal not implemented")
+}
+func (UnimplementedVaultServiceServer) GetSecretForPrincipal(context.Context, *GetSecretForPrincipalRequest) (*GetSecretForPrincipalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSecretForPrincipal not implemented")
 }
 func (UnimplementedVaultServiceServer) CreateSecretForPrincipal(context.Context, *CreateSecretForPrincipalRequest) (*CreateSecretForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateSecretForPrincipal not implemented")
@@ -2677,6 +2693,24 @@ func _VaultService_ListSecretsForPrincipal_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VaultServiceServer).ListSecretsForPrincipal(ctx, req.(*ListSecretsForPrincipalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_GetSecretForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSecretForPrincipalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).GetSecretForPrincipal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_GetSecretForPrincipal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).GetSecretForPrincipal(ctx, req.(*GetSecretForPrincipalRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3983,6 +4017,10 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSecretsForPrincipal",
 			Handler:    _VaultService_ListSecretsForPrincipal_Handler,
+		},
+		{
+			MethodName: "GetSecretForPrincipal",
+			Handler:    _VaultService_GetSecretForPrincipal_Handler,
 		},
 		{
 			MethodName: "CreateSecretForPrincipal",

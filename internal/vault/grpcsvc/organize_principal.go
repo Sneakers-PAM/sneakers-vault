@@ -151,7 +151,7 @@ func (s *Server) RenameSecretForPrincipal(ctx context.Context, req *vaultv1.Rena
 		"to_name":   name,
 	}))
 	s.notifyInformed(ctx, principalActorID(actor), "secret.rename.principal", "secret", sec.GetId(), sec.GetName(), s.secretChain(sec))
-	return &vaultv1.RenameSecretForPrincipalResponse{Secret: sec}, nil
+	return &vaultv1.RenameSecretForPrincipalResponse{Secret: s.principalSecretView(sec)}, nil
 }
 
 // descriptiveFieldKeys are the only fields a machine may change on a managed
@@ -268,7 +268,7 @@ func (s *Server) UpdateSecretFieldsForPrincipal(ctx context.Context, req *vaultv
 		}
 	}
 	if len(changed) == 0 {
-		return &vaultv1.UpdateSecretFieldsForPrincipalResponse{Secret: sec, ChangedFieldKeys: []string{}}, nil
+		return &vaultv1.UpdateSecretFieldsForPrincipalResponse{Secret: s.principalSecretView(sec), ChangedFieldKeys: []string{}}, nil
 	}
 	// The same authoritative key-pair check every save runs.
 	if err := verifyKeyPairFields(merged); err != nil {
@@ -279,14 +279,16 @@ func (s *Server) UpdateSecretFieldsForPrincipal(ctx context.Context, req *vaultv
 		return nil, status.Error(codes.Internal, "seal fields")
 	}
 	s.records[sec.GetId()] = rec
+	var ledgerNo int
 	if s.vers != nil {
-		_, _ = s.vers.AppendActive(ctx, sec.GetId(), rec, principalActorID(actor))
+		ledgerNo, _ = s.vers.AppendActive(ctx, sec.GetId(), rec, principalActorID(actor))
 	}
+	s.markValueChanged(ctx, sec, ledgerNo)
 	s.emitAttrs(ctx, principalActorID(actor), "secret.update.principal", sec.GetId(), true, principalAttrs(actor, map[string]string{
 		"changed_field_keys": strings.Join(changed, ","),
 	}))
 	s.notifyInformed(ctx, principalActorID(actor), "secret.update.principal", "secret", sec.GetId(), sec.GetName(), s.secretChain(sec))
-	return &vaultv1.UpdateSecretFieldsForPrincipalResponse{Secret: sec, ChangedFieldKeys: changed}, nil
+	return &vaultv1.UpdateSecretFieldsForPrincipalResponse{Secret: s.principalSecretView(sec), ChangedFieldKeys: changed}, nil
 }
 
 // ---- folders ----------------------------------------------------------------

@@ -112,13 +112,13 @@ func (s *Server) MoveSecretForPrincipal(ctx context.Context, req *vaultv1.MoveSe
 			// Every RACI check has passed; move nothing and let the gateway file
 			// the approval request with this principal as requester.
 			s.emitAttrs(ctx, principalActorID(actor), "secret.move.approval_required.principal", sec.GetId(), false, moveAttrs)
-			return &vaultv1.MoveSecretForPrincipalResponse{Secret: sec, ApprovalRequired: true, Destination: destView}, nil
+			return &vaultv1.MoveSecretForPrincipalResponse{Secret: s.principalSecretView(sec), ApprovalRequired: true, Destination: destView}, nil
 		}
 	}
 	s.moveSecretTo(sec, dest)
 	s.emitAttrs(ctx, principalActorID(actor), "secret.move.principal", sec.GetId(), false, moveAttrs)
 	s.notifyInformed(ctx, principalActorID(actor), "secret.move.principal", "secret", sec.GetId(), sec.GetName(), s.secretChain(sec))
-	return &vaultv1.MoveSecretForPrincipalResponse{Secret: sec, Destination: destView}, nil
+	return &vaultv1.MoveSecretForPrincipalResponse{Secret: s.principalSecretView(sec), Destination: destView}, nil
 }
 
 // machineTypeChangeBlocked reports why a machine may not change a secret from
@@ -536,9 +536,11 @@ func (s *Server) ChangeSecretTypeForPrincipal(ctx context.Context, req *vaultv1.
 	s.records[sec.GetId()] = rec
 	sec.TypeId = nt.GetId()
 	sec.ExpiresAt = expiresAt
+	var ledgerNo int
 	if s.vers != nil {
-		_, _ = s.vers.AppendActive(ctx, sec.GetId(), rec, principalActorID(actor))
+		ledgerNo, _ = s.vers.AppendActive(ctx, sec.GetId(), rec, principalActorID(actor))
 	}
+	s.markValueChanged(ctx, sec, ledgerNo)
 	auto := s.applyRetypeAutomation(ctx, sec, st, nt)
 	keys := sortedKeys(next)
 	s.emitAttrs(ctx, principalActorID(actor), "secret.type_change.principal", sec.GetId(), true, principalAttrs(actor, map[string]string{

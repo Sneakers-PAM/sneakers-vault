@@ -162,5 +162,6 @@ func (s *Server) restoreVersion(ctx context.Context, sec *vaultv1.Secret, versio
 		return 0, status.Errorf(codes.Internal, "store version: %v", err)
 	}
 	s.records[sec.GetId()] = rec
+	s.markValueChanged(ctx, sec, newNo)
 	return newNo, nil
 }

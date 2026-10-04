@@ -269,8 +269,7 @@ message Secret {
   int32 rotation_interval_days = 18;    // 0 = no scheduled rotation
   string next_rotation_at = 19;         // RFC3339; scheduler mirror (queue is source of truth)
   bool rotation_opt_out = 20;           // per-secret override: never rotate this secret (audited; type must allow rotation)
-  // Set by vault from connector reports, never by a caller. Fields 29-30
-  // leave 24-28 to the value-version fields.
+  // Set by vault from connector reports, never by a caller.
   //   builtin_administrator: the target account is the domain's built-in
   //     Administrator (RID 500). Vault never rotates it; heartbeat still runs.
   //   admin_count: the account has adminCount=1 (AD protected groups). It
@@ -290,6 +289,23 @@ message Secret {
   // may read this secret. A secret the caller can see but not read is shown
   // locked, so they can request access.
   bool can_read = 31;
+  // Bumped each time the stored field values change: create, edit, type
+  // change, restore and committed rotation. Never decreases. It matches the
+  // active version_no of ListSecretVersions unless the best-effort history
+  // write lagged. Renames, moves, target and automation changes leave it
+  // alone. 0 means no value change was recorded since the counter was added.
+  // A reader that cached a value re-fetches it when this differs from the
+  // version it read.
+  int32 value_version = 24;
+  string value_changed_at = 25;         // RFC3339 of the change that set value_version, empty = none recorded
+  // Output only, on the *ForPrincipal responses (computed, never stored;
+  // false elsewhere): whether the vault would rotate the secret at all (a
+  // rotation type, not opted out, a target with a connection), whether
+  // checking it in after a check-out rotates it, and whether heartbeat checks
+  // run.
+  bool rotation_enabled = 26;
+  bool rotates_on_checkin = 27;
+  bool heartbeat_enabled = 28;
   // Approval level 2 (always-approve), implies require_token_approval: every
   // person needs approval for each use or reveal, owners included. Another
   // owner or a designated approver (RACI A) decides, never the requester.
@@ -486,10 +502,18 @@ message ListSecretsForPrincipalRequest {
   string query = 2;      // optional case-insensitive name substring
   string folder_id = 3;  // optional: restrict to this folder
   string type_id = 4;    // optional: restrict to this secret type
+  // optional RFC3339: only secrets whose value_changed_at is at or after this
+  // time, so a caller can find what to re-fetch since it last looked.
+  string changed_since = 5;
 }
 message ListSecretsForPrincipalResponse {
   repeated Secret secrets = 1; // metadata only
 }
+
+// One secret's metadata for a non-human principal with RACI read on it.
+// Metadata only, never field values; audited as secret.get.principal.
+message GetSecretForPrincipalRequest { ActorContext actor = 1; string id = 2; }
+message GetSecretForPrincipalResponse { Secret secret = 1; }
 
 // Create a secret as a non-human principal. Requires RACI-Author (R) on the
 // folder chain (same grant human CreateSecret requires). No MFA/checkout.
@@ -1454,6 +1478,9 @@ service VaultService {
   // + full audit, no interactive checkout/MFA.
   rpc RevealSecretFieldForPrincipal(RevealSecretFieldForPrincipalRequest) returns (RevealSecretFieldForPrincipalResponse);
   rpc ListSecretsForPrincipal(ListSecretsForPrincipalRequest) returns (ListSecretsForPrincipalResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetSecretForPrincipal(GetSecretForPrincipalRequest) returns (GetSecretForPrincipalResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc CreateSecretForPrincipal(CreateSecretForPrincipalRequest) returns (CreateSecretForPrincipalResponse);
