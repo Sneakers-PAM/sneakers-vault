@@ -44,6 +44,8 @@ administrator's personal folder. `SeedBuiltins` is idempotent.
 
 ## Keys
 
+The design behind these keys is in [kek-keyring.md](kek-keyring.md).
+
 - **Root key** (`VAULT_ROOT_KEK`): wraps the working keys. It's permanent for a database: there is
   no previous-root support, so losing it makes every secret unrecoverable. Keep it in your secret
   store and back it up separately from the database.
