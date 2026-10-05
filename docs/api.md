@@ -6,13 +6,15 @@ caller allowed to act on behalf of a user may send an actor context, which the g
 the signed-in session. The full
 definitions are [vault.proto](../proto/sneakers/vault/v1/vault.proto) and
 [workflow.proto](../proto/sneakers/workflow/v1/workflow.proto); the generated Go is under
-`gen/go/sneakers/`. Both servers also serve gRPC health and reflection. The vault's own calls to
+`gen/go/sneakers/`. Both servers also serve gRPC health (go-buildinfo's,
+`github.com/Bugs5382/go-buildinfo`) and reflection. The vault's own calls to
 audit and notify are covered in [Calling other services](#calling-other-services).
 
 A health check's answer carries the build in its response headers: `sneakers-version` (the image
 tag, `dev` when unstamped) and `sneakers-commit` (the source commit, `unknown` when neither the
-build nor Go's VCS stamp knows it). Once the server has read its database's version at start, it
-also carries `sneakers-dep-postgres` (the first word of `server_version`, such as `16.4`).
+build nor Go's VCS stamp knows it). A readiness answer also carries `sneakers-dep-postgres` (the
+first word of `server_version`, such as `16.4`; re-read every 5 minutes, `unknown` until the first
+read succeeds) and `sneakers-depstate-<name>` (`ok`, `degraded` or `down`) for each dependency.
 The gateway's diagnostics read them.
 
 Both servers' health checks follow their dependencies:
@@ -22,21 +24,22 @@ Both servers' health checks follow their dependencies:
   (degraded). It recovers on its own once the dependency answers again.
 - **Liveness** is service `liveness`. It always answers `SERVING` and checks no dependency, so an
   outage never restarts the pod.
-- Any other service name gets `NOT_FOUND`, and `Watch` is unimplemented; poll `Check`.
+- Any other service name gets `NOT_FOUND`. `Watch` streams the serving status of either service as
+  it changes.
 
 Each dependency is pinged with a 1-second timeout, and the results are reused for 5 seconds, so
 probes don't load the dependencies. A readiness answer carries the results in the
 `sneakers-health` header, as compact JSON:
 
 ```json
-{"status":"degraded","dependencies":[
+{"status":"degraded","ready":true,"dependencies":[
   {"name":"postgres","state":"ok","required":true,"checkedAt":"2026-10-05T12:00:00Z","version":"17.11"},
   {"name":"audit","state":"degraded","required":false,"error":"unavailable","checkedAt":"2026-10-05T12:00:00Z"}]}
 ```
 
 `status` and `state` are `ok`, `degraded` (an optional dependency failing) or `down` (a required
 one failing). `error` is a class: `timeout`, `refused`, `unavailable`, `unauthenticated` or
-`error`. It never carries the error's text, an address or a DSN. `version` is present when known.
+`error` (or go-buildinfo's `connection-refused`, `dns`, `network`, `canceled` or `panic`). It never carries the error's text, an address or a DSN. `version` is present when known.
 See the [runbook](runbook.md#health) for each server's dependencies.
 
 ## Vault: `sneakers.vault.v1.VaultService`

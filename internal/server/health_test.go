@@ -12,7 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sneakers-PAM/sneakers-vault/internal/health"
+	"github.com/Bugs5382/go-buildinfo/health"
+	log "github.com/Bugs5382/go-log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -23,6 +24,19 @@ import (
 
 // startWithHealth serves RunWithHealth on a free port and returns a health
 // client.
+// testTTL is the cache window the tests run with; waiting it out lets the next
+// check run again.
+const testTTL = time.Second
+
+func newTestChecker(t *testing.T, deps ...health.Dependency) *health.Checker {
+	t.Helper()
+	c, err := NewChecker(log.Nop(), deps, health.WithTTL(testTTL))
+	if err != nil {
+		t.Fatalf("checker: %v", err)
+	}
+	return c
+}
+
 func startWithHealth(t *testing.T, checker *health.Checker) healthpb.HealthClient {
 	t.Helper()
 	port := freePort(t)
@@ -43,24 +57,21 @@ func startWithHealth(t *testing.T, checker *health.Checker) healthpb.HealthClien
 		} else if time.Now().After(deadline) {
 			t.Fatalf("server never answered: %v", err)
 		}
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(testTTL)
 	}
 }
 
 func TestHealth_ReadinessFollowsRequiredDependencyLivenessDoesNot(t *testing.T) {
 	var down atomic.Bool
-	checker := health.New(nil,
-		health.Dep{Name: "postgres", Required: true, Check: func(context.Context) error {
+	checker := newTestChecker(t,
+		health.Dependency{Name: "postgres", Required: true, Check: func(context.Context) error {
 			if down.Load() {
 				return errors.New("dial tcp db.example.test:5432: refused; password=hunter2")
 			}
 			return nil
-		}},
-		health.Dep{Name: "audit", Check: func(context.Context) error { return nil }},
+		}, Version: func(context.Context) (string, error) { return "17.11", nil }},
+		health.Dependency{Name: "audit", Check: func(context.Context) error { return nil }},
 	)
-	checker.SetCacheTTL(10 * time.Millisecond)
-	SetDependencyVersion(DependencyPostgres, "17.11")
-	t.Cleanup(func() { SetDependencyVersion(DependencyPostgres, "") })
 	c := startWithHealth(t, checker)
 
 	ready := func() (healthpb.HealthCheckResponse_ServingStatus, string) {
@@ -70,7 +81,7 @@ func TestHealth_ReadinessFollowsRequiredDependencyLivenessDoesNot(t *testing.T) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := hdr.Get(HeaderVersion); len(got) != 1 {
+		if got := hdr.Get("sneakers-version"); len(got) != 1 {
 			t.Fatalf("the build headers must stay: %v", hdr)
 		}
 		h := hdr.Get(HeaderHealth)
@@ -108,7 +119,7 @@ func TestHealth_ReadinessFollowsRequiredDependencyLivenessDoesNot(t *testing.T) 
 	}
 
 	down.Store(true)
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(testTTL)
 	st, body = ready()
 	if st != healthpb.HealthCheckResponse_NOT_SERVING {
 		t.Fatalf("readiness with postgres down = %v (%s)", st, body)
@@ -121,14 +132,14 @@ func TestHealth_ReadinessFollowsRequiredDependencyLivenessDoesNot(t *testing.T) 
 	}
 
 	down.Store(false)
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(testTTL)
 	if st, body := ready(); st != healthpb.HealthCheckResponse_SERVING {
 		t.Fatalf("readiness after recovery = %v (%s)", st, body)
 	}
 }
 
 func TestHealth_OptionalDependencyKeepsServing(t *testing.T) {
-	checker := health.New(nil, health.Dep{Name: "notify", Check: func(context.Context) error { return status.Error(codes.Unavailable, "x") }})
+	checker := newTestChecker(t, health.Dependency{Name: "notify", Check: func(context.Context) error { return status.Error(codes.Unavailable, "x") }})
 	c := startWithHealth(t, checker)
 	var hdr metadata.MD
 	resp, err := c.Check(context.Background(), &healthpb.HealthCheckRequest{}, grpc.Header(&hdr))
@@ -149,10 +160,10 @@ func TestHealth_UnknownServiceAndWatch(t *testing.T) {
 		t.Fatalf("no checker: resp=%v err=%v", resp, err)
 	}
 	stream, err := c.Watch(context.Background(), &healthpb.HealthCheckRequest{})
-	if err == nil {
-		_, err = stream.Recv()
-	}
-	if status.Code(err) != codes.Unimplemented {
+	if err != nil {
 		t.Fatalf("watch: %v", err)
+	}
+	if resp, err := stream.Recv(); err != nil || resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+		t.Fatalf("watch: %v %v, want SERVING", resp.GetStatus(), err)
 	}
 }

@@ -24,7 +24,8 @@ or values.
   (the RACI engine), `workloadid` (connector identity), `certsvc`, `catalogseed`, and the audit and
   notify clients.
 - `internal/workflow/` - the workflow service: `grpcsvc` (service, saga, store) and `vaultclient`.
-- `internal/config/`, `internal/server/` - the env loader and the gRPC server bootstrap both use.
+- `internal/config/`, `internal/server/` - the env loader and the gRPC server bootstrap both use,
+  with the health service and readiness checks from `github.com/Bugs5382/go-buildinfo`.
 - `internal/workloadauth/` - service-to-service authentication (workload token verifier, per-method
   allow-list interceptors, caller credentials). Self-contained and copied byte for byte into the
   other services; change it here first. See docs/workload-auth.md.

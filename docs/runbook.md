@@ -36,10 +36,10 @@ grpcurl -plaintext localhost:9193 grpc.health.v1.Health/Check   # workflow
 ```
 
 To see which build is running, add `-v`: the answer's headers carry `sneakers-version`,
-`sneakers-commit` and, once the database version has been read at start,
-`sneakers-dep-postgres`. If the database version can't be read, start-up carries on and logs
+`sneakers-commit` and `sneakers-dep-postgres` (`unknown` until the database version has been
+read). If the database version can't be read at start, start-up carries on and logs
 `database version not read` at warn. The image build stamps the version and commit from its
-`VERSION` and `COMMIT` build arguments:
+`VERSION` and `COMMIT` build arguments, into go-buildinfo's `Version` and `Commit`:
 
 ```bash
 docker build --target vault --build-arg VERSION=v0.1.0 --build-arg COMMIT="$(git rev-parse HEAD)" .
@@ -66,8 +66,8 @@ The workflow's dependencies:
 | `vault` | no | A vault outage already shows in the vault's own readiness. The calls that need the vault fail on their own, and saga steps retry. |
 | `audit` | no | A failed audit write is logged and the call carries on. |
 
-A dependency changing state is logged once: `health: dependency failing` at warn (with
-`dependency`, `required`, `state` and `error_class`), then `health: dependency recovered` at
+A dependency changing state is logged once: `dependency check failing` at warn (with
+`dependency`, `required`, `from`, `to` and `error_class`), then `dependency recovered` at
 info.
 
 The kubelet's liveness probe has to ask for the `liveness` service; otherwise a database outage

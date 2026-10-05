@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	postgres "github.com/Bugs5382/go-postgres"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -14,6 +15,8 @@ import (
 type okPinger struct{}
 
 func (okPinger) Ping(context.Context) error { return nil }
+
+func (okPinger) Querier() postgres.Querier { return nil }
 
 func TestDependencies_OnlyTheDatabaseIsRequired(t *testing.T) {
 	conn, err := grpc.NewClient("peer.example.test:1", grpc.WithTransportCredentials(insecure.NewCredentials()))

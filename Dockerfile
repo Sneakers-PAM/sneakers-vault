@@ -12,9 +12,9 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -ldflags "-X github.com/Sneakers-PAM/sneakers-vault/internal/buildinfo.Version=${VERSION} -X github.com/Sneakers-PAM/sneakers-vault/internal/buildinfo.Commit=${COMMIT}" -o /out/vault ./cmd/vault
-RUN CGO_ENABLED=0 go build -ldflags "-X github.com/Sneakers-PAM/sneakers-vault/internal/buildinfo.Version=${VERSION} -X github.com/Sneakers-PAM/sneakers-vault/internal/buildinfo.Commit=${COMMIT}" -o /out/workflow ./cmd/workflow
-RUN CGO_ENABLED=0 go build -ldflags "-X github.com/Sneakers-PAM/sneakers-vault/internal/buildinfo.Version=${VERSION} -X github.com/Sneakers-PAM/sneakers-vault/internal/buildinfo.Commit=${COMMIT}" -o /out/workflow-purge ./cmd/workflow-purge
+RUN CGO_ENABLED=0 go build -ldflags "-X github.com/Bugs5382/go-buildinfo.Version=${VERSION} -X github.com/Bugs5382/go-buildinfo.Commit=${COMMIT}" -o /out/vault ./cmd/vault
+RUN CGO_ENABLED=0 go build -ldflags "-X github.com/Bugs5382/go-buildinfo.Version=${VERSION} -X github.com/Bugs5382/go-buildinfo.Commit=${COMMIT}" -o /out/workflow ./cmd/workflow
+RUN CGO_ENABLED=0 go build -ldflags "-X github.com/Bugs5382/go-buildinfo.Version=${VERSION} -X github.com/Bugs5382/go-buildinfo.Commit=${COMMIT}" -o /out/workflow-purge ./cmd/workflow-purge
 RUN CGO_ENABLED=0 go build -o /out/seed ./cmd/seed
 RUN CGO_ENABLED=0 go build -o /out/seed-catalog ./cmd/seed-catalog
 

@@ -1,7 +1,7 @@
 // Copyright 2026 The Sneakers-PAM Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package health
+package server
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Bugs5382/go-buildinfo/health"
 	postgres "github.com/Bugs5382/go-postgres"
 )
 
@@ -104,20 +105,26 @@ func TestPostgres_ReadinessFollowsARealDatabase(t *testing.T) {
 	}
 	defer db.Close()
 
-	c := &clock{t: time.Unix(0, 0)}
-	ch := newChecker(c, Postgres(db))
-	if r := ch.Report(ctx); r.Status != StatusOK {
+	ch := newTestChecker(t, Postgres(db))
+	if r := ch.Report(ctx); r.Status != health.StateOK || r.Dependencies[0].Version == "unknown" {
 		t.Fatalf("database up: %+v", r)
 	}
 	p.cut()
-	c.add(CacheTTL)
+	time.Sleep(testTTL)
 	r := ch.Report(ctx)
-	if r.Status != StatusDown || stateOf(r, "postgres").Error == "" {
+	if r.Status != health.StateDown || r.Ready || r.Dependencies[0].Error == "" {
 		t.Fatalf("database gone: %+v", r)
 	}
 	p.resume()
-	c.add(CacheTTL)
-	if r := ch.Report(ctx); r.Status != StatusOK {
-		t.Fatalf("database back: %+v", r)
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		time.Sleep(testTTL)
+		r := ch.Report(ctx)
+		if r.Status == health.StateOK {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("database back: %+v", r)
+		}
 	}
 }
