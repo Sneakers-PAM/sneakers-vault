@@ -1100,6 +1100,8 @@ message SecretUse {
   string grant_id = 11;                 // set when a use grant approved it
   string client_label = 12;
   bool reveal = 13;                     // releases the value to the token itself rather than to a command; argv is empty
+  string run_id = 14;                   // groups the uses one agent run raised; display grouping only, grants nothing
+  string purpose = 15;                  // the agent's own words for the task; plain text, never trusted
 }
 
 message PrepareSecretUseRequest {
@@ -1109,13 +1111,20 @@ message PrepareSecretUseRequest {
   repeated string argv = 4;             // empty when reveal
   string client_label = 5;
   bool reveal = 6;
+  string run_id = 7;                    // optional; [A-Za-z0-9_-]{1,64}, else InvalidArgument
+  string purpose = 8;                   // optional; at most 200 characters of plain text, else InvalidArgument
 }
 message PrepareSecretUseResponse { SecretUse use = 1; }
 
 message GetSecretUseRequest { ActorContext actor = 1; string use_id = 2; }
 message GetSecretUseResponse { SecretUse use = 1; }
 
-message ListPendingSecretUsesRequest { ActorContext actor = 1; }
+// A signed-in owner lists their pending uses, optionally of one run. A personal
+// token lists only its own pending uses, and only of one run (run_id required).
+message ListPendingSecretUsesRequest {
+  ActorContext actor = 1;
+  string run_id = 2;                    // optional filter; required for a personal token
+}
 message ListPendingSecretUsesResponse { repeated SecretUse uses = 1; }
 
 message DecideSecretUseRequest {

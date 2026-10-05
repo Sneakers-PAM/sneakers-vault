@@ -59,3 +59,42 @@ func TestPGUseStoreRoundTrip(t *testing.T) {
 		t.Fatalf("missing use: want errUseNotFound, got %v", err)
 	}
 }
+
+func TestPGUseStoreKeepsRunFieldsAndLoadsOldRows(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_DSN")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_DSN not set")
+	}
+	ctx := context.Background()
+	pool, err := postgres.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if _, err := pool.Querier().Exec(ctx, `TRUNCATE secret_uses`); err != nil {
+		t.Fatal(err)
+	}
+	st := &pgUseStore{db: pool.Querier()}
+	use := &vaultv1.SecretUse{Id: "use-run", UserId: "u-ada", TokenId: "utok-1", Argv: []string{"ssh", "h"},
+		State: vaultv1.SecretUseState_SECRET_USE_STATE_PENDING, ExpiresAtUnix: 4102444800,
+		RunId: "run_pg-1", Purpose: "rotate the edge router"}
+	if err := st.PutUse(ctx, use); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := st.GetUse(ctx, "use-run"); err != nil || got.GetRunId() != "run_pg-1" || got.GetPurpose() != "rotate the edge router" {
+		t.Fatalf("GetUse = %v, %v", got, err)
+	}
+	old := `{"id":"use-old","userId":"u-ada","tokenId":"utok-1","argv":["ssh","h"],"state":"SECRET_USE_STATE_PENDING","expiresAtUnix":"4102444800"}`
+	if _, err := pool.Querier().Exec(ctx,
+		`INSERT INTO secret_uses (id, user_id, state, expires_at, data) VALUES ('use-old','u-ada',$1,to_timestamp(4102444800),$2)`,
+		int32(vaultv1.SecretUseState_SECRET_USE_STATE_PENDING), []byte(old)); err != nil {
+		t.Fatal(err)
+	}
+	pending, err := st.PendingUses(ctx, "u-ada")
+	if err != nil || len(pending) != 2 {
+		t.Fatalf("PendingUses = %v, %v", pending, err)
+	}
+	if got, err := st.GetUse(ctx, "use-old"); err != nil || got.GetRunId() != "" || got.GetPurpose() != "" {
+		t.Fatalf("an old row = %v, %v", got, err)
+	}
+}
