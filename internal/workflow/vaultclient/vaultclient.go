@@ -29,6 +29,9 @@ type Client struct {
 	vaultv1.VaultServiceClient
 }
 
+// Conn is the dialled connection, for the vault's own health check.
+func (c *Client) Conn() grpc.ClientConnInterface { return c.conn }
+
 // selfMethods are the vault calls the workflow makes as itself. The vault
 // refuses an actor on them from the workflow and acts as its own
 // system:workflow actor instead (CallerPolicy in internal/vault/grpcsvc).
