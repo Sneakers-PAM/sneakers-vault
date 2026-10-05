@@ -32,6 +32,10 @@ func future(ts string) bool {
 // active lease: a secret has at most one at a time.
 var ErrLeaseHeld = errors.New("workflow: the secret already has an active lease")
 
+// ErrRequestNotPending is returned by ResolveRequest when the request is
+// already approved or denied.
+var ErrRequestNotPending = errors.New("workflow: the approval request is not pending")
+
 type Store interface {
 	InsertLease(ctx context.Context, l *workflowv1.Lease, runID string) error
 	CloseLeaseByRun(ctx context.Context, runID string) error
@@ -47,6 +51,9 @@ type Store interface {
 
 	InsertRequest(ctx context.Context, r *workflowv1.ApprovalRequest) error
 	ListRequests(ctx context.Context) ([]*workflowv1.ApprovalRequest, error)
+	// ResolveRequest approves or denies a pending request. It returns nil if
+	// the request doesn't exist, and ErrRequestNotPending if it's already
+	// resolved, leaving it unchanged.
 	ResolveRequest(ctx context.Context, id, resolvedBy, resolvedAt string, approve bool) (*workflowv1.ApprovalRequest, error)
 	// GetRequest returns a single approval request (with its comment thread
 	// loaded), or nil if not found.
@@ -207,6 +214,9 @@ func (m *memStore) ResolveRequest(_ context.Context, id, by, at string, approve 
 	defer m.mu.Unlock()
 	for _, r := range m.requests {
 		if r.GetId() == id {
+			if r.GetStatus() != workflowv1.ApprovalStatus_APPROVAL_STATUS_PENDING {
+				return nil, ErrRequestNotPending
+			}
 			if approve {
 				r.Status = workflowv1.ApprovalStatus_APPROVAL_STATUS_APPROVED
 			} else {
@@ -420,13 +430,17 @@ func (p *pgStore) ResolveRequest(ctx context.Context, id, by, at string, approve
 	if approve {
 		status = workflowv1.ApprovalStatus_APPROVAL_STATUS_APPROVED
 	}
-	if _, err := p.db.Exec(ctx, `UPDATE approval_requests SET status=$2, resolved_by_user_id=$3, resolved_at=$4 WHERE id=$1`,
-		id, int32(status), by, at); err != nil {
+	tag, err := p.db.Exec(ctx, `UPDATE approval_requests SET status=$2, resolved_by_user_id=$3, resolved_at=$4 WHERE id=$1 AND status=$5`,
+		id, int32(status), by, at, int32(workflowv1.ApprovalStatus_APPROVAL_STATUS_PENDING))
+	if err != nil {
 		return nil, err
 	}
 	r, err := scanRequest(p.db.QueryRow(ctx, `SELECT `+reqCols+` FROM approval_requests WHERE id=$1`, id))
 	if err != nil {
 		return nil, nil
+	}
+	if tag.RowsAffected() == 0 {
+		return nil, ErrRequestNotPending
 	}
 	return r, nil
 }

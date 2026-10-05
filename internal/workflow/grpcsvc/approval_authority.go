@@ -62,3 +62,20 @@ func (s *Server) checkApprover(ctx context.Context, actor *workflowv1.ActorConte
 	}
 	return nil
 }
+
+// checkPending refuses to resolve a request that's already approved or
+// denied. Unknown requests pass through to the store's not-found handling.
+func (s *Server) checkPending(ctx context.Context, uid, requestID string) error {
+	r, err := s.store.GetRequest(ctx, requestID)
+	if err != nil || r == nil || r.GetStatus() == workflowv1.ApprovalStatus_APPROVAL_STATUS_PENDING {
+		return err
+	}
+	return s.refuseNotPending(ctx, uid, requestID)
+}
+
+// refuseNotPending logs, audits and builds the REQUEST_NOT_PENDING refusal.
+func (s *Server) refuseNotPending(ctx context.Context, uid, requestID string) error {
+	s.lg(ctx).Warn("approval refused", log.F("request_id", requestID), log.F("user_id", uid), log.F("reason", ReasonRequestNotPending))
+	s.emit(ctx, uid, "approval.denied", requestID, map[string]string{"reason": ReasonRequestNotPending})
+	return refuse(codes.FailedPrecondition, ReasonRequestNotPending, "this request has already been resolved", nil)
+}

@@ -11,6 +11,7 @@ package grpcsvc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -253,12 +254,15 @@ func (s *Server) ResolveApproval(ctx context.Context, req *workflowv1.ResolveApp
 	if err := s.checkApprover(ctx, req.GetActor(), req.GetId()); err != nil {
 		return nil, err
 	}
+	if err := s.checkPending(ctx, req.GetActor().GetUserId(), req.GetId()); err != nil {
+		return nil, err
+	}
 	if req.GetApprove() {
 		if err := s.checkGrantFree(ctx, req.GetId()); err != nil {
 			return nil, err
 		}
 	}
-	r, err := s.store.ResolveRequest(ctx, req.GetId(), req.GetActor().GetUserId(), time.Now().UTC().Format(time.RFC3339), req.GetApprove())
+	r, err := s.resolveRequest(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +276,7 @@ func (s *Server) ResolveApproval(ctx context.Context, req *workflowv1.ResolveApp
 	// like a self-service checkout. Denials just record the decision.
 	//
 	// Idempotent-safe: if the requester already holds an active lease on the
-	// secret (e.g. a double-approve), don't issue a second one.
+	// secret (their own check-out), don't issue a second one.
 	// A folder-move approval has a different effect: perform the move as the
 	// system (site-admin) actor — no lease, no grant. The vault re-scopes the
 	// subtree to the destination personal owner.
@@ -306,6 +310,17 @@ func (s *Server) ResolveApproval(ctx context.Context, req *workflowv1.ResolveApp
 	return &workflowv1.ResolveApprovalResponse{Request: r}, nil
 }
 
+// resolveRequest records the decision. A request another approver resolved
+// since checkPending is refused the same way.
+func (s *Server) resolveRequest(ctx context.Context, req *workflowv1.ResolveApprovalRequest) (*workflowv1.ApprovalRequest, error) {
+	uid := req.GetActor().GetUserId()
+	r, err := s.store.ResolveRequest(ctx, req.GetId(), uid, time.Now().UTC().Format(time.RFC3339), req.GetApprove())
+	if errors.Is(err, ErrRequestNotPending) {
+		return nil, s.refuseNotPending(ctx, uid, req.GetId())
+	}
+	return r, err
+}
+
 // grantAccess gives an approved access request's requester a time-boxed
 // lease and the temporary read grant behind it.
 func (s *Server) grantAccess(ctx context.Context, r *workflowv1.ApprovalRequest, grantHours int32) error {
@@ -326,8 +341,8 @@ func (s *Server) grantAccess(ctx context.Context, r *workflowv1.ApprovalRequest,
 	// firewall-RACI, and the requester has no read grant on this secret. Add a
 	// temporary secret-level read grant for the requester so they can actually
 	// reveal/copy and load history for the lease window; the checkout saga's
-	// close_lease step revokes it when the lease ends. Idempotent, so a
-	// double-approve (existing lease) still ensures the grant is present.
+	// close_lease step revokes it when the lease ends. Idempotent, so an
+	// approval over an existing lease still ensures the grant is present.
 	if err := grantSecretRead(ctx, s.vault, r.GetSecretId(), r.GetRequestedByUserId()); err != nil {
 		return fmt.Errorf("grant temp read access: %w", err)
 	}
