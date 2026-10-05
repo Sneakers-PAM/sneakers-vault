@@ -1,0 +1,5 @@
+{"config":{"protocol_version":"v1.0.0","scanner_name":"govulncheck"}}
+{"osv":{"id":"GO-2026-6443"}}
+{"osv":{"id":"GO-2099-0001"}}
+{"finding":{"osv":"GO-2026-6443","trace":[{"module":"google.golang.org/grpc","version":"v1.84.0","package":"google.golang.org/grpc/internal/transport","function":"HandleStreams","receiver":"*http2Server"}]}}
+{"finding":{"osv":"GO-2099-0001","trace":[{"module":"example.org/fake","version":"v1.0.0","package":"example.org/fake","function":"Parse"}]}}

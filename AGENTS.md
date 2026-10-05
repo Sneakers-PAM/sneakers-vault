@@ -45,6 +45,9 @@ or values.
   `gen/go/thirdparty/` come from the commits pinned in `proto-refs.env` (see docs/api.md,
   "Calling other services").
 - Images: `docker build --target vault .` (or `workflow`, `seed-catalog`, `seed`).
+- Vulnerabilities: `task vuln` runs govulncheck as CI does (`scripts/govulncheck.sh`): any called
+  finding fails unless its ID is in `govulncheck-allow.txt`, which says why and when each entry
+  goes. `scripts/govulncheck_test.sh` checks the filter itself.
 - License headers: `task license` (golic, the Apache-2.0 SPDX header in `.golic.yaml`).
 
 ## Logging

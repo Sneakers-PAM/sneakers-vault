@@ -72,8 +72,15 @@ jobs:
         with:
           path: ${{ runner.temp }}/govulncheck/bin
           key: ${{ steps.govulncheck-cache.outputs.cache-primary-key }}
+      # govulncheck has no ignore flag: scripts/govulncheck.sh fails on any
+      # called finding not in govulncheck-allow.txt, and the filter's own test
+      # runs first so a broken filter can't hide a finding.
+      - name: Check the govulncheck filter
+        run: scripts/govulncheck_test.sh
       - name: Run govulncheck
-        run: '"$RUNNER_TEMP/govulncheck/bin/govulncheck" ./...'
+        env:
+          GOVULNCHECK: ${{ runner.temp }}/govulncheck/bin/govulncheck
+        run: scripts/govulncheck.sh
 
   gosec:
     name: 🔐 Gosec

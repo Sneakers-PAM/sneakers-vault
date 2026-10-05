@@ -1,0 +1,12 @@
+# govulncheck findings this repo allows, one OSV ID per line. scripts/govulncheck.sh
+# fails on any other finding the code calls. Keep each entry narrow and dated.
+#
+# GO-2026-6443 (CVE-2026-84445, GHSA-2v4p-qf9q-27wj): gRPC server panic on a
+# request with neither :authority nor Host. Reason: no xDS routing. The panic
+# needs a server built with xds.NewGRPCServer; this service imports no xDS
+# package. google.golang.org/grpc v1.84.0 (required by go-buildinfo v1.0.0) is
+# flagged by the Go vulnerability database although the advisory lists the fix
+# as backported to 1.84.0.
+# Tracking: https://github.com/Sneakers-PAM/sneakers-release/issues/51
+# Remove when grpc 1.84.1+ or 1.85 is released.
+GO-2026-6443
