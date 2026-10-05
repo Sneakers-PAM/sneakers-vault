@@ -89,6 +89,10 @@ docker build --target vault .     # or workflow, seed-catalog, seed
   [proto/sneakers/workflow/v1/workflow.proto](proto/sneakers/workflow/v1/workflow.proto): the API
   definitions.
 
+## 🙏 Acknowledgements
+
+Sneakers-PAM was originally written by [@Bugs5382](https://github.com/Bugs5382).
+
 ## ⚖️ License
 
 Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
