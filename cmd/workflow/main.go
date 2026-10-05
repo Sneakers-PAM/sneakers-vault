@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Bugs5382/go-buildinfo/health"
 	log "github.com/Bugs5382/go-log"
 	otel "github.com/Bugs5382/go-otel"
 	postgres "github.com/Bugs5382/go-postgres"
@@ -17,7 +18,6 @@ import (
 	sagapg "github.com/Bugs5382/go-saga-orchestration/store/postgres"
 	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/health"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/auditclient"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/grpcsvc"
@@ -125,7 +125,7 @@ func main() {
 
 	authOpts := mustCallerAuth(ctx, logger, svcLog)
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	checker := health.New(svcLog, dependencies(db, vault.Conn(), auditConn)...)
+	checker := mustChecker(logger, svcLog, dependencies(db, vault.Conn(), auditConn))
 	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, func(gs *grpc.Server) {
 		grpcsvc.Register(gs, svc)
 	}, authOpts...); err != nil {
@@ -138,20 +138,31 @@ func main() {
 // vault outage (already shown by the vault's own readiness) doesn't also pull
 // the workflow; the calls that need it fail on their own and the saga steps
 // retry. Audit is optional: a failed emit is logged and the call goes on.
-func dependencies(db health.Pinger, vault, audit grpc.ClientConnInterface) []health.Dep {
-	return []health.Dep{
-		health.Postgres(db),
-		health.GRPCPeer("vault", vault, false),
-		health.GRPCPeer("audit", audit, false),
+func dependencies(db server.Database, vault, audit grpc.ClientConnInterface) []health.Dependency {
+	return []health.Dependency{
+		server.Postgres(db),
+		server.GRPCPeer("vault", vault, false),
+		server.GRPCPeer("audit", audit, false),
 	}
+}
+
+// mustChecker builds readiness over deps. A dependency list it refuses is a
+// programming error, so the process stops.
+func mustChecker(logger zerolog.Logger, lg log.Logger, deps []health.Dependency) *health.Checker {
+	c, err := server.NewChecker(lg, deps)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("health checker")
+	}
+	return c
 }
 
 // recordDBVersion reads the database version once for the health check
 // headers. A failure only costs the diagnostics that one value.
 func recordDBVersion(ctx context.Context, logger zerolog.Logger, db *postgres.DB) {
-	if err := server.RecordPostgresVersion(ctx, db.Querier()); err != nil {
-		logger.Warn().Err(err).Msg("database version not read; diagnostics will not show it")
+	v, err := server.PostgresVersion(db.Querier())(ctx)
+	if err != nil {
+		logger.Warn().Err(err).Msg("database version not read; the health check reports it as unknown until it is")
 		return
 	}
-	logger.Info().Str("postgresql_version", server.DependencyVersion(server.DependencyPostgres)).Msg("database version read")
+	logger.Info().Str("postgresql_version", v).Msg("database version read")
 }

@@ -12,8 +12,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/Bugs5382/go-buildinfo/health"
 	log "github.com/Bugs5382/go-log"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/health"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -50,6 +50,10 @@ func RunWithHealth(ctx context.Context, port string, lg log.Logger, checker *hea
 	if lg == nil {
 		lg = log.Nop()
 	}
+	hs, bi, err := newHealth(checker)
+	if err != nil {
+		return fmt.Errorf("health: %w", err)
+	}
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
@@ -75,17 +79,21 @@ func RunWithHealth(ctx context.Context, port string, lg log.Logger, checker *hea
 	// panics on a second).
 	defaults := []grpc.ServerOption{
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
-		grpc.ChainUnaryInterceptor(RecoveryUnaryInterceptor(lg), VersionUnaryInterceptor()),
-		grpc.ChainStreamInterceptor(RecoveryStreamInterceptor(lg)),
+		grpc.ChainUnaryInterceptor(RecoveryUnaryInterceptor(lg), bi.UnaryServerInterceptor(), reportUnaryInterceptor(checker)),
+		grpc.ChainStreamInterceptor(RecoveryStreamInterceptor(lg), bi.StreamServerInterceptor()),
 	}
 	opts = append(defaults, opts...)
 
 	s := grpc.NewServer(opts...)
-	healthpb.RegisterHealthServer(s, newHealthServer(checker))
+	healthpb.RegisterHealthServer(s, hs)
 	reflection.Register(s)
 	if register != nil {
 		register(s)
 	}
+
+	biCtx, stopBI := context.WithCancel(ctx)
+	defer stopBI()
+	go bi.Run(biCtx)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -98,6 +106,7 @@ func RunWithHealth(ctx context.Context, port string, lg log.Logger, checker *hea
 
 	select {
 	case <-ctx.Done():
+		hs.Shutdown()
 		stopped := make(chan struct{})
 		go func() {
 			s.GracefulStop()

@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Bugs5382/go-buildinfo/health"
 	log "github.com/Bugs5382/go-log"
 	otel "github.com/Bugs5382/go-otel"
 	postgres "github.com/Bugs5382/go-postgres"
@@ -23,7 +24,6 @@ import (
 	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	notifyv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/notify/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/health"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/auditclient"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
@@ -286,7 +286,7 @@ func main() {
 		logger.Fatal().Err(err).Msg("workload auth")
 	}
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	checker := health.New(svcLog, dependencies(db, auditConn, notifyConn, valkeyPing)...)
+	checker := mustChecker(logger, svcLog, dependencies(db, auditConn, notifyConn, valkeyPing))
 	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, srv.RegisterInto, append(authOpts, grpc.ChainUnaryInterceptor(srv.PersistUnary))...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
 	}
@@ -298,24 +298,35 @@ func main() {
 // record to audit (break-glass) still fail closed on their own. Valkey, when
 // configured, only carries cache invalidation between replicas, so it's
 // optional too; a nil valkey leaves it out.
-func dependencies(db health.Pinger, audit, notify grpc.ClientConnInterface, valkey func(context.Context) error) []health.Dep {
-	deps := []health.Dep{
-		health.Postgres(db),
-		health.GRPCPeer("audit", audit, false),
-		health.GRPCPeer("notify", notify, false),
+func dependencies(db server.Database, audit, notify grpc.ClientConnInterface, valkey func(context.Context) error) []health.Dependency {
+	deps := []health.Dependency{
+		server.Postgres(db),
+		server.GRPCPeer("audit", audit, false),
+		server.GRPCPeer("notify", notify, false),
 	}
 	if valkey != nil {
-		deps = append(deps, health.Dep{Name: "valkey", Check: valkey})
+		deps = append(deps, health.Dependency{Name: "valkey", Check: valkey})
 	}
 	return deps
+}
+
+// mustChecker builds readiness over deps. A dependency list it refuses is a
+// programming error, so the process stops.
+func mustChecker(logger zerolog.Logger, lg log.Logger, deps []health.Dependency) *health.Checker {
+	c, err := server.NewChecker(lg, deps)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("health checker")
+	}
+	return c
 }
 
 // recordDBVersion reads the database version once for the health check
 // headers. A failure only costs the diagnostics that one value.
 func recordDBVersion(ctx context.Context, logger zerolog.Logger, db *postgres.DB) {
-	if err := server.RecordPostgresVersion(ctx, db.Querier()); err != nil {
-		logger.Warn().Err(err).Msg("database version not read; diagnostics will not show it")
+	v, err := server.PostgresVersion(db.Querier())(ctx)
+	if err != nil {
+		logger.Warn().Err(err).Msg("database version not read; the health check reports it as unknown until it is")
 		return
 	}
-	logger.Info().Str("postgresql_version", server.DependencyVersion(server.DependencyPostgres)).Msg("database version read")
+	logger.Info().Str("postgresql_version", v).Msg("database version read")
 }

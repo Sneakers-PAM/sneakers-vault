@@ -24,7 +24,8 @@ or values.
   (the RACI engine), `workloadid` (connector identity), `certsvc`, `catalogseed`, and the audit and
   notify clients.
 - `internal/workflow/` - the workflow service: `grpcsvc` (service, saga, store) and `vaultclient`.
-- `internal/config/`, `internal/server/` - the env loader and the gRPC server bootstrap both use.
+- `internal/config/`, `internal/server/` - the env loader and the gRPC server bootstrap both use,
+  with the health service and readiness checks from `github.com/Bugs5382/go-buildinfo`.
 - `internal/workloadauth/` - service-to-service authentication (workload token verifier, per-method
   allow-list interceptors, caller credentials). Self-contained and copied byte for byte into the
   other services; change it here first. See docs/workload-auth.md.
@@ -44,6 +45,9 @@ or values.
   `gen/go/thirdparty/` come from the commits pinned in `proto-refs.env` (see docs/api.md,
   "Calling other services").
 - Images: `docker build --target vault .` (or `workflow`, `seed-catalog`, `seed`).
+- Vulnerabilities: `task vuln` runs govulncheck as CI does (`scripts/govulncheck.sh`): any called
+  finding fails unless its ID is in `govulncheck-allow.txt`, which says why and when each entry
+  goes. `scripts/govulncheck_test.sh` checks the filter itself.
 - License headers: `task license` (golic, the Apache-2.0 SPDX header in `.golic.yaml`).
 
 ## Logging
