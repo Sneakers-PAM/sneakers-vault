@@ -132,6 +132,15 @@ Run `seed-catalog` after each deploy (the `seed-catalog` image) to upsert new bu
 an existing store. It publishes a reload, so running replicas pick the change up without a
 restart.
 
+## Read-only maintenance
+
+Set `MAINTENANCE_READONLY=true` on both services (the chart does it for an upgrade) and let the
+pods restart. Each logs at info that the mode is on. Users can still sign in, browse and reveal;
+changes are refused with `MAINTENANCE_READONLY`; the connector gets no new jobs; the KEK
+schedule, the lease reaper and the history purge wait. Set it back to `false` to end it: the
+paused work runs on its next tick. See [api.md](api.md#read-only-maintenance) for what is
+refused.
+
 ## Request history
 
 Resolved access requests are deleted after the retention window. The workflow service runs the

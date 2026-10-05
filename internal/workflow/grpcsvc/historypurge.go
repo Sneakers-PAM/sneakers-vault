@@ -40,6 +40,10 @@ func (s *Server) RunHistoryPurge(ctx context.Context, interval time.Duration, va
 // resolved access requests deleted.
 func (s *Server) purgeHistoryOnce(ctx context.Context, vault vaultv1.VaultServiceClient) int {
 	l := s.lg(ctx)
+	if s.maint.On() {
+		l.Debug("history-purge: paused for read-only maintenance")
+		return 0
+	}
 	days := s.retentionDays(ctx, vault)
 	cutoff := time.Now().UTC().AddDate(0, 0, -days).Format(time.RFC3339)
 	n, err := s.store.PurgeResolvedRequestsOlderThan(ctx, cutoff)

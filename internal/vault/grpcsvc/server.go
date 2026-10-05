@@ -23,6 +23,7 @@ import (
 	postgres "github.com/Bugs5382/go-postgres"
 	bredis "github.com/Bugs5382/go-redis"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/maintenance"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/audit"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/authz"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
@@ -86,8 +87,10 @@ type Server struct {
 	store    Store
 	hb       *heartbeatStore
 	contacts *connectorStore
-	vers     *versionStore
-	rot      *rotationStore
+	// maint is the read-only maintenance switch; nil is off.
+	maint *maintenance.Mode
+	vers  *versionStore
+	rot   *rotationStore
 	// mfaMaxAge is how recent MFA must be (MFA_MAX_AGE); 0 = default.
 	mfaMaxAge time.Duration
 	// uses holds secret use handles and use grants, shared by every replica.

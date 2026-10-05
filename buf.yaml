@@ -10,3 +10,9 @@ lint:
   use: [STANDARD]
 breaking:
   use: [FILE]
+  # The read-only maintenance mode reads which RPCs are reads from their
+  # idempotency level, so marking an existing RPC NO_SIDE_EFFECTS (or taking
+  # the mark off) is a deliberate classification change, pinned by the
+  # services' maintenance tests. Over gRPC the level changes nothing on the wire.
+  except:
+    - RPC_SAME_IDEMPOTENCY_LEVEL

@@ -300,6 +300,10 @@ func (s *Server) ClaimDueRotations(ctx context.Context, req *vaultv1.ClaimDueRot
 	if s.rot == nil {
 		return nil, status.Error(codes.Unavailable, "rotation queue not configured")
 	}
+	if s.maint.On() {
+		s.lg(ctx).Debug("rotation claim answered empty: read-only maintenance")
+		return &vaultv1.ClaimDueRotationsResponse{}, nil
+	}
 	limit := int(req.GetLimit())
 	if limit <= 0 || limit > 100 {
 		limit = 50

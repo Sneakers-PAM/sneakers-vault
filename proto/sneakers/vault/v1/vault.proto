@@ -1208,13 +1208,19 @@ message RevokeUseGrantRequest { ActorContext actor = 1; string grant_id = 2; }
 message RevokeUseGrantResponse { UseGrant grant = 1; }
 
 service VaultService {
-  rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse);
+  rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SaveConnection(SaveConnectionRequest) returns (SaveConnectionResponse);
   rpc DeleteConnection(DeleteConnectionRequest) returns (DeleteConnectionResponse);
-  rpc ListTargets(ListTargetsRequest) returns (ListTargetsResponse);
+  rpc ListTargets(ListTargetsRequest) returns (ListTargetsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SaveTarget(SaveTargetRequest) returns (SaveTargetResponse);
   rpc DeleteTarget(DeleteTargetRequest) returns (DeleteTargetResponse);
-  rpc GetTargetRuleset(GetTargetRulesetRequest) returns (GetTargetRulesetResponse);
+  rpc GetTargetRuleset(GetTargetRulesetRequest) returns (GetTargetRulesetResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SetTargetRuleset(SetTargetRulesetRequest) returns (SetTargetRulesetResponse);
 
   // Certificates: import a certificate file into a secret, export a
@@ -1225,17 +1231,23 @@ service VaultService {
   rpc ReplaceCertificate(ReplaceCertificateRequest) returns (ReplaceCertificateResponse);
 
   // Secret types
-  rpc ListSecretTypes(ListSecretTypesRequest) returns (ListSecretTypesResponse);
+  rpc ListSecretTypes(ListSecretTypesRequest) returns (ListSecretTypesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc CreateSecretType(CreateSecretTypeRequest) returns (CreateSecretTypeResponse);
   rpc UpdateSecretType(UpdateSecretTypeRequest) returns (UpdateSecretTypeResponse);
   rpc DeleteSecretType(DeleteSecretTypeRequest) returns (DeleteSecretTypeResponse);
   rpc CloneSecretType(CloneSecretTypeRequest) returns (CloneSecretTypeResponse);
-  rpc ListAvailableExtensions(ListAvailableExtensionsRequest) returns (ListAvailableExtensionsResponse);
+  rpc ListAvailableExtensions(ListAvailableExtensionsRequest) returns (ListAvailableExtensionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc ImportExtension(ImportExtensionRequest) returns (ImportExtensionResponse);
   rpc ImportExtensionFromJson(ImportExtensionFromJsonRequest) returns (ImportExtensionFromJsonResponse);
 
   // Folders
-  rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse);
+  rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse);
   rpc RenameFolder(RenameFolderRequest) returns (RenameFolderResponse);
   rpc MoveFolder(MoveFolderRequest) returns (MoveFolderResponse);
@@ -1245,32 +1257,52 @@ service VaultService {
   // Folder RBAC (legacy FolderAccessRule API — retained for the current UI;
   // superseded by the firewall-RACI ruleset below, which is the enforcement
   // source of truth).
-  rpc ListFolderRules(ListFolderRulesRequest) returns (ListFolderRulesResponse);
-  rpc GetInheritedFolderRules(GetInheritedFolderRulesRequest) returns (GetInheritedFolderRulesResponse);
+  rpc ListFolderRules(ListFolderRulesRequest) returns (ListFolderRulesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetInheritedFolderRules(GetInheritedFolderRulesRequest) returns (GetInheritedFolderRulesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc AddFolderRule(AddFolderRuleRequest) returns (AddFolderRuleResponse);
   rpc RemoveFolderRule(RemoveFolderRuleRequest) returns (RemoveFolderRuleResponse);
 
   // Firewall-RACI folder access (the authz engine): ordered rules + owners per
   // folder, evaluated down the folder chain. Enforcement source of truth.
-  rpc GetFolderRuleset(GetFolderRulesetRequest) returns (GetFolderRulesetResponse);
+  rpc GetFolderRuleset(GetFolderRulesetRequest) returns (GetFolderRulesetResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SetFolderRuleset(SetFolderRulesetRequest) returns (SetFolderRulesetResponse);
   rpc SetFolderRevealStepUp(SetFolderRevealStepUpRequest) returns (SetFolderRevealStepUpResponse);
-  rpc GetMyAccess(GetMyAccessRequest) returns (GetMyAccessResponse);
-  rpc SimulateFolder(SimulateFolderRequest) returns (SimulateFolderResponse);
-  rpc SimulateSecret(SimulateSecretRequest) returns (SimulateSecretResponse);
+  rpc GetMyAccess(GetMyAccessRequest) returns (GetMyAccessResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc SimulateFolder(SimulateFolderRequest) returns (SimulateFolderResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc SimulateSecret(SimulateSecretRequest) returns (SimulateSecretResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Secrets
-  rpc ListSecretsInFolder(ListSecretsInFolderRequest) returns (ListSecretsInFolderResponse);
-  rpc GetSecret(GetSecretRequest) returns (GetSecretResponse);
+  rpc ListSecretsInFolder(ListSecretsInFolderRequest) returns (ListSecretsInFolderResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetSecret(GetSecretRequest) returns (GetSecretResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc CreateSecret(CreateSecretRequest) returns (CreateSecretResponse);
   rpc UpdateSecret(UpdateSecretRequest) returns (UpdateSecretResponse);
   rpc SetSecretAutomation(SetSecretAutomationRequest) returns (SetSecretAutomationResponse);
-  rpc GetSecretFields(GetSecretFieldsRequest) returns (GetSecretFieldsResponse);
+  rpc GetSecretFields(GetSecretFieldsRequest) returns (GetSecretFieldsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc RevealSecretField(RevealSecretFieldRequest) returns (RevealSecretFieldResponse);
   // Reveal for non-human principals (service accounts, workloads): RACI-read
   // + full audit, no interactive checkout/MFA.
   rpc RevealSecretFieldForPrincipal(RevealSecretFieldForPrincipalRequest) returns (RevealSecretFieldForPrincipalResponse);
-  rpc ListSecretsForPrincipal(ListSecretsForPrincipalRequest) returns (ListSecretsForPrincipalResponse);
+  rpc ListSecretsForPrincipal(ListSecretsForPrincipalRequest) returns (ListSecretsForPrincipalResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc CreateSecretForPrincipal(CreateSecretForPrincipalRequest) returns (CreateSecretForPrincipalResponse);
   rpc GenerateSecretForPrincipal(GenerateSecretForPrincipalRequest) returns (GenerateSecretForPrincipalResponse);
   rpc MoveSecretForPrincipal(MoveSecretForPrincipalRequest) returns (MoveSecretForPrincipalResponse);
@@ -1279,13 +1311,17 @@ service VaultService {
   // list/create/rename/move folders. No machine delete.
   rpc RenameSecretForPrincipal(RenameSecretForPrincipalRequest) returns (RenameSecretForPrincipalResponse);
   rpc UpdateSecretFieldsForPrincipal(UpdateSecretFieldsForPrincipalRequest) returns (UpdateSecretFieldsForPrincipalResponse);
-  rpc ListFoldersForPrincipal(ListFoldersForPrincipalRequest) returns (ListFoldersForPrincipalResponse);
+  rpc ListFoldersForPrincipal(ListFoldersForPrincipalRequest) returns (ListFoldersForPrincipalResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc CreateFolderForPrincipal(CreateFolderForPrincipalRequest) returns (CreateFolderForPrincipalResponse);
   rpc RenameFolderForPrincipal(RenameFolderForPrincipalRequest) returns (RenameFolderForPrincipalResponse);
   rpc MoveFolderForPrincipal(MoveFolderForPrincipalRequest) returns (MoveFolderForPrincipalResponse);
   // Per-secret value history: list prior versions (metadata + field keys) and
   // reveal a single field's value from a specific version (audited).
-  rpc ListSecretVersions(ListSecretVersionsRequest) returns (ListSecretVersionsResponse);
+  rpc ListSecretVersions(ListSecretVersionsRequest) returns (ListSecretVersionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc RevealSecretVersionField(RevealSecretVersionFieldRequest) returns (RevealSecretVersionFieldResponse);
   rpc RestoreSecretVersion(RestoreSecretVersionRequest) returns (RestoreSecretVersionResponse);
   // Emergency access: bypasses checkout/approval gating for a read-eligible
@@ -1296,16 +1332,28 @@ service VaultService {
   rpc RetireSecret(RetireSecretRequest) returns (RetireSecretResponse);
   rpc RestoreSecret(RestoreSecretRequest) returns (RestoreSecretResponse);
   rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse);
-  rpc GetSecretStats(GetSecretStatsRequest) returns (GetSecretStatsResponse);
-  rpc GetTopAccessedSecrets(GetTopAccessedSecretsRequest) returns (GetTopAccessedSecretsResponse);
-  rpc ListSecretsByStatus(ListSecretsByStatusRequest) returns (ListSecretsByStatusResponse);
-  rpc FindSecretsByPublicKey(FindSecretsByPublicKeyRequest) returns (FindSecretsByPublicKeyResponse);
+  rpc GetSecretStats(GetSecretStatsRequest) returns (GetSecretStatsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetTopAccessedSecrets(GetTopAccessedSecretsRequest) returns (GetTopAccessedSecretsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ListSecretsByStatus(ListSecretsByStatusRequest) returns (ListSecretsByStatusResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc FindSecretsByPublicKey(FindSecretsByPublicKeyRequest) returns (FindSecretsByPublicKeyResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Firewall-RACI secret access (the authz engine): ordered rules on a single
   // secret, evaluated before falling through to its folder's ruleset.
-  rpc GetSecretRuleset(GetSecretRulesetRequest) returns (GetSecretRulesetResponse);
+  rpc GetSecretRuleset(GetSecretRulesetRequest) returns (GetSecretRulesetResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SetSecretRuleset(SetSecretRulesetRequest) returns (SetSecretRulesetResponse);
-  rpc GetMySecretAccess(GetMySecretAccessRequest) returns (GetMySecretAccessResponse);
+  rpc GetMySecretAccess(GetMySecretAccessRequest) returns (GetMySecretAccessResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Connector / heartbeat — called by the connector worker, identity-gated.
   rpc ClaimDueHeartbeats(ClaimDueHeartbeatsRequest) returns (ClaimDueHeartbeatsResponse);
@@ -1321,13 +1369,19 @@ service VaultService {
   // Connector builds: each connector's build (from the sneakers-version and
   // sneakers-commit metadata of its pull calls) and its last contact, for the
   // gateway's diagnostics. Caller gateway only, as itself.
-  rpc ListConnectors(ListConnectorsRequest) returns (ListConnectorsResponse);
+  rpc ListConnectors(ListConnectorsRequest) returns (ListConnectorsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Instance configuration: password policies + security settings
-  rpc ListPasswordPolicies(ListPasswordPoliciesRequest) returns (ListPasswordPoliciesResponse);
+  rpc ListPasswordPolicies(ListPasswordPoliciesRequest) returns (ListPasswordPoliciesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SavePasswordPolicy(SavePasswordPolicyRequest) returns (SavePasswordPolicyResponse);
   rpc DeletePasswordPolicy(DeletePasswordPolicyRequest) returns (DeletePasswordPolicyResponse);
-  rpc GetSecuritySettings(GetSecuritySettingsRequest) returns (GetSecuritySettingsResponse);
+  rpc GetSecuritySettings(GetSecuritySettingsRequest) returns (GetSecuritySettingsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc UpdateSecuritySettings(UpdateSecuritySettingsRequest) returns (UpdateSecuritySettingsResponse);
 
   // Install the built-in baseline (secret types, extension catalog, default
@@ -1340,7 +1394,9 @@ service VaultService {
   // Generate a fresh SSH keypair server-side. The private key is
   // returned once for the caller to store as a secret field; it is never
   // persisted by the vault itself.
-  rpc GenerateKeyPair(GenerateKeyPairRequest) returns (GenerateKeyPairResponse);
+  rpc GenerateKeyPair(GenerateKeyPairRequest) returns (GenerateKeyPairResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Rotates the active working-KEK: mints a new KEK, activates it, and
   // sweeps existing records to re-wrap their DEKs under it.
@@ -1348,12 +1404,18 @@ service VaultService {
   // Seals field sets for an import without storing them (migrate caller only).
   rpc SealForImport(SealForImportRequest) returns (SealForImportResponse);
   rpc PrepareSecretUse(PrepareSecretUseRequest) returns (PrepareSecretUseResponse);
-  rpc GetSecretUse(GetSecretUseRequest) returns (GetSecretUseResponse);
-  rpc ListPendingSecretUses(ListPendingSecretUsesRequest) returns (ListPendingSecretUsesResponse);
+  rpc GetSecretUse(GetSecretUseRequest) returns (GetSecretUseResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ListPendingSecretUses(ListPendingSecretUsesRequest) returns (ListPendingSecretUsesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc DecideSecretUse(DecideSecretUseRequest) returns (DecideSecretUseResponse);
   rpc RedeemSecretUse(RedeemSecretUseRequest) returns (RedeemSecretUseResponse);
   rpc CreateUseGrant(CreateUseGrantRequest) returns (CreateUseGrantResponse);
-  rpc ListUseGrants(ListUseGrantsRequest) returns (ListUseGrantsResponse);
+  rpc ListUseGrants(ListUseGrantsRequest) returns (ListUseGrantsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc RevokeUseGrant(RevokeUseGrantRequest) returns (RevokeUseGrantResponse);
   rpc SetSecretTokenApproval(SetSecretTokenApprovalRequest) returns (SetSecretTokenApprovalResponse);
   rpc SetSecretTargetForPrincipal(SetSecretTargetForPrincipalRequest) returns (SetSecretTargetForPrincipalResponse);

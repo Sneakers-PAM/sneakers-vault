@@ -14,6 +14,7 @@ at start. `.env.example` holds safe local defaults.
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `localhost:4317` | OpenTelemetry OTLP gRPC endpoint for traces and metrics. |
 | `LOG_LEVEL`, `LOG_FORMAT` | `go-log` defaults | Log level and format. Local development uses `trace` and `console`; clusters log JSON. |
 | `MFA_MAX_AGE` | `5m` | How recent a user's MFA must be for every MFA-freshness check: version history and restore, step-up on reveal and copy, and checking out a sensitive secret. A Go duration from `1m` to `1h`; anything else stops the boot. Set the same value on both services. |
+| `MAINTENANCE_READONLY` | `false` | `true` starts the service in read-only maintenance ([api.md](api.md#read-only-maintenance)): every mutating call is refused with `MAINTENANCE_READONLY`, reads and reveals keep working, and the scheduled writers pause. The chart sets it on both services for an upgrade; changing it restarts the pods. Anything but a bool stops the boot. |
 
 ### Service-to-service authentication
 
@@ -101,6 +102,7 @@ exits. Run it from a daily scheduled job; the workflow service also runs the sam
 | `DATABASE_DSN` | (required) | The workflow database. |
 | `VAULT_ADDR` | (none) | When reachable, the window comes from the vault's `request_history_retention_days`. |
 | `RETENTION_DAYS` | (none) | An explicit window in days; wins when greater than 0. |
+| `MAINTENANCE_READONLY` | `false` | `true` purges nothing and exits 0. |
 
 The window is `RETENTION_DAYS`, else the vault setting, else 90 days.
 

@@ -257,6 +257,31 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 - **Retention:** resolved requests and their comments are purged after
   `request_history_retention_days` (vault security settings, default 90), daily and at start.
 
+## Read-only maintenance
+
+With `MAINTENANCE_READONLY=true` ([configuration.md](configuration.md)) both services refuse
+every mutating call with `FAILED_PRECONDITION` and a `google.rpc.ErrorInfo` whose reason is
+`MAINTENANCE_READONLY` (domain `sneakers.vault` or `sneakers.workflow`). The refusal comes after
+workload authentication, so an unknown caller is still refused as one. Health checks are never
+refused.
+
+- **Reads** are declared on the protos: a method with `option idempotency_level =
+  NO_SIDE_EFFECTS;` is always served. A new RPC is a mutation until it's marked, and the
+  maintenance tests list every method, so a new one has to be placed on purpose.
+- **Served anyway** (most of them write, but must keep working): the reveals (`RevealSecretField`,
+  `RevealSecretFieldForPrincipal`, `RevealSecretVersionField`, `CopySecret`, `ExportCertificate`),
+  which only count the view; and the connector's pull-API. `ClaimDueHeartbeats` and
+  `ClaimDueRotations` answer with no jobs, so no new heartbeat or rotation starts;
+  `RevealForHeartbeat`, `ReportHeartbeat` and `ReportRotation` finish work claimed before the mode
+  went on (a reported rotation records a password the connector already changed on the target).
+  `RevealForRotation` is refused, because it would start a new change on a target.
+  `GetHeartbeatStatusForPrincipal`, a status read without the proto mark, is served too.
+- **Refused:** everything else, including check-out, check-in, rotation requests, break-glass,
+  approvals, imports and every create, update and delete.
+- **Paused:** the vault's KEK rotation schedule, and the workflow's lease reaper and history
+  purge (and `workflow-purge`). A lease that expires during maintenance is returned on the
+  reaper's first pass after.
+
 ## Callers
 
 Every call is authenticated with the caller's workload identity; see
