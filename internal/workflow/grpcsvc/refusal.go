@@ -20,6 +20,9 @@ const (
 	// ReasonCheckoutLeaseHeld carries metadata holder_user_id.
 	ReasonCheckoutLeaseHeld = "CHECKOUT_LEASE_HELD"
 	ReasonCheckinNotHolder  = "CHECKIN_NOT_HOLDER"
+	// ReasonRequestNotPending refuses to resolve a request that's already
+	// approved or denied.
+	ReasonRequestNotPending = "REQUEST_NOT_PENDING"
 )
 
 // refuse builds a status with an ErrorInfo detail for reason.

@@ -229,6 +229,11 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   resolves their own request. Refusals are `PermissionDenied` with reason `NOT_APPROVER` or
   `SELF_APPROVAL` (domain `sneakers.workflow`), audited as `approval.denied`, and the request
   stays pending.
+- **Resolved once:** approving or denying a request that's already approved or denied is
+  refused with `FailedPrecondition` and reason `REQUEST_NOT_PENDING` (domain
+  `sneakers.workflow`), audited as `approval.denied`, and nothing changes: the first decision
+  stands, and no lease, grant or move follows. The store checks and writes the status in one
+  statement, so two approvers racing on one request can't both resolve it.
 - **Retention:** resolved requests and their comments are purged after
   `request_history_retention_days` (vault security settings, default 90), daily and at start.
 
