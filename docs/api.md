@@ -99,6 +99,16 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   `allow_reveal` covers it). It doesn't apply to service accounts, which have no person to
   approve: their reveals are governed by their RACI grants and by `allow_api_for_sensitive`
   (off by default, which keeps super-sensitive fields from them).
+- **Runs of secret uses:** `PrepareSecretUse` takes an optional `run_id` and `purpose`, stored on
+  the `SecretUse`, so the uses one agent run raises can be shown and decided on one page. `run_id`
+  must match `[A-Za-z0-9_-]{1,64}`; `purpose` is at most 200 characters of plain text (valid
+  UTF-8, no control characters such as newlines or tabs). Either one out of range is
+  `InvalidArgument`. A run id only groups uses for display and grants nothing. Every
+  `secret.use.*` audit event (prepare, approve, deny, redeem, and their refusals) carries
+  `run_id`, empty for a use without one. `ListPendingSecretUses` takes an optional `run_id`
+  filter: the signed-in owner lists all their pending uses or one run's; a personal token lists
+  only its own token's pending uses, and only with a `run_id` (`PermissionDenied` without one).
+  Deciding stays one use at a time through `DecideSecretUse`, with its own checks and audit.
 - **Moves:** personal to shared is free. Shared to personal needs a site admin; for anyone else the
   vault moves nothing, answers `approval_required`, and the caller files a move request with the
   workflow service. A move is audited as `secret.move` (or `secret.move.principal`) with

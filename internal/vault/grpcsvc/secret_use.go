@@ -7,9 +7,12 @@ import (
 	"context"
 	"errors"
 	"path"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"google.golang.org/grpc/codes"
@@ -21,7 +24,28 @@ const (
 	redeemAfterApproval = time.Minute
 	useGrantMaxSpan     = 24 * time.Hour
 	maxUseArgv          = 64
+	maxUsePurpose       = 200
 )
+
+var useRunID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
+// checkUseRunID accepts an empty run id (optional) or one matching useRunID.
+func checkUseRunID(runID string) error {
+	if runID != "" && !useRunID.MatchString(runID) {
+		return status.Error(codes.InvalidArgument, "run_id must be 1 to 64 letters, digits, '_' or '-'")
+	}
+	return nil
+}
+
+// checkUsePurpose keeps purpose to one line of plain text: it is the agent's
+// own words, shown to the owner and written to audit.
+func checkUsePurpose(purpose string) error {
+	if !utf8.ValidString(purpose) || utf8.RuneCountInString(purpose) > maxUsePurpose ||
+		strings.ContainsFunc(purpose, unicode.IsControl) {
+		return status.Errorf(codes.InvalidArgument, "purpose must be plain text of at most %d characters", maxUsePurpose)
+	}
+	return nil
+}
 
 func (s *Server) clock() time.Time {
 	if s.now != nil {
@@ -40,7 +64,7 @@ func (s *Server) useStoreOrUnavailable() (useStore, error) {
 func useAttrs(u *vaultv1.SecretUse, extra map[string]string) map[string]string {
 	out := map[string]string{
 		"use_id": u.GetId(), "token_id": u.GetTokenId(), "field": u.GetFieldKey(),
-		"argv": strings.Join(u.GetArgv(), " "), "client_label": u.GetClientLabel(),
+		"argv": strings.Join(u.GetArgv(), " "), "client_label": u.GetClientLabel(), "run_id": u.GetRunId(),
 	}
 	for k, v := range extra {
 		out[k] = v
@@ -71,7 +95,7 @@ func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecre
 		return nil, status.Error(codes.PermissionDenied, "secret use is for personal tokens")
 	}
 	argv := req.GetArgv()
-	if err := checkUseArgv(req.GetReveal(), argv); err != nil {
+	if err := checkPrepareRequest(req); err != nil {
 		return nil, err
 	}
 	s.mu.RLock()
@@ -93,7 +117,7 @@ func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecre
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	attempt := map[string]string{"field": req.GetFieldKey(), "argv": strings.Join(argv, " "), "client_label": req.GetClientLabel()}
+	attempt := map[string]string{"field": req.GetFieldKey(), "argv": strings.Join(argv, " "), "client_label": req.GetClientLabel(), "run_id": req.GetRunId()}
 	if !readable {
 		s.useRefused(ctx, actor, "secret.use.prepare", req.GetSecretId(), "denied", "no read access", attempt)
 		return nil, status.Error(codes.PermissionDenied, "not permitted to use this secret")
@@ -108,6 +132,7 @@ func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecre
 		Argv: argv, UserId: actor.GetUserId(), TokenId: actor.GetTokenId(),
 		State: vaultv1.SecretUseState_SECRET_USE_STATE_PENDING, CreatedAtUnix: now.Unix(),
 		ExpiresAtUnix: now.Add(secretUseTTL).Unix(), ClientLabel: req.GetClientLabel(), Reveal: req.GetReveal(),
+		RunId: req.GetRunId(), Purpose: req.GetPurpose(),
 	}
 	if err := s.approveAtPrepare(ctx, st, use, sec, needsApproval, now); err != nil {
 		return nil, err
@@ -136,6 +161,16 @@ func (s *Server) approveAtPrepare(ctx context.Context, st useStore, use *vaultv1
 		use.ExpiresAtUnix = now.Add(redeemAfterApproval).Unix()
 	}
 	return nil
+}
+
+func checkPrepareRequest(req *vaultv1.PrepareSecretUseRequest) error {
+	if err := checkUseArgv(req.GetReveal(), req.GetArgv()); err != nil {
+		return err
+	}
+	if err := checkUseRunID(req.GetRunId()); err != nil {
+		return err
+	}
+	return checkUsePurpose(req.GetPurpose())
 }
 
 func checkUseArgv(reveal bool, argv []string) error {
@@ -231,14 +266,22 @@ func (s *Server) GetSecretUse(ctx context.Context, req *vaultv1.GetSecretUseRequ
 	return &vaultv1.GetSecretUseResponse{Use: use}, nil
 }
 
+// ListPendingSecretUses lists the signed-in owner's pending uses, optionally
+// of one run. A personal token may list only its own pending uses of one run,
+// so an agent can show what is still waiting in its run.
 func (s *Server) ListPendingSecretUses(ctx context.Context, req *vaultv1.ListPendingSecretUsesRequest) (*vaultv1.ListPendingSecretUsesResponse, error) {
 	st, err := s.useStoreOrUnavailable()
 	if err != nil {
 		return nil, err
 	}
-	actor := req.GetActor()
-	if actor.GetPrincipalKind() != vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN || actor.GetUserId() == "" {
-		return nil, status.Error(codes.PermissionDenied, "only the signed-in owner can review secret uses")
+	actor, runID := req.GetActor(), req.GetRunId()
+	if err := checkUseRunID(runID); err != nil {
+		return nil, err
+	}
+	human := actor.GetPrincipalKind() == vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN
+	token := isUserToken(actor) && actor.GetTokenId() != "" && runID != ""
+	if actor.GetUserId() == "" || (!human && !token) {
+		return nil, status.Error(codes.PermissionDenied, "only the signed-in owner, or a personal token for one of its runs, can list secret uses")
 	}
 	uses, err := st.PendingUses(ctx, actor.GetUserId())
 	if err != nil {
@@ -247,9 +290,12 @@ func (s *Server) ListPendingSecretUses(ctx context.Context, req *vaultv1.ListPen
 	now := s.clock().Unix()
 	out := make([]*vaultv1.SecretUse, 0, len(uses))
 	for _, u := range uses {
-		if now < u.GetExpiresAtUnix() {
-			out = append(out, u)
+		switch {
+		case now >= u.GetExpiresAtUnix(), runID != "" && u.GetRunId() != runID,
+			token && u.GetTokenId() != actor.GetTokenId():
+			continue
 		}
+		out = append(out, u)
 	}
 	return &vaultv1.ListPendingSecretUsesResponse{Uses: out}, nil
 }
@@ -302,7 +348,7 @@ func (s *Server) RedeemSecretUse(ctx context.Context, req *vaultv1.RedeemSecretU
 		return nil, err
 	}
 	if !isUserToken(actor) || actor.GetTokenId() != use.GetTokenId() || actor.GetUserId() != use.GetUserId() {
-		s.useRefused(ctx, actor, "secret.use.redeem", use.GetSecretId(), "denied", "not the preparing token", map[string]string{"use_id": use.GetId()})
+		s.useRefused(ctx, actor, "secret.use.redeem", use.GetSecretId(), "denied", "not the preparing token", map[string]string{"use_id": use.GetId(), "run_id": use.GetRunId()})
 		return nil, status.Error(codes.PermissionDenied, "only the token that prepared this use can redeem it")
 	}
 	if use.GetState() != vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED {

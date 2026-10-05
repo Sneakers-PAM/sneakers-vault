@@ -11447,7 +11447,9 @@ type SecretUse struct {
 	ExpiresAtUnix int64                  `protobuf:"varint,10,opt,name=expires_at_unix,json=expiresAtUnix,proto3" json:"expires_at_unix,omitempty"`
 	GrantId       string                 `protobuf:"bytes,11,opt,name=grant_id,json=grantId,proto3" json:"grant_id,omitempty"` // set when a use grant approved it
 	ClientLabel   string                 `protobuf:"bytes,12,opt,name=client_label,json=clientLabel,proto3" json:"client_label,omitempty"`
-	Reveal        bool                   `protobuf:"varint,13,opt,name=reveal,proto3" json:"reveal,omitempty"` // releases the value to the token itself rather than to a command; argv is empty
+	Reveal        bool                   `protobuf:"varint,13,opt,name=reveal,proto3" json:"reveal,omitempty"`           // releases the value to the token itself rather than to a command; argv is empty
+	RunId         string                 `protobuf:"bytes,14,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"` // groups the uses one agent run raised; display grouping only, grants nothing
+	Purpose       string                 `protobuf:"bytes,15,opt,name=purpose,proto3" json:"purpose,omitempty"`          // the agent's own words for the task; plain text, never trusted
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11573,6 +11575,20 @@ func (x *SecretUse) GetReveal() bool {
 	return false
 }
 
+func (x *SecretUse) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *SecretUse) GetPurpose() string {
+	if x != nil {
+		return x.Purpose
+	}
+	return ""
+}
+
 type PrepareSecretUseRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Actor         *ActorContext          `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor,omitempty"`
@@ -11581,6 +11597,8 @@ type PrepareSecretUseRequest struct {
 	Argv          []string               `protobuf:"bytes,4,rep,name=argv,proto3" json:"argv,omitempty"` // empty when reveal
 	ClientLabel   string                 `protobuf:"bytes,5,opt,name=client_label,json=clientLabel,proto3" json:"client_label,omitempty"`
 	Reveal        bool                   `protobuf:"varint,6,opt,name=reveal,proto3" json:"reveal,omitempty"`
+	RunId         string                 `protobuf:"bytes,7,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"` // optional; [A-Za-z0-9_-]{1,64}, else InvalidArgument
+	Purpose       string                 `protobuf:"bytes,8,opt,name=purpose,proto3" json:"purpose,omitempty"`          // optional; at most 200 characters of plain text, else InvalidArgument
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11655,6 +11673,20 @@ func (x *PrepareSecretUseRequest) GetReveal() bool {
 		return x.Reveal
 	}
 	return false
+}
+
+func (x *PrepareSecretUseRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *PrepareSecretUseRequest) GetPurpose() string {
+	if x != nil {
+		return x.Purpose
+	}
+	return ""
 }
 
 type PrepareSecretUseResponse struct {
@@ -11797,9 +11829,12 @@ func (x *GetSecretUseResponse) GetUse() *SecretUse {
 	return nil
 }
 
+// A signed-in owner lists their pending uses, optionally of one run. A personal
+// token lists only its own pending uses, and only of one run (run_id required).
 type ListPendingSecretUsesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Actor         *ActorContext          `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor,omitempty"`
+	RunId         string                 `protobuf:"bytes,2,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"` // optional filter; required for a personal token
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11839,6 +11874,13 @@ func (x *ListPendingSecretUsesRequest) GetActor() *ActorContext {
 		return x.Actor
 	}
 	return nil
+}
+
+func (x *ListPendingSecretUsesRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
 }
 
 type ListPendingSecretUsesResponse struct {
@@ -14767,7 +14809,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x15builtin_administrator\x18\a \x01(\bH\x00R\x14builtinAdministrator\x88\x01\x01B\x18\n" +
 	"\x16_builtin_administrator\"(\n" +
 	"\x16ReportRotationResponse\x12\x0e\n" +
-	"\x02ok\x18\x01 \x01(\bR\x02ok\"\x9d\x03\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\"\xce\x03\n" +
 	"\tSecretUse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsecret_id\x18\x02 \x01(\tR\bsecretId\x12\x1f\n" +
@@ -14783,23 +14825,28 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	" \x01(\x03R\rexpiresAtUnix\x12\x19\n" +
 	"\bgrant_id\x18\v \x01(\tR\agrantId\x12!\n" +
 	"\fclient_label\x18\f \x01(\tR\vclientLabel\x12\x16\n" +
-	"\x06reveal\x18\r \x01(\bR\x06reveal\"\xd9\x01\n" +
+	"\x06reveal\x18\r \x01(\bR\x06reveal\x12\x15\n" +
+	"\x06run_id\x18\x0e \x01(\tR\x05runId\x12\x18\n" +
+	"\apurpose\x18\x0f \x01(\tR\apurpose\"\x8a\x02\n" +
 	"\x17PrepareSecretUseRequest\x125\n" +
 	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12\x1b\n" +
 	"\tsecret_id\x18\x02 \x01(\tR\bsecretId\x12\x1b\n" +
 	"\tfield_key\x18\x03 \x01(\tR\bfieldKey\x12\x12\n" +
 	"\x04argv\x18\x04 \x03(\tR\x04argv\x12!\n" +
 	"\fclient_label\x18\x05 \x01(\tR\vclientLabel\x12\x16\n" +
-	"\x06reveal\x18\x06 \x01(\bR\x06reveal\"J\n" +
+	"\x06reveal\x18\x06 \x01(\bR\x06reveal\x12\x15\n" +
+	"\x06run_id\x18\a \x01(\tR\x05runId\x12\x18\n" +
+	"\apurpose\x18\b \x01(\tR\apurpose\"J\n" +
 	"\x18PrepareSecretUseResponse\x12.\n" +
 	"\x03use\x18\x01 \x01(\v2\x1c.sneakers.vault.v1.SecretUseR\x03use\"c\n" +
 	"\x13GetSecretUseRequest\x125\n" +
 	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12\x15\n" +
 	"\x06use_id\x18\x02 \x01(\tR\x05useId\"F\n" +
 	"\x14GetSecretUseResponse\x12.\n" +
-	"\x03use\x18\x01 \x01(\v2\x1c.sneakers.vault.v1.SecretUseR\x03use\"U\n" +
+	"\x03use\x18\x01 \x01(\v2\x1c.sneakers.vault.v1.SecretUseR\x03use\"l\n" +
 	"\x1cListPendingSecretUsesRequest\x125\n" +
-	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\"Q\n" +
+	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12\x15\n" +
+	"\x06run_id\x18\x02 \x01(\tR\x05runId\"Q\n" +
 	"\x1dListPendingSecretUsesResponse\x120\n" +
 	"\x04uses\x18\x01 \x03(\v2\x1c.sneakers.vault.v1.SecretUseR\x04uses\"\x80\x01\n" +
 	"\x16DecideSecretUseRequest\x125\n" +
