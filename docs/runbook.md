@@ -35,6 +35,16 @@ grpcurl -plaintext localhost:9091 grpc.health.v1.Health/Check   # vault
 grpcurl -plaintext localhost:9193 grpc.health.v1.Health/Check   # workflow
 ```
 
+To see which build is running, add `-v`: the answer's headers carry `sneakers-version`,
+`sneakers-commit` and, once the database version has been read at start,
+`sneakers-dep-postgres`. If the database version can't be read, start-up carries on and logs
+`database version not read` at warn. The image build stamps the version and commit from its
+`VERSION` and `COMMIT` build arguments:
+
+```bash
+docker build --target vault --build-arg VERSION=v0.1.0 --build-arg COMMIT="$(git rev-parse HEAD)" .
+```
+
 ## First-run setup
 
 Outside `dev`, a new vault starts empty. The gateway's first-run setup creates the first

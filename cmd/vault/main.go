@@ -230,6 +230,7 @@ func main() {
 		logger.Fatal().Err(err).Msg("db connect")
 	}
 	defer db.Close()
+	recordDBVersion(ctx, logger, db)
 
 	kb := mustBootKeyring(ctx, logger, db, rootKEK, rootRef)
 	envelope, keyring, keyringStore := kb.envelope, kb.keyring, kb.store
@@ -285,4 +286,14 @@ func main() {
 	if err := server.RunWithLogger(ctx, cfg.GRPCPort, svcLog, srv.RegisterInto, append(authOpts, grpc.ChainUnaryInterceptor(srv.PersistUnary))...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
 	}
+}
+
+// recordDBVersion reads the database version once for the health check
+// headers. A failure only costs the diagnostics that one value.
+func recordDBVersion(ctx context.Context, logger zerolog.Logger, db *postgres.DB) {
+	if err := server.RecordPostgresVersion(ctx, db.Querier()); err != nil {
+		logger.Warn().Err(err).Msg("database version not read; diagnostics will not show it")
+		return
+	}
+	logger.Info().Str("postgresql_version", server.DependencyVersion(server.DependencyPostgres)).Msg("database version read")
 }
