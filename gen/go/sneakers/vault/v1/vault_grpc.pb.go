@@ -98,6 +98,7 @@ const (
 	VaultService_ClaimDueRotations_FullMethodName               = "/sneakers.vault.v1.VaultService/ClaimDueRotations"
 	VaultService_RevealForRotation_FullMethodName               = "/sneakers.vault.v1.VaultService/RevealForRotation"
 	VaultService_ReportRotation_FullMethodName                  = "/sneakers.vault.v1.VaultService/ReportRotation"
+	VaultService_ListConnectors_FullMethodName                  = "/sneakers.vault.v1.VaultService/ListConnectors"
 	VaultService_ListPasswordPolicies_FullMethodName            = "/sneakers.vault.v1.VaultService/ListPasswordPolicies"
 	VaultService_SavePasswordPolicy_FullMethodName              = "/sneakers.vault.v1.VaultService/SavePasswordPolicy"
 	VaultService_DeletePasswordPolicy_FullMethodName            = "/sneakers.vault.v1.VaultService/DeletePasswordPolicy"
@@ -226,6 +227,10 @@ type VaultServiceClient interface {
 	ClaimDueRotations(ctx context.Context, in *ClaimDueRotationsRequest, opts ...grpc.CallOption) (*ClaimDueRotationsResponse, error)
 	RevealForRotation(ctx context.Context, in *RevealForRotationRequest, opts ...grpc.CallOption) (*RevealForRotationResponse, error)
 	ReportRotation(ctx context.Context, in *ReportRotationRequest, opts ...grpc.CallOption) (*ReportRotationResponse, error)
+	// Connector builds: each connector's build (from the sneakers-version and
+	// sneakers-commit metadata of its pull calls) and its last contact, for the
+	// gateway's diagnostics. Caller gateway only, as itself.
+	ListConnectors(ctx context.Context, in *ListConnectorsRequest, opts ...grpc.CallOption) (*ListConnectorsResponse, error)
 	// Instance configuration: password policies + security settings
 	ListPasswordPolicies(ctx context.Context, in *ListPasswordPoliciesRequest, opts ...grpc.CallOption) (*ListPasswordPoliciesResponse, error)
 	SavePasswordPolicy(ctx context.Context, in *SavePasswordPolicyRequest, opts ...grpc.CallOption) (*SavePasswordPolicyResponse, error)
@@ -1030,6 +1035,16 @@ func (c *vaultServiceClient) ReportRotation(ctx context.Context, in *ReportRotat
 	return out, nil
 }
 
+func (c *vaultServiceClient) ListConnectors(ctx context.Context, in *ListConnectorsRequest, opts ...grpc.CallOption) (*ListConnectorsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListConnectorsResponse)
+	err := c.cc.Invoke(ctx, VaultService_ListConnectors_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vaultServiceClient) ListPasswordPolicies(ctx context.Context, in *ListPasswordPoliciesRequest, opts ...grpc.CallOption) (*ListPasswordPoliciesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListPasswordPoliciesResponse)
@@ -1354,6 +1369,10 @@ type VaultServiceServer interface {
 	ClaimDueRotations(context.Context, *ClaimDueRotationsRequest) (*ClaimDueRotationsResponse, error)
 	RevealForRotation(context.Context, *RevealForRotationRequest) (*RevealForRotationResponse, error)
 	ReportRotation(context.Context, *ReportRotationRequest) (*ReportRotationResponse, error)
+	// Connector builds: each connector's build (from the sneakers-version and
+	// sneakers-commit metadata of its pull calls) and its last contact, for the
+	// gateway's diagnostics. Caller gateway only, as itself.
+	ListConnectors(context.Context, *ListConnectorsRequest) (*ListConnectorsResponse, error)
 	// Instance configuration: password policies + security settings
 	ListPasswordPolicies(context.Context, *ListPasswordPoliciesRequest) (*ListPasswordPoliciesResponse, error)
 	SavePasswordPolicy(context.Context, *SavePasswordPolicyRequest) (*SavePasswordPolicyResponse, error)
@@ -1625,6 +1644,9 @@ func (UnimplementedVaultServiceServer) RevealForRotation(context.Context, *Revea
 }
 func (UnimplementedVaultServiceServer) ReportRotation(context.Context, *ReportRotationRequest) (*ReportRotationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ReportRotation not implemented")
+}
+func (UnimplementedVaultServiceServer) ListConnectors(context.Context, *ListConnectorsRequest) (*ListConnectorsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListConnectors not implemented")
 }
 func (UnimplementedVaultServiceServer) ListPasswordPolicies(context.Context, *ListPasswordPoliciesRequest) (*ListPasswordPoliciesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPasswordPolicies not implemented")
@@ -3081,6 +3103,24 @@ func _VaultService_ReportRotation_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VaultService_ListConnectors_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListConnectorsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ListConnectors(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ListConnectors_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ListConnectors(ctx, req.(*ListConnectorsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VaultService_ListPasswordPolicies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListPasswordPoliciesRequest)
 	if err := dec(in); err != nil {
@@ -3787,6 +3827,10 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReportRotation",
 			Handler:    _VaultService_ReportRotation_Handler,
+		},
+		{
+			MethodName: "ListConnectors",
+			Handler:    _VaultService_ListConnectors_Handler,
 		},
 		{
 			MethodName: "ListPasswordPolicies",

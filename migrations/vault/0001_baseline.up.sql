@@ -35,6 +35,13 @@ CREATE TABLE public.connections (
     data jsonb NOT NULL
 );
 
+CREATE TABLE public.connector_contacts (
+    worker_id text NOT NULL,
+    version text DEFAULT ''::text NOT NULL,
+    commit text DEFAULT ''::text NOT NULL,
+    last_contact_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE public.extension_catalog (
     id text NOT NULL,
     data jsonb NOT NULL
@@ -160,6 +167,9 @@ ALTER TABLE ONLY public.break_glass_events
 
 ALTER TABLE ONLY public.connections
     ADD CONSTRAINT connections_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.connector_contacts
+    ADD CONSTRAINT connector_contacts_pkey PRIMARY KEY (worker_id);
 
 ALTER TABLE ONLY public.extension_catalog
     ADD CONSTRAINT extension_catalog_pkey PRIMARY KEY (id);

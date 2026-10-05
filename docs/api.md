@@ -56,12 +56,19 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 | Certificates | `ImportCertificate`, `ExportCertificate`, `ReplaceCertificate` |
 | Connections and targets | `ListConnections`, `SaveConnection`, `DeleteConnection`, `ListTargets`, `SaveTarget`, `DeleteTarget` |
 | Connector | `ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeartbeat`, `EnqueueRotation`, `ClaimDueRotations`, `RevealForRotation`, `ReportRotation` |
+| Connector builds | `ListConnectors` |
 | Instance settings | `ListPasswordPolicies`, `SavePasswordPolicy`, `DeletePasswordPolicy`, `GetSecuritySettings`, `UpdateSecuritySettings`, `SeedBuiltins` |
 | Keys | `GenerateKeyPair`, `RotateKek` |
 | Import | `SealForImport` |
 
 ### Rules the vault enforces
 
+- **Connector builds:** every pull-API call whose worker identity verifies records that worker's
+  last contact, and its build from the call's `sneakers-version` and `sneakers-commit` gRPC
+  metadata (each capped at 128 bytes). A call without the metadata keeps the build the worker last
+  sent. `ListConnectors` returns each worker's id, version, commit and last contact (RFC3339), by
+  worker id, for the gateway's diagnostics, so the gateway never dials a connector. A failure to
+  record is logged as a warning and never fails the pull call.
 - **Values:** secrets are returned masked. A sensitive field comes back only through an audited
   reveal or copy. Values are stored and returned byte for byte, including trailing `=` and
   embedded newlines, on every path.
@@ -276,7 +283,8 @@ refused with `PermissionDenied`. Any caller or method not listed is refused.
 
 | Service | Methods | Caller | Access |
 |---|---|---|---|
-| vault | every method except the connector pull-API and `SealForImport` | gateway | on behalf |
+| vault | every method except the connector pull-API, `SealForImport` and `ListConnectors` | gateway | on behalf |
+| vault | `ListConnectors` | gateway | self (diagnostics) |
 | vault | `RevealSecretField` | sshbroker | on behalf |
 | vault | `SealForImport`, `RevealSecretField`, `GetSecret`, `ListTargets`, `ListConnections` | migrate (the sneakers-migrate Job) | self, as `system:migrate` (root) |
 | vault | `GetMySecretAccess` | workflow | on behalf (the check-out check) |

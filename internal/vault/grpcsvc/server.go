@@ -85,6 +85,7 @@ type Server struct {
 	notifier Notifier
 	store    Store
 	hb       *heartbeatStore
+	contacts *connectorStore
 	vers     *versionStore
 	rot      *rotationStore
 	// mfaMaxAge is how recent MFA must be (MFA_MAX_AGE); 0 = default.
@@ -443,6 +444,7 @@ func (s *Server) lg(ctx context.Context) log.Logger {
 // verifier (called from cmd/vault after the pool is opened).
 func (s *Server) SetHeartbeat(db *postgres.DB, wid workloadid.WorkloadIdentityVerifier) {
 	s.hb = newHeartbeatStore(db.Querier())
+	s.contacts = newConnectorStore(db.Querier())
 	s.wid = wid
 }
 

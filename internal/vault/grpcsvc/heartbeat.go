@@ -94,6 +94,7 @@ func (s *Server) verifyWorkerAudited(ctx context.Context, id *vaultv1.WorkerIden
 		s.emit(ctx, "connector", deniedAction, "", false)
 		return workloadid.Principal{}, status.Error(codes.PermissionDenied, "worker identity rejected")
 	}
+	s.recordConnectorContact(ctx, principal.WorkerID)
 	return principal, nil
 }
 
