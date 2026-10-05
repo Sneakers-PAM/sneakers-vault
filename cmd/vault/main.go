@@ -23,6 +23,7 @@ import (
 	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	notifyv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/notify/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/health"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/auditclient"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
@@ -270,8 +271,10 @@ func main() {
 	// unreachable server degrades to single-replica behaviour rather than
 	// failing the boot. When wired, a background subscriber reloads on each peer
 	// invalidation and reconnects on Redis errors.
+	var valkeyPing func(context.Context) error
 	if rc := dialRedis(ctx, logger, env("REDIS_URL", "")); rc != nil {
 		defer func() { _ = rc.Close() }()
+		valkeyPing = func(ctx context.Context) error { return rc.Redis().Ping(ctx).Err() }
 		srv.SetInvalidation(rc, env("VAULT_INVALIDATE_CHANNEL", grpcsvc.DefaultInvalidateChannel))
 		go srv.RunInvalidationSubscriber(ctx)
 	} else {
@@ -283,9 +286,28 @@ func main() {
 		logger.Fatal().Err(err).Msg("workload auth")
 	}
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	if err := server.RunWithLogger(ctx, cfg.GRPCPort, svcLog, srv.RegisterInto, append(authOpts, grpc.ChainUnaryInterceptor(srv.PersistUnary))...); err != nil {
+	checker := health.New(svcLog, dependencies(db, auditConn, notifyConn, valkeyPing)...)
+	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, srv.RegisterInto, append(authOpts, grpc.ChainUnaryInterceptor(srv.PersistUnary))...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
 	}
+}
+
+// dependencies are what readiness follows. Only the database is required:
+// without it the vault can serve nothing. Audit and notify are optional, so an
+// outage there doesn't pull every vault replica out of service; calls that must
+// record to audit (break-glass) still fail closed on their own. Valkey, when
+// configured, only carries cache invalidation between replicas, so it's
+// optional too; a nil valkey leaves it out.
+func dependencies(db health.Pinger, audit, notify grpc.ClientConnInterface, valkey func(context.Context) error) []health.Dep {
+	deps := []health.Dep{
+		health.Postgres(db),
+		health.GRPCPeer("audit", audit, false),
+		health.GRPCPeer("notify", notify, false),
+	}
+	if valkey != nil {
+		deps = append(deps, health.Dep{Name: "valkey", Check: valkey})
+	}
+	return deps
 }
 
 // recordDBVersion reads the database version once for the health check
