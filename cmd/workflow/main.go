@@ -17,6 +17,7 @@ import (
 	sagapg "github.com/Bugs5382/go-saga-orchestration/store/postgres"
 	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/health"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/auditclient"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/grpcsvc"
@@ -124,10 +125,24 @@ func main() {
 
 	authOpts := mustCallerAuth(ctx, logger, svcLog)
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	if err := server.RunWithLogger(ctx, cfg.GRPCPort, svcLog, func(gs *grpc.Server) {
+	checker := health.New(svcLog, dependencies(db, vault.Conn(), auditConn)...)
+	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, func(gs *grpc.Server) {
 		grpcsvc.Register(gs, svc)
 	}, authOpts...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
+	}
+}
+
+// dependencies are what readiness follows. Only the database is required: the
+// leases, requests and saga runs all live there. The vault is optional, so a
+// vault outage (already shown by the vault's own readiness) doesn't also pull
+// the workflow; the calls that need it fail on their own and the saga steps
+// retry. Audit is optional: a failed emit is logged and the call goes on.
+func dependencies(db health.Pinger, vault, audit grpc.ClientConnInterface) []health.Dep {
+	return []health.Dep{
+		health.Postgres(db),
+		health.GRPCPeer("vault", vault, false),
+		health.GRPCPeer("audit", audit, false),
 	}
 }
 

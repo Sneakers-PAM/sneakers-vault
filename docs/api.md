@@ -15,7 +15,7 @@ build nor Go's VCS stamp knows it). Once the server has read its database's vers
 also carries `sneakers-dep-postgres` (the first word of `server_version`, such as `16.4`).
 The gateway's diagnostics read them.
 
-The vault's health check follows its dependencies:
+Both servers' health checks follow their dependencies:
 
 - **Readiness** is service `""` (the default). It answers `NOT_SERVING` while a required
   dependency is down and `SERVING` otherwise, including while an optional one is failing
@@ -37,7 +37,7 @@ probes don't load the dependencies. A readiness answer carries the results in th
 `status` and `state` are `ok`, `degraded` (an optional dependency failing) or `down` (a required
 one failing). `error` is a class: `timeout`, `refused`, `unavailable`, `unauthenticated` or
 `error`. It never carries the error's text, an address or a DSN. `version` is present when known.
-See the [runbook](runbook.md#health) for each dependency.
+See the [runbook](runbook.md#health) for each server's dependencies.
 
 ## Vault: `sneakers.vault.v1.VaultService`
 

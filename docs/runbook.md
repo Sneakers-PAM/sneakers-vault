@@ -58,6 +58,14 @@ The vault's dependencies:
 | `notify` | no | Notices are best effort. |
 | `valkey` | no, and only listed when `REDIS_URL` is set | It carries cache invalidation between replicas. Without it each replica keeps serving from its own cache and the database. |
 
+The workflow's dependencies:
+
+| Dependency | Required | Why |
+|---|---|---|
+| `postgres` | yes | Leases, requests and saga runs all live there. |
+| `vault` | no | A vault outage already shows in the vault's own readiness. The calls that need the vault fail on their own, and saga steps retry. |
+| `audit` | no | A failed audit write is logged and the call carries on. |
+
 A dependency changing state is logged once: `health: dependency failing` at warn (with
 `dependency`, `required`, `state` and `error_class`), then `health: dependency recovered` at
 info.
