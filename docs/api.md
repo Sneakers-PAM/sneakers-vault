@@ -15,6 +15,30 @@ build nor Go's VCS stamp knows it). Once the server has read its database's vers
 also carries `sneakers-dep-postgres` (the first word of `server_version`, such as `16.4`).
 The gateway's diagnostics read them.
 
+The vault's health check follows its dependencies:
+
+- **Readiness** is service `""` (the default). It answers `NOT_SERVING` while a required
+  dependency is down and `SERVING` otherwise, including while an optional one is failing
+  (degraded). It recovers on its own once the dependency answers again.
+- **Liveness** is service `liveness`. It always answers `SERVING` and checks no dependency, so an
+  outage never restarts the pod.
+- Any other service name gets `NOT_FOUND`, and `Watch` is unimplemented; poll `Check`.
+
+Each dependency is pinged with a 1-second timeout, and the results are reused for 5 seconds, so
+probes don't load the dependencies. A readiness answer carries the results in the
+`sneakers-health` header, as compact JSON:
+
+```json
+{"status":"degraded","dependencies":[
+  {"name":"postgres","state":"ok","required":true,"checkedAt":"2026-10-05T12:00:00Z","version":"17.11"},
+  {"name":"audit","state":"degraded","required":false,"error":"unavailable","checkedAt":"2026-10-05T12:00:00Z"}]}
+```
+
+`status` and `state` are `ok`, `degraded` (an optional dependency failing) or `down` (a required
+one failing). `error` is a class: `timeout`, `refused`, `unavailable`, `unauthenticated` or
+`error`. It never carries the error's text, an address or a DSN. `version` is present when known.
+See the [runbook](runbook.md#health) for each dependency.
+
 ## Vault: `sneakers.vault.v1.VaultService`
 
 | Area | RPCs |

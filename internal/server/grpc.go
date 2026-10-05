@@ -13,9 +13,9 @@ import (
 	"time"
 
 	log "github.com/Bugs5382/go-log"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/health"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
@@ -39,6 +39,17 @@ func Run(ctx context.Context, port string, register func(*grpc.Server), opts ...
 // RunWithLogger is Run with lg logging the panics the recovery interceptors
 // catch. Run itself discards them.
 func RunWithLogger(ctx context.Context, port string, lg log.Logger, register func(*grpc.Server), opts ...grpc.ServerOption) error {
+	return RunWithHealth(ctx, port, lg, nil, register, opts...)
+}
+
+// RunWithHealth is RunWithLogger with readiness taken from checker: the
+// health check answers NOT_SERVING while a required dependency is down. A nil
+// checker has no dependencies, so the service is always ready. A nil lg
+// discards the recovery interceptors' panics.
+func RunWithHealth(ctx context.Context, port string, lg log.Logger, checker *health.Checker, register func(*grpc.Server), opts ...grpc.ServerOption) error {
+	if lg == nil {
+		lg = log.Nop()
+	}
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
@@ -70,7 +81,7 @@ func RunWithLogger(ctx context.Context, port string, lg log.Logger, register fun
 	opts = append(defaults, opts...)
 
 	s := grpc.NewServer(opts...)
-	healthpb.RegisterHealthServer(s, health.NewServer())
+	healthpb.RegisterHealthServer(s, newHealthServer(checker))
 	reflection.Register(s)
 	if register != nil {
 		register(s)

@@ -45,6 +45,27 @@ To see which build is running, add `-v`: the answer's headers carry `sneakers-ve
 docker build --target vault --build-arg VERSION=v0.1.0 --build-arg COMMIT="$(git rev-parse HEAD)" .
 ```
 
+The default check is readiness, and it fails while a required dependency is down. Liveness is
+`-d '{"service":"liveness"}'` and never looks at a dependency. The `sneakers-health` header
+(see `-v`) lists each dependency's state; the [API notes](api.md) describe its format.
+
+The vault's dependencies:
+
+| Dependency | Required | Why |
+|---|---|---|
+| `postgres` | yes | Every secret, folder and key lives there; without it the vault can serve nothing. |
+| `audit` | no | An outage shouldn't pull every replica. Calls that must be recorded first, such as break-glass, still fail closed. |
+| `notify` | no | Notices are best effort. |
+| `valkey` | no, and only listed when `REDIS_URL` is set | It carries cache invalidation between replicas. Without it each replica keeps serving from its own cache and the database. |
+
+A dependency changing state is logged once: `health: dependency failing` at warn (with
+`dependency`, `required`, `state` and `error_class`), then `health: dependency recovered` at
+info.
+
+The kubelet's liveness probe has to ask for the `liveness` service; otherwise a database outage
+fails liveness too and restarts the pods. That probe setting lives in the sneakers-release
+chart.
+
 ## First-run setup
 
 Outside `dev`, a new vault starts empty. The gateway's first-run setup creates the first
