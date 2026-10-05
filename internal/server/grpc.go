@@ -64,7 +64,7 @@ func RunWithLogger(ctx context.Context, port string, lg log.Logger, register fun
 	// panics on a second).
 	defaults := []grpc.ServerOption{
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
-		grpc.ChainUnaryInterceptor(RecoveryUnaryInterceptor(lg)),
+		grpc.ChainUnaryInterceptor(RecoveryUnaryInterceptor(lg), VersionUnaryInterceptor()),
 		grpc.ChainStreamInterceptor(RecoveryStreamInterceptor(lg)),
 	}
 	opts = append(defaults, opts...)

@@ -9,6 +9,12 @@ definitions are [vault.proto](../proto/sneakers/vault/v1/vault.proto) and
 `gen/go/sneakers/`. Both servers also serve gRPC health and reflection. The vault's own calls to
 audit and notify are covered in [Calling other services](#calling-other-services).
 
+A health check's answer carries the build in its response headers: `sneakers-version` (the image
+tag, `dev` when unstamped) and `sneakers-commit` (the source commit, `unknown` when neither the
+build nor Go's VCS stamp knows it). Once the server has read its database's version at start, it
+also carries `sneakers-dep-postgres` (the first word of `server_version`, such as `16.4`).
+The gateway's diagnostics read them.
+
 ## Vault: `sneakers.vault.v1.VaultService`
 
 | Area | RPCs |
