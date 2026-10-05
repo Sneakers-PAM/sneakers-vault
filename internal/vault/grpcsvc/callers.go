@@ -88,6 +88,8 @@ func CallerPolicy() workloadauth.Policy {
 	for _, m := range migrateMethods {
 		p[m][CallerMigrate] = workloadauth.Self
 	}
+	// The gateway's diagnostics read connector builds as itself.
+	p[vaultv1.VaultService_ListConnectors_FullMethodName] = map[string]workloadauth.Access{CallerGateway: workloadauth.Self}
 	// The check-out check asks for the user's own RACI decision.
 	p[vaultv1.VaultService_GetMySecretAccess_FullMethodName][CallerWorkflow] = workloadauth.OnBehalf
 	return p

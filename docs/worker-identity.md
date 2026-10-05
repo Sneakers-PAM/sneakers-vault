@@ -1,6 +1,6 @@
 # Connector worker identity
 
-The connector pull-API (`ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeartbeat`, `ClaimDueRotations`, `RevealForRotation`, `ReportRotation`) and the workload reveal path are gated by a worker-identity verifier. The connector sends its token in the request body as `identity.token` (`WorkerIdentity.token`), the raw token string with no `Bearer ` prefix. There is no gRPC metadata involved.
+The connector pull-API (`ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeartbeat`, `ClaimDueRotations`, `RevealForRotation`, `ReportRotation`) and the workload reveal path are gated by a worker-identity verifier. The connector sends its token in the request body as `identity.token` (`WorkerIdentity.token`), the raw token string with no `Bearer ` prefix. The identity never travels in gRPC metadata. The connector does stamp its build into the `sneakers-version` and `sneakers-commit` metadata of every pull call; once the identity verifies, the vault records that build and the time of contact for `ListConnectors` ([api.md](api.md)).
 
 ## Which verifier runs
 

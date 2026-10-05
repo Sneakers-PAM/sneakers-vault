@@ -23,6 +23,7 @@ func TestCallerPolicyPerMethod(t *testing.T) {
 		"ClaimDueRotations":   {CallerConnector: self},
 		"RevealForRotation":   {CallerConnector: self},
 		"ReportRotation":      {CallerConnector: self},
+		"ListConnectors":      {CallerGateway: self},
 		"RevealSecretField":   {CallerGateway: gw, CallerSSHBroker: gw, CallerMigrate: self},
 		"ListTargets":         {CallerGateway: gw, CallerMigrate: self},
 		"ListConnections":     {CallerGateway: gw, CallerMigrate: self},

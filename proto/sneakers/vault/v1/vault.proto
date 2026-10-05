@@ -1318,6 +1318,11 @@ service VaultService {
   rpc RevealForRotation(RevealForRotationRequest) returns (RevealForRotationResponse);
   rpc ReportRotation(ReportRotationRequest) returns (ReportRotationResponse);
 
+  // Connector builds: each connector's build (from the sneakers-version and
+  // sneakers-commit metadata of its pull calls) and its last contact, for the
+  // gateway's diagnostics. Caller gateway only, as itself.
+  rpc ListConnectors(ListConnectorsRequest) returns (ListConnectorsResponse);
+
   // Instance configuration: password policies + security settings
   rpc ListPasswordPolicies(ListPasswordPoliciesRequest) returns (ListPasswordPoliciesResponse);
   rpc SavePasswordPolicy(SavePasswordPolicyRequest) returns (SavePasswordPolicyResponse);
@@ -1355,6 +1360,22 @@ service VaultService {
   rpc SetSecretAutomationForPrincipal(SetSecretAutomationForPrincipalRequest) returns (SetSecretAutomationForPrincipalResponse);
   rpc RequestHeartbeatForPrincipal(RequestHeartbeatForPrincipalRequest) returns (RequestHeartbeatForPrincipalResponse);
   rpc GetHeartbeatStatusForPrincipal(GetHeartbeatStatusForPrincipalRequest) returns (GetHeartbeatStatusForPrincipalResponse);
+}
+
+// ---- Connector builds -------------------------------------------------------
+
+message ListConnectorsRequest {}
+
+// One connector worker as the vault last saw it.
+message ConnectorContact {
+  string worker_id = 1;        // the verified worker identity
+  string version = 2;          // sneakers-version of the latest call that sent one; empty = never sent
+  string commit = 3;           // sneakers-commit of the latest call that sent one; empty = never sent
+  string last_contact_at = 4;  // RFC3339 of the latest verified pull-API call
+}
+
+message ListConnectorsResponse {
+  repeated ConnectorContact connectors = 1;  // ordered by worker_id
 }
 
 // ---- Instance configuration -------------------------------------------------
