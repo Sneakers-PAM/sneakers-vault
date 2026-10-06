@@ -54,6 +54,7 @@ func (s *Server) ListSecretsInFolder(_ context.Context, req *vaultv1.ListSecrets
 		}
 		out = append(out, withCanRead(sec, canRead))
 	}
+	sortForListing(out)
 	return &vaultv1.ListSecretsInFolderResponse{Secrets: out}, nil
 }
 
@@ -92,6 +93,7 @@ func (s *Server) CreateSecret(ctx context.Context, req *vaultv1.CreateSecretRequ
 	sec := &vaultv1.Secret{
 		Id: s.nextID("secret"), Name: req.GetName(), FolderId: req.GetFolderId(),
 		TypeId: req.GetTypeId(), TargetId: req.GetTargetId(), ExpiresAt: req.GetExpiresAt(),
+		Position: s.nextPosition(req.GetFolderId()),
 	}
 	rec, err := s.crypt.Seal(req.GetFields())
 	if err != nil {
@@ -203,7 +205,7 @@ func (s *Server) UpdateSecret(ctx context.Context, req *vaultv1.UpdateSecretRequ
 			}
 		}
 		from := sec.FolderId
-		sec.FolderId = dest
+		s.moveSecretTo(sec, dest)
 		s.emitAttrs(ctx, req.GetActor().GetUserId(), "secret.move", sec.Id, false, map[string]string{
 			"from_folder_id": from,
 			"to_folder_id":   dest,

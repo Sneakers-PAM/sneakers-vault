@@ -310,7 +310,7 @@ var mutatingMethods = map[string]bool{
 	"RenameSecretForPrincipal": true, "UpdateSecretFieldsForPrincipal": true,
 	"CreateFolderForPrincipal": true, "RenameFolderForPrincipal": true, "MoveFolderForPrincipal": true,
 	"CreateFolder": true, "RenameFolder": true, "MoveFolder": true, "DeleteFolder": true, "ReorderFolders": true,
-	"AddFolderRule": true, "RemoveFolderRule": true, "SetFolderRuleset": true, "SetSecretRuleset": true,
+	"ReorderSecrets": true, "AddFolderRule": true, "RemoveFolderRule": true, "SetFolderRuleset": true, "SetSecretRuleset": true,
 	"SetTargetRuleset": true,
 	"CreateSecretType": true, "UpdateSecretType": true, "DeleteSecretType": true, "CloneSecretType": true,
 	"SaveConnection": true, "DeleteConnection": true, "SaveTarget": true, "DeleteTarget": true,

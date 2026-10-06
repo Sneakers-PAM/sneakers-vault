@@ -115,7 +115,7 @@ func (s *Server) MoveSecretForPrincipal(ctx context.Context, req *vaultv1.MoveSe
 			return &vaultv1.MoveSecretForPrincipalResponse{Secret: sec, ApprovalRequired: true, Destination: destView}, nil
 		}
 	}
-	sec.FolderId = dest
+	s.moveSecretTo(sec, dest)
 	s.emitAttrs(ctx, principalActorID(actor), "secret.move.principal", sec.GetId(), false, moveAttrs)
 	s.notifyInformed(ctx, principalActorID(actor), "secret.move.principal", "secret", sec.GetId(), sec.GetName(), s.secretChain(sec))
 	return &vaultv1.MoveSecretForPrincipalResponse{Secret: sec, Destination: destView}, nil

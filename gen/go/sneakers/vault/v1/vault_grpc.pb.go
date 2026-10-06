@@ -58,6 +58,7 @@ const (
 	VaultService_SimulateFolder_FullMethodName                  = "/sneakers.vault.v1.VaultService/SimulateFolder"
 	VaultService_SimulateSecret_FullMethodName                  = "/sneakers.vault.v1.VaultService/SimulateSecret"
 	VaultService_ListSecretsInFolder_FullMethodName             = "/sneakers.vault.v1.VaultService/ListSecretsInFolder"
+	VaultService_ReorderSecrets_FullMethodName                  = "/sneakers.vault.v1.VaultService/ReorderSecrets"
 	VaultService_GetSecret_FullMethodName                       = "/sneakers.vault.v1.VaultService/GetSecret"
 	VaultService_CreateSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/CreateSecret"
 	VaultService_UpdateSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/UpdateSecret"
@@ -181,6 +182,9 @@ type VaultServiceClient interface {
 	SimulateSecret(ctx context.Context, in *SimulateSecretRequest, opts ...grpc.CallOption) (*SimulateSecretResponse, error)
 	// Secrets
 	ListSecretsInFolder(ctx context.Context, in *ListSecretsInFolderRequest, opts ...grpc.CallOption) (*ListSecretsInFolderResponse, error)
+	// ReorderSecrets sets the manual order of a folder's active secrets. The
+	// caller needs RACI Author on the folder or must own it.
+	ReorderSecrets(ctx context.Context, in *ReorderSecretsRequest, opts ...grpc.CallOption) (*ReorderSecretsResponse, error)
 	GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error)
 	CreateSecret(ctx context.Context, in *CreateSecretRequest, opts ...grpc.CallOption) (*CreateSecretResponse, error)
 	UpdateSecret(ctx context.Context, in *UpdateSecretRequest, opts ...grpc.CallOption) (*UpdateSecretResponse, error)
@@ -645,6 +649,16 @@ func (c *vaultServiceClient) ListSecretsInFolder(ctx context.Context, in *ListSe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListSecretsInFolderResponse)
 	err := c.cc.Invoke(ctx, VaultService_ListSecretsInFolder_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) ReorderSecrets(ctx context.Context, in *ReorderSecretsRequest, opts ...grpc.CallOption) (*ReorderSecretsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReorderSecretsResponse)
+	err := c.cc.Invoke(ctx, VaultService_ReorderSecrets_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1402,6 +1416,9 @@ type VaultServiceServer interface {
 	SimulateSecret(context.Context, *SimulateSecretRequest) (*SimulateSecretResponse, error)
 	// Secrets
 	ListSecretsInFolder(context.Context, *ListSecretsInFolderRequest) (*ListSecretsInFolderResponse, error)
+	// ReorderSecrets sets the manual order of a folder's active secrets. The
+	// caller needs RACI Author on the folder or must own it.
+	ReorderSecrets(context.Context, *ReorderSecretsRequest) (*ReorderSecretsResponse, error)
 	GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error)
 	CreateSecret(context.Context, *CreateSecretRequest) (*CreateSecretResponse, error)
 	UpdateSecret(context.Context, *UpdateSecretRequest) (*UpdateSecretResponse, error)
@@ -1619,6 +1636,9 @@ func (UnimplementedVaultServiceServer) SimulateSecret(context.Context, *Simulate
 }
 func (UnimplementedVaultServiceServer) ListSecretsInFolder(context.Context, *ListSecretsInFolderRequest) (*ListSecretsInFolderResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSecretsInFolder not implemented")
+}
+func (UnimplementedVaultServiceServer) ReorderSecrets(context.Context, *ReorderSecretsRequest) (*ReorderSecretsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReorderSecrets not implemented")
 }
 func (UnimplementedVaultServiceServer) GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetSecret not implemented")
@@ -2495,6 +2515,24 @@ func _VaultService_ListSecretsInFolder_Handler(srv interface{}, ctx context.Cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VaultServiceServer).ListSecretsInFolder(ctx, req.(*ListSecretsInFolderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_ReorderSecrets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReorderSecretsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ReorderSecrets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ReorderSecrets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ReorderSecrets(ctx, req.(*ReorderSecretsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3909,6 +3947,10 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSecretsInFolder",
 			Handler:    _VaultService_ListSecretsInFolder_Handler,
+		},
+		{
+			MethodName: "ReorderSecrets",
+			Handler:    _VaultService_ReorderSecrets_Handler,
 		},
 		{
 			MethodName: "GetSecret",

@@ -47,3 +47,47 @@ func fieldKeys(t *vaultv1.SecretType) []string {
 	}
 	return out
 }
+
+// The Active Directory type carries an optional logon format (NETBIOS or UPN)
+// and an optional UPN suffix after the NetBIOS domain, so consumers can present
+// the logon name the domain expects. Unset means the consumer's default.
+func TestActiveDirectoryBuiltinHasOptionalLogonFormat(t *testing.T) {
+	var ad *vaultv1.SecretType
+	for _, b := range BuiltinTypes() {
+		if b.GetId() == "type-active-directory" {
+			ad = b
+		}
+	}
+	if ad == nil {
+		t.Fatal("type-active-directory not in BuiltinTypes()")
+	}
+	byKey := map[string]int{}
+	for i, f := range ad.GetFields() {
+		byKey[f.GetKey()] = i
+	}
+	nb, ok1 := byKey["netbios"]
+	lf, ok2 := byKey["logonFormat"]
+	us, ok3 := byKey["upnSuffix"]
+	if !ok1 || !ok2 || !ok3 || lf != nb+1 || us != lf+1 {
+		t.Fatalf("logonFormat and upnSuffix must follow netbios; field keys %v", fieldKeys(ad))
+	}
+	f := ad.GetFields()[lf]
+	if f.GetLabel() != "Logon format" || f.GetKind() != vaultv1.FieldKind_FIELD_KIND_SELECT {
+		t.Fatalf("logonFormat label/kind = %q/%v", f.GetLabel(), f.GetKind())
+	}
+	if got := f.GetOptions(); len(got) != 2 || got[0] != ADLogonFormatNetbios || got[1] != ADLogonFormatUPN {
+		t.Fatalf("logonFormat options = %v, want [%s %s]", got, ADLogonFormatNetbios, ADLogonFormatUPN)
+	}
+	if f.GetDefaultValue() != "" {
+		t.Fatalf("logonFormat must have no default so existing secrets keep today's behaviour, got %q", f.GetDefaultValue())
+	}
+	u := ad.GetFields()[us]
+	if u.GetLabel() != "UPN suffix" || u.GetKind() != vaultv1.FieldKind_FIELD_KIND_TEXT {
+		t.Fatalf("upnSuffix label/kind = %q/%v", u.GetLabel(), u.GetKind())
+	}
+	for _, g := range []*vaultv1.SecretFieldDef{f, u} {
+		if g.GetRequired() || g.GetSensitive() || g.GetSuperSensitive() || g.GetRotates() {
+			t.Fatalf("%s must be optional and not sensitive: %+v", g.GetKey(), g)
+		}
+	}
+}

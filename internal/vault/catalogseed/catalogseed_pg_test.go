@@ -71,16 +71,33 @@ func persisted[Req, Resp any](t *testing.T, s *grpcsvc.Server, method string, re
 }
 
 // preNetbiosAD is the Active Directory type as it shipped before the NetBIOS
-// field: the current built-in minus that field.
+// field: the current built-in minus that field and the later logon-format
+// fields.
 func preNetbiosAD(t *testing.T) *vaultv1.SecretType {
 	t.Helper()
+	return adWithout(t, "netbios", "logonFormat", "upnSuffix")
+}
+
+// preLogonFormatAD is the Active Directory type as it shipped before the logon
+// format: the current built-in minus logonFormat and upnSuffix.
+func preLogonFormatAD(t *testing.T) *vaultv1.SecretType {
+	t.Helper()
+	return adWithout(t, "logonFormat", "upnSuffix")
+}
+
+func adWithout(t *testing.T, drop ...string) *vaultv1.SecretType {
+	t.Helper()
+	skip := map[string]bool{}
+	for _, k := range drop {
+		skip[k] = true
+	}
 	for _, bt := range grpcsvc.BuiltinTypes() {
 		if bt.GetId() != adTypeID {
 			continue
 		}
 		var fields []*vaultv1.SecretFieldDef
 		for _, f := range bt.GetFields() {
-			if f.GetKey() != "netbios" {
+			if !skip[f.GetKey()] {
 				fields = append(fields, f)
 			}
 		}
@@ -180,7 +197,7 @@ func TestRunUpgradesADWithNetbiosAndKeepsExistingSecrets(t *testing.T) {
 		t.Fatalf("boot after upgrade: %v", err)
 	}
 	keys := adFieldKeys(t, up)
-	want := []string{"description", "domain", "netbios", "username", "password", "serviceAccount", "gmsa", "notes"}
+	want := []string{"description", "domain", "netbios", "logonFormat", "upnSuffix", "username", "password", "serviceAccount", "gmsa", "notes"}
 	if !reflect.DeepEqual(keys, want) {
 		t.Fatalf("AD fields after upgrade = %v, want %v", keys, want)
 	}
@@ -216,5 +233,81 @@ func TestRunUpgradesADWithNetbiosAndKeepsExistingSecrets(t *testing.T) {
 	}
 	if pw.GetValue() != values["password"] {
 		t.Fatal("password changed across the upgrade")
+	}
+}
+
+// TestRunUpgradesADWithLogonFormatAndKeepsExistingSecrets upgrades a store whose
+// Active Directory type predates the logon format: the upgrade adds logonFormat
+// and upnSuffix after the NetBIOS domain and leaves existing AD secrets exactly
+// as they were, with no logon format set.
+func TestRunUpgradesADWithLogonFormatAndKeepsExistingSecrets(t *testing.T) {
+	ctx := context.Background()
+	pool := freshDB(t)
+	kek, err := crypto.NewRandomKEK()
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := crypto.New(kek)
+	store := grpcsvc.NewPGStore(pool)
+	if _, err := grpcsvc.NewWithStore(ctx, store, env, nil, "dev"); err != nil {
+		t.Fatalf("boot: %v", err)
+	}
+	old, err := protojson.Marshal(preLogonFormatAD(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Querier().Exec(ctx, `UPDATE secret_types SET data=$2::jsonb WHERE id=$1`, adTypeID, old); err != nil {
+		t.Fatalf("install the pre-upgrade AD type: %v", err)
+	}
+	s, err := grpcsvc.NewWithStore(ctx, store, env, nil, "dev")
+	if err != nil {
+		t.Fatalf("boot on the old catalog: %v", err)
+	}
+	carol := &vaultv1.ActorContext{UserId: "user-carol"}
+	folder := persisted(t, s, "CreateFolder", &vaultv1.CreateFolderRequest{Actor: carol, Name: "Directory"}, s.CreateFolder)
+	values := map[string]string{
+		"description": "named admin", "domain": "ad.example.org", "netbios": "EXAMPLE", "username": "admin_ea",
+		"password": "Str0ng!Passw0rd-1", "serviceAccount": "false", "gmsa": "false",
+	}
+	created := persisted(t, s, "CreateSecret", &vaultv1.CreateSecretRequest{
+		Actor: carol, Name: "admin_ea", FolderId: folder.GetFolder().GetId(), TypeId: adTypeID, Fields: values,
+	}, s.CreateSecret)
+	id := created.GetSecret().GetId()
+	before := secretRows(t, pool, id)
+
+	if err := Run(ctx, pool); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	up, err := grpcsvc.NewWithStore(ctx, store, env, nil, "dev")
+	if err != nil {
+		t.Fatalf("boot after upgrade: %v", err)
+	}
+	want := []string{"description", "domain", "netbios", "logonFormat", "upnSuffix", "username", "password", "serviceAccount", "gmsa", "notes"}
+	if keys := adFieldKeys(t, up); !reflect.DeepEqual(keys, want) {
+		t.Fatalf("AD fields after upgrade = %v, want %v", keys, want)
+	}
+	if after := secretRows(t, pool, id); after != before {
+		t.Fatalf("upgrade changed the stored secret:\nbefore %+v\nafter  %+v", before, after)
+	}
+	fields, err := up.GetSecretFields(ctx, &vaultv1.GetSecretFieldsRequest{Actor: carol, Id: id})
+	if err != nil {
+		t.Fatalf("GetSecretFields: %v", err)
+	}
+	for _, k := range []string{"logonFormat", "upnSuffix"} {
+		if _, ok := fields.GetFields()[k]; ok {
+			t.Fatalf("an existing secret must not gain a %s value", k)
+		}
+	}
+	if fields.GetFields()["netbios"] != "EXAMPLE" || fields.GetFields()["username"] != "admin_ea" {
+		t.Fatalf("fields changed across the upgrade: %v", fields.GetFields())
+	}
+
+	// A secret saved after the upgrade may set the format.
+	values["logonFormat"] = grpcsvc.ADLogonFormatUPN
+	values["upnSuffix"] = "example.org"
+	if _, err := up.CreateSecret(ctx, &vaultv1.CreateSecretRequest{
+		Actor: carol, Name: "admin_upn", FolderId: folder.GetFolder().GetId(), TypeId: adTypeID, Fields: values,
+	}); err != nil {
+		t.Fatalf("CreateSecret with a logon format: %v", err)
 	}
 }
