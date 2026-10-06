@@ -126,7 +126,7 @@ func TestRedeemMustFollowApprovalWithinAMinute(t *testing.T) {
 	fx := newUseFixture(t)
 	u := fx.prepare(t)
 	fx.now = fx.now.Add(2 * time.Minute)
-	if err := fx.decide(fx.owner, u.GetId(), true); err != nil {
+	if err := fx.decide(fx.approver, u.GetId(), true); err != nil {
 		t.Fatalf("approve inside the 10 minute window: %v", err)
 	}
 	fx.now = fx.now.Add(redeemAfterApproval)
@@ -135,7 +135,7 @@ func TestRedeemMustFollowApprovalWithinAMinute(t *testing.T) {
 	}
 
 	v := fx.prepare(t)
-	if err := fx.decide(fx.owner, v.GetId(), true); err != nil {
+	if err := fx.decide(fx.approver, v.GetId(), true); err != nil {
 		t.Fatal(err)
 	}
 	fx.now = fx.now.Add(redeemAfterApproval - time.Second)

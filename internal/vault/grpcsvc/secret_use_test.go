@@ -15,17 +15,20 @@ import (
 )
 
 type useFixture struct {
-	s      *Server
-	ca     *capAudit
-	secret string
-	folder string
-	owner  *vaultv1.ActorContext
-	token  *vaultv1.ActorContext
-	now    time.Time
+	s        *Server
+	ca       *capAudit
+	secret   string
+	folder   string
+	owner    *vaultv1.ActorContext
+	token    *vaultv1.ActorContext
+	approver *vaultv1.ActorContext
+	users    *vaultv1.ActiveUsers
+	now      time.Time
 }
 
-// newUseFixture: a shared folder whose g-agents group may read one password
-// secret, and user-ada's personal token in that group.
+// newUseFixture: a shared folder owned by carol whose g-agents group may read
+// one approval-required password secret, and user-ada's personal token in
+// that group. ada is not an owner, so her uses wait for carol.
 func newUseFixture(t *testing.T) *useFixture {
 	t.Helper()
 	fx := &useFixture{s: newServer(t), ca: &capAudit{}, now: time.Unix(1790000000, 0)}
@@ -36,8 +39,12 @@ func newUseFixture(t *testing.T) *useFixture {
 	fx.folder = newSharedFolder(t, fx.s)
 	fx.secret = secretIn(t, fx.s, carol, fx.folder, "router-admin")
 	grantGroup(t, fx.s, carol, fx.folder, "C")
+	if _, err := fx.s.SetSecretTokenApproval(context.Background(), &vaultv1.SetSecretTokenApprovalRequest{Actor: carol, SecretId: fx.secret, Required: true}); err != nil {
+		t.Fatalf("SetSecretTokenApproval: %v", err)
+	}
 	fx.owner = &vaultv1.ActorContext{UserId: "user-ada", GroupNames: []string{"g-agents"}}
 	fx.token = tokenActor("user-ada", false, "g-agents")
+	fx.approver = carol
 	return fx
 }
 
@@ -47,7 +54,7 @@ func (fx *useFixture) prepare(t *testing.T, argv ...string) *vaultv1.SecretUse {
 		argv = []string{"ssh", "admin@router-01"}
 	}
 	resp, err := fx.s.PrepareSecretUse(context.Background(), &vaultv1.PrepareSecretUseRequest{
-		Actor: fx.token, SecretId: fx.secret, FieldKey: "password", Argv: argv, ClientLabel: "laptop",
+		Actor: fx.token, SecretId: fx.secret, FieldKey: "password", Argv: argv, ClientLabel: "laptop", ActiveUsers: fx.users,
 	})
 	if err != nil {
 		t.Fatalf("PrepareSecretUse: %v", err)
@@ -64,7 +71,7 @@ func (fx *useFixture) decide(actor *vaultv1.ActorContext, id string, approve boo
 	return err
 }
 
-func TestSecretUseIsReleasedOnceAfterTheOwnerApproves(t *testing.T) {
+func TestSecretUseIsReleasedOnceAfterAnOwnerApproves(t *testing.T) {
 	fx := newUseFixture(t)
 	use := fx.prepare(t)
 	if use.GetState() != vaultv1.SecretUseState_SECRET_USE_STATE_PENDING || use.GetSecretName() != "router-admin" {
@@ -73,7 +80,7 @@ func TestSecretUseIsReleasedOnceAfterTheOwnerApproves(t *testing.T) {
 	if _, err := fx.redeem(fx.token, use.GetId()); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("redeem before approval: want FailedPrecondition, got %v", err)
 	}
-	if err := fx.decide(fx.owner, use.GetId(), true); err != nil {
+	if err := fx.decide(fx.approver, use.GetId(), true); err != nil {
 		t.Fatalf("owner approve: %v", err)
 	}
 	got, err := fx.redeem(fx.token, use.GetId())
@@ -91,7 +98,7 @@ func TestSecretUseIsReleasedOnceAfterTheOwnerApproves(t *testing.T) {
 func TestSecretUseOnlyTheSameTokenRedeems(t *testing.T) {
 	fx := newUseFixture(t)
 	use := fx.prepare(t)
-	_ = fx.decide(fx.owner, use.GetId(), true)
+	_ = fx.decide(fx.approver, use.GetId(), true)
 	other := tokenActor("user-ada", false, "g-agents")
 	other.TokenId = "utok-other"
 	if _, err := fx.redeem(other, use.GetId()); status.Code(err) != codes.PermissionDenied {
@@ -99,15 +106,21 @@ func TestSecretUseOnlyTheSameTokenRedeems(t *testing.T) {
 	}
 }
 
-func TestSecretUseOnlyTheOwnerDecides(t *testing.T) {
+func TestSecretUseOnlyAnOwnerOfTheSecretDecides(t *testing.T) {
 	fx := newUseFixture(t)
 	use := fx.prepare(t)
-	admin := &vaultv1.ActorContext{UserId: "user-carol", IsSiteAdmin: true, IsRoot: true}
+	admin := &vaultv1.ActorContext{UserId: "user-dan", IsSiteAdmin: true, IsRoot: true}
 	if err := fx.decide(admin, use.GetId(), true); status.Code(err) != codes.PermissionDenied {
-		t.Fatalf("an admin approving someone else's use: want PermissionDenied, got %v", err)
+		t.Fatalf("an admin who isn't an owner approving: want PermissionDenied, got %v", err)
 	}
 	if err := fx.decide(fx.token, use.GetId(), true); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("a token approving its own use: want PermissionDenied, got %v", err)
+	}
+	if err := fx.decide(fx.owner, use.GetId(), true); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("the requester approving their own use: want PermissionDenied, got %v", err)
+	}
+	if err := fx.decide(fx.approver, use.GetId(), true); err != nil {
+		t.Fatalf("the secret's owner approving: %v", err)
 	}
 }
 
@@ -119,7 +132,7 @@ func TestSecretUseDeniedOrExpiredIsNeverReleased(t *testing.T) {
 		t.Fatal("a denied use was released")
 	}
 	late := fx.prepare(t)
-	_ = fx.decide(fx.owner, late.GetId(), true)
+	_ = fx.decide(fx.approver, late.GetId(), true)
 	fx.now = fx.now.Add(11 * time.Minute)
 	if _, err := fx.redeem(fx.token, late.GetId()); err == nil {
 		t.Fatal("an expired use was released")
@@ -129,7 +142,7 @@ func TestSecretUseDeniedOrExpiredIsNeverReleased(t *testing.T) {
 func TestSecretUseRechecksAccessAtRedeem(t *testing.T) {
 	fx := newUseFixture(t)
 	use := fx.prepare(t)
-	_ = fx.decide(fx.owner, use.GetId(), true)
+	_ = fx.decide(fx.approver, use.GetId(), true)
 	if _, err := fx.s.SetFolderRuleset(context.Background(), &vaultv1.SetFolderRulesetRequest{
 		Actor: &vaultv1.ActorContext{UserId: "user-carol"}, FolderId: fx.folder, Owners: []string{"user-carol"},
 	}); err != nil {
@@ -143,7 +156,6 @@ func TestSecretUseRechecksAccessAtRedeem(t *testing.T) {
 func TestSecretUsePrepareNeedsAPersonalTokenWithReadAccess(t *testing.T) {
 	fx := newUseFixture(t)
 	for name, actor := range map[string]*vaultv1.ActorContext{
-		"human":           fx.owner,
 		"service account": agentGroupActor("sa-1"),
 		"no access":       tokenActor("user-bob", false),
 	} {
@@ -159,12 +171,17 @@ func TestSecretUsePrepareNeedsAPersonalTokenWithReadAccess(t *testing.T) {
 	}); status.Code(err) != codes.InvalidArgument {
 		t.Errorf("empty argv: want InvalidArgument, got %v", err)
 	}
+	if _, err := fx.s.PrepareSecretUse(context.Background(), &vaultv1.PrepareSecretUseRequest{
+		Actor: fx.owner, SecretId: fx.secret, FieldKey: "password", Argv: []string{"ssh", "x"},
+	}); status.Code(err) != codes.InvalidArgument {
+		t.Errorf("a person's command use: want InvalidArgument (a person only reveals), got %v", err)
+	}
 }
 
 func TestSecretUseAuditNeverCarriesTheValue(t *testing.T) {
 	fx := newUseFixture(t)
 	use := fx.prepare(t)
-	_ = fx.decide(fx.owner, use.GetId(), true)
+	_ = fx.decide(fx.approver, use.GetId(), true)
 	if _, err := fx.redeem(fx.token, use.GetId()); err != nil {
 		t.Fatal(err)
 	}
@@ -184,8 +201,12 @@ func TestSecretUseAuditNeverCarriesTheValue(t *testing.T) {
 	}
 }
 
+// grant creates a use grant. A grant only stands in for the requester's own
+// confirmation, so it applies only when nobody else can decide: the fixture
+// becomes a single-user install.
 func (fx *useFixture) grant(t *testing.T, g *vaultv1.UseGrant) *vaultv1.UseGrant {
 	t.Helper()
+	fx.users = &vaultv1.ActiveUsers{UserIds: []string{"user-ada"}}
 	resp, err := fx.s.CreateUseGrant(context.Background(), &vaultv1.CreateUseGrantRequest{Actor: fx.owner, Grant: g})
 	if err != nil {
 		t.Fatalf("CreateUseGrant: %v", err)

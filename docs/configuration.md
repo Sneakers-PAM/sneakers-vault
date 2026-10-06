@@ -13,7 +13,7 @@ at start. `.env.example` holds safe local defaults.
 | `GRPC_PORT` | `9090` | The gRPC listen port. Give each service its own port when they run on one host. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `localhost:4317` | OpenTelemetry OTLP gRPC endpoint for traces and metrics. |
 | `LOG_LEVEL`, `LOG_FORMAT` | `go-log` defaults | Log level and format. Local development uses `trace` and `console`; clusters log JSON. |
-| `MFA_MAX_AGE` | `5m` | How recent a user's MFA must be for every MFA-freshness check: version history and restore, step-up on reveal and copy, and checking out a sensitive secret. A Go duration from `1m` to `1h`; anything else stops the boot. Set the same value on both services. |
+| `MFA_MAX_AGE` | `30m` | The one step-up window for every MFA-freshness check: version history and restore, step-up on reveal and copy, checking out a sensitive secret, and confirming a secret use. After one step-up, a person gets no further MFA prompt until the window ends. A Go duration from `0` to `4h`; `0` means every sensitive action needs its own step-up (it covers only the action retried right after it, within 30 seconds). Anything else stops the boot. Set the same value on the vault, the workflow and the gateway. Login MFA is separate and unchanged. |
 | `MAINTENANCE_READONLY` | `false` | `true` starts the service in read-only maintenance ([api.md](api.md#read-only-maintenance)): every mutating call is refused with `MAINTENANCE_READONLY`, reads and reveals keep working, and the scheduled writers pause. The chart sets it on both services for an upgrade; changing it restarts the pods. Anything but a bool stops the boot. |
 
 ### Service-to-service authentication

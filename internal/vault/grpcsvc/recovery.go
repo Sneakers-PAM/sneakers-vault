@@ -25,15 +25,12 @@ const (
 	ReasonRotationInProgress   = "ROTATION_IN_PROGRESS"
 )
 
-// stepUpClockSkew tolerates an MFA time slightly ahead of the vault's clock.
-const stepUpClockSkew = 30 * time.Second
-
-// SetMFAMaxAge sets how recent MFA must be (MFA_MAX_AGE); <= 0 keeps the
-// default.
-func (s *Server) SetMFAMaxAge(d time.Duration) { s.mfaMaxAge = d }
+// SetMFAMaxAge sets how recent MFA must be (MFA_MAX_AGE); 0 means every
+// sensitive action needs its own step-up.
+func (s *Server) SetMFAMaxAge(d time.Duration) { s.mfaMaxAge, s.mfaMaxAgeSet = d, true }
 
 func (s *Server) mfaWindow() time.Duration {
-	if s.mfaMaxAge > 0 {
+	if s.mfaMaxAgeSet {
 		return s.mfaMaxAge
 	}
 	return config.DefaultMFAMaxAge
@@ -41,12 +38,7 @@ func (s *Server) mfaWindow() time.Duration {
 
 // mfaFresh reports whether a's MFA falls within the MFA_MAX_AGE window.
 func (s *Server) mfaFresh(a *vaultv1.ActorContext) bool {
-	at := a.GetMfaVerifiedAtUnix()
-	if at <= 0 {
-		return false
-	}
-	age := s.clock().Sub(time.Unix(at, 0))
-	return age >= -stepUpClockSkew && age <= s.mfaWindow()
+	return config.MFAFresh(a.GetMfaVerifiedAtUnix(), s.clock(), s.mfaWindow())
 }
 
 // requireRecovery refuses unless a is a human with a real user id holding the

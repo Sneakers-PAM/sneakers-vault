@@ -19,7 +19,7 @@ func (fx *useFixture) prepareInRun(t *testing.T, actor *vaultv1.ActorContext, ru
 	t.Helper()
 	resp, err := fx.s.PrepareSecretUse(context.Background(), &vaultv1.PrepareSecretUseRequest{
 		Actor: actor, SecretId: fx.secret, FieldKey: "password", Argv: []string{"ssh", "admin@router-01"},
-		ClientLabel: "laptop", RunId: runID, Purpose: purpose,
+		ClientLabel: "laptop", RunId: runID, Purpose: purpose, ActiveUsers: fx.users,
 	})
 	if err != nil {
 		t.Fatalf("PrepareSecretUse: %v", err)
@@ -95,7 +95,7 @@ func TestSecretUsePrepareValidatesRunIDAndPurpose(t *testing.T) {
 func TestSecretUseAuditCarriesTheRunID(t *testing.T) {
 	fx := newUseFixture(t)
 	approved := fx.prepareInRun(t, fx.token, "run_audit", "deploy")
-	if err := fx.decide(fx.owner, approved.GetId(), true); err != nil {
+	if err := fx.decide(fx.approver, approved.GetId(), true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fx.redeem(fx.token, approved.GetId()); err != nil {
@@ -166,7 +166,7 @@ func TestListPendingSecretUsesTokenSeesOnlyItsOwnRun(t *testing.T) {
 	stranger.TokenId = "utok-bob"
 	theirs := fx.prepareInRun(t, stranger, "run_shared", "")
 	decided := fx.prepareInRun(t, fx.token, "run_shared", "")
-	if err := fx.decide(fx.owner, decided.GetId(), true); err != nil {
+	if err := fx.decide(fx.approver, decided.GetId(), true); err != nil {
 		t.Fatal(err)
 	}
 

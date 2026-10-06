@@ -279,16 +279,21 @@ message Secret {
   bool builtin_administrator = 29;
   bool admin_count = 30;
   bool heartbeat_opt_out = 21;          // per-secret override: never heartbeat this secret (audited)
-  // A personal-token reveal needs the token owner's per-use browser approval
-  // (or a grant with allow_reveal). Personal tokens only: a service account
-  // has no person to approve, so its reveals are governed by its RACI grants
-  // and allow_api_for_sensitive instead. Set by a person only.
+  // Approval level 1 (approval-required): a person who isn't one of the
+  // secret's owners needs one owner's approval for each use or reveal, in the
+  // web or through a personal token. Owners are exempt. A service account has
+  // no person to approve, so its reveals are governed by its RACI grants and
+  // allow_api_for_sensitive instead. Set by a person only.
   bool require_token_approval = 22;
   string last_heartbeat_detail = 23;    // the connector's reason for the last heartbeat result (never a value), truncated
   // Output only, from ListSecretsInFolder and GetSecret: whether the caller
   // may read this secret. A secret the caller can see but not read is shown
   // locked, so they can request access.
   bool can_read = 31;
+  // Approval level 2 (always-approve), implies require_token_approval: every
+  // person needs approval for each use or reveal, owners included. Another
+  // owner or a designated approver (RACI A) decides, never the requester.
+  bool always_require_approval = 32;
 }
 
 // ---- Request/response messages ----------------------------------------------
@@ -1073,10 +1078,16 @@ message ReportRotationResponse { bool ok = 1; }
 
 // ---- Service ----------------------------------------------------------------
 
-// Use without reveal: a personal-token caller asks to use one secret field for
-// one exact command. The value is released only after the token's owner
-// approves in the Sneakers UI (with a fresh second factor) or a use grant the
-// owner created covers it, and only once, to the same token.
+// A secret use: a personal token asks to use one secret field for one exact
+// command or to reveal it to the token, or a signed-in person asks to reveal
+// it in the web. A use of a secret with no approval level, or a level 1 use by
+// one of the secret's owners, is approved at once. Otherwise another owner (or
+// for level 2 a designated approver, RACI A) decides in the web; the
+// requester never approves their own use. When nobody else can decide (a
+// single-user install, or a level 2 secret whose only approver is the
+// requester), the requester confirms the task once with a fresh second
+// factor instead (ConfirmSecretUse). The value is released once, to the
+// requester that prepared the use.
 enum SecretUseState {
   SECRET_USE_STATE_UNSPECIFIED = 0;
   SECRET_USE_STATE_PENDING = 1;
@@ -1102,6 +1113,19 @@ message SecretUse {
   bool reveal = 13;                     // releases the value to the token itself rather than to a command; argv is empty
   string run_id = 14;                   // groups the uses one agent run raised; display grouping only, grants nothing
   string purpose = 15;                  // the agent's own words for the task; plain text, never trusted
+  // Nobody but the requester can decide this use: the requester confirms it
+  // with a fresh second factor (ConfirmSecretUse) instead of an approval.
+  bool confirm = 16;
+  int64 confirmed_at_unix = 17;         // set when the requester confirmed it
+  string decided_by_user_id = 18;       // the owner or approver who approved or denied it
+}
+
+// The people identity reports as active (not disabled, able to sign in), as
+// the gateway resolved them, so the vault can tell whether anyone besides the
+// requester can decide a use. Unset means unknown: the vault then never
+// treats the install as single-user.
+message ActiveUsers {
+  repeated string user_ids = 1;
 }
 
 message PrepareSecretUseRequest {
@@ -1113,8 +1137,25 @@ message PrepareSecretUseRequest {
   bool reveal = 6;
   string run_id = 7;                    // optional; [A-Za-z0-9_-]{1,64}, else InvalidArgument
   string purpose = 8;                   // optional; at most 200 characters of plain text, else InvalidArgument
+  ActiveUsers active_users = 9;         // optional; see ActiveUsers
 }
 message PrepareSecretUseResponse { SecretUse use = 1; }
+
+// The requester confirms their own pending use once, with a fresh second
+// factor, when nobody else can decide it (SecretUse.confirm). Refused when
+// another owner or approver can decide.
+message ConfirmSecretUseRequest {
+  ActorContext actor = 1;
+  string use_id = 2;
+  ActiveUsers active_users = 3;
+}
+message ConfirmSecretUseResponse { SecretUse use = 1; }
+
+// The pending uses of other people the signed-in person may decide: as an
+// owner of the secret, or for a level 2 secret as an owner or designated
+// approver. Never the caller's own.
+message ListSecretUsesToDecideRequest { ActorContext actor = 1; }
+message ListSecretUsesToDecideResponse { repeated SecretUse uses = 1; }
 
 message GetSecretUseRequest { ActorContext actor = 1; string use_id = 2; }
 message GetSecretUseResponse { SecretUse use = 1; }
@@ -1195,7 +1236,12 @@ message GetHeartbeatStatusForPrincipalResponse {
 // SetSecretTokenApproval turns require_token_approval on or off. It covers
 // personal-token reveals only, never service accounts. A person with manage
 // rights on the secret only; never a token or other non-human principal.
-message SetSecretTokenApprovalRequest { ActorContext actor = 1; string secret_id = 2; bool required = 3; }
+message SetSecretTokenApprovalRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  bool required = 3;                    // level 1; false turns both levels off
+  bool always = 4;                      // with required, level 2 (always-approve)
+}
 message SetSecretTokenApprovalResponse { Secret secret = 1; }
 
 message CreateUseGrantRequest { ActorContext actor = 1; UseGrant grant = 2; }
@@ -1411,6 +1457,10 @@ service VaultService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc DecideSecretUse(DecideSecretUseRequest) returns (DecideSecretUseResponse);
+  rpc ConfirmSecretUse(ConfirmSecretUseRequest) returns (ConfirmSecretUseResponse);
+  rpc ListSecretUsesToDecide(ListSecretUsesToDecideRequest) returns (ListSecretUsesToDecideResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc RedeemSecretUse(RedeemSecretUseRequest) returns (RedeemSecretUseResponse);
   rpc CreateUseGrant(CreateUseGrantRequest) returns (CreateUseGrantResponse);
   rpc ListUseGrants(ListUseGrantsRequest) returns (ListUseGrantsResponse) {
