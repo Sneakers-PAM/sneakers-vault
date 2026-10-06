@@ -1098,6 +1098,15 @@ message HeartbeatTarget {
   repeated string ssh_host_keys = 5;
 }
 
+// The Active Directory type's logon format fields (logonFormat, netbios and
+// upnSuffix), for the connector to build the account's logon name. Unset, or
+// an empty format, means the connector's default. Non-sensitive.
+message LogonFormat {
+  string format = 1;     // "NETBIOS" or "UPN"
+  string netbios = 2;    // the NetBIOS domain, for NETBIOS\username
+  string upn_suffix = 3; // for username@upn_suffix; empty means the target's domain
+}
+
 // One due validation job (no secret value — reveal is a separate call).
 message HeartbeatJob {
   string secret_id = 1;
@@ -1105,6 +1114,7 @@ message HeartbeatJob {
   string username = 3;         // non-sensitive: the account to bind AS
   HeartbeatConn connection = 4;
   HeartbeatTarget target = 5;
+  LogonFormat logon = 6;       // set only for a secret with any logon format field
 }
 
 message ClaimDueHeartbeatsRequest { WorkerIdentity identity = 1; int32 limit = 2; }
@@ -1142,6 +1152,7 @@ message RotationJob {
   string username = 3;         // non-sensitive: the account being rotated
   HeartbeatConn connection = 4;
   HeartbeatTarget target = 5;
+  LogonFormat logon = 6;       // set only for a secret with any logon format field
 }
 
 message EnqueueRotationRequest { ActorContext actor = 1; string secret_id = 2; string reason = 3; }
