@@ -30,11 +30,12 @@ var maintenanceGolden = map[maintenance.Class][]string{
 		"GetTopAccessedSecrets", "ListSecretsByStatus", "FindSecretsByPublicKey", "GetSecretRuleset",
 		"GetMySecretAccess", "ListConnectors", "ListPasswordPolicies", "GetSecuritySettings",
 		"GenerateKeyPair", "GetSecretUse", "ListPendingSecretUses", "ListSecretUsesToDecide", "ListUseGrants",
+		"GetBreakGlassSession", "ListBreakGlassItems", "ListBreakGlassSessions",
 	},
 	maintenance.Allowed: {
 		"RevealSecretField", "RevealSecretFieldForPrincipal", "RevealSecretVersionField", "CopySecret",
 		"ExportCertificate", "ClaimDueHeartbeats", "RevealForHeartbeat", "ReportHeartbeat",
-		"ClaimDueRotations", "ReportRotation", "GetHeartbeatStatusForPrincipal",
+		"ClaimDueRotations", "ReportRotation", "GetHeartbeatStatusForPrincipal", "CloseBreakGlassSession",
 	},
 	maintenance.Mutation: {
 		"SaveConnection", "DeleteConnection", "SaveTarget", "DeleteTarget", "SetTargetRuleset",
@@ -45,7 +46,7 @@ var maintenanceGolden = map[maintenance.Class][]string{
 		"SetSecretAutomation", "CreateSecretForPrincipal", "GenerateSecretForPrincipal",
 		"MoveSecretForPrincipal", "ChangeSecretTypeForPrincipal", "RenameSecretForPrincipal",
 		"UpdateSecretFieldsForPrincipal", "CreateFolderForPrincipal", "RenameFolderForPrincipal",
-		"MoveFolderForPrincipal", "RestoreSecretVersion", "BreakGlassSecret", "RetireSecret",
+		"MoveFolderForPrincipal", "RestoreSecretVersion", "BreakGlassSecret", "OpenBreakGlassSession", "RetireSecret",
 		"RestoreSecret", "DeleteSecret", "SetSecretRuleset", "EnqueueRotation", "RevealForRotation",
 		"SavePasswordPolicy", "DeletePasswordPolicy", "UpdateSecuritySettings", "SeedBuiltins",
 		"RotateKek", "SealForImport", "PrepareSecretUse", "DecideSecretUse", "ConfirmSecretUse", "RedeemSecretUse",

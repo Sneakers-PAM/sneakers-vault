@@ -18,7 +18,8 @@ every field value envelope-encrypted at rest under a rotating key ring.
   records the outcome.
 - 🤖 **Machine access:** service accounts, workloads and personal tokens act through the
   `*ForPrincipal` calls, never with admin authority.
-- 🚨 **Break-glass:** an audited emergency reveal that notifies the owner and queues a rotation.
+- 🚨 **Break-glass:** an audited emergency reveal that notifies the owner and queues a rotation,
+  and a short-lived, audited browse of every folder and secret for site admins.
 
 ## ✅ Workflow service
 

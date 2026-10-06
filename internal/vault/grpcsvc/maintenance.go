@@ -25,6 +25,7 @@ var maintenanceAllowed = map[string]string{
 	vaultv1.VaultService_ReportHeartbeat_FullMethodName:                "finishes a heartbeat claimed before the mode went on",
 	vaultv1.VaultService_ReportRotation_FullMethodName:                 "records a password the connector already changed on the target",
 	vaultv1.VaultService_GetHeartbeatStatusForPrincipal_FullMethodName: "a status read, served without a proto mark",
+	vaultv1.VaultService_CloseBreakGlassSession_FullMethodName:         "ends a break-glass session; it changes no vault data",
 }
 
 // MaintenanceClasses is how the read-only mode treats each vault method.

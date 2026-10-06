@@ -80,6 +80,11 @@ const (
 	VaultService_RevealSecretVersionField_FullMethodName        = "/sneakers.vault.v1.VaultService/RevealSecretVersionField"
 	VaultService_RestoreSecretVersion_FullMethodName            = "/sneakers.vault.v1.VaultService/RestoreSecretVersion"
 	VaultService_BreakGlassSecret_FullMethodName                = "/sneakers.vault.v1.VaultService/BreakGlassSecret"
+	VaultService_OpenBreakGlassSession_FullMethodName           = "/sneakers.vault.v1.VaultService/OpenBreakGlassSession"
+	VaultService_GetBreakGlassSession_FullMethodName            = "/sneakers.vault.v1.VaultService/GetBreakGlassSession"
+	VaultService_ListBreakGlassItems_FullMethodName             = "/sneakers.vault.v1.VaultService/ListBreakGlassItems"
+	VaultService_CloseBreakGlassSession_FullMethodName          = "/sneakers.vault.v1.VaultService/CloseBreakGlassSession"
+	VaultService_ListBreakGlassSessions_FullMethodName          = "/sneakers.vault.v1.VaultService/ListBreakGlassSessions"
 	VaultService_CopySecret_FullMethodName                      = "/sneakers.vault.v1.VaultService/CopySecret"
 	VaultService_RetireSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/RetireSecret"
 	VaultService_RestoreSecret_FullMethodName                   = "/sneakers.vault.v1.VaultService/RestoreSecret"
@@ -206,6 +211,13 @@ type VaultServiceClient interface {
 	// Emergency access: bypasses checkout/approval gating for a read-eligible
 	// actor; high-severity audit + owner notify + forced rotation-enqueue.
 	BreakGlassSecret(ctx context.Context, in *BreakGlassSecretRequest, opts ...grpc.CallOption) (*BreakGlassSecretResponse, error)
+	// Break-glass browse for human site admins: open, check, list, close, and
+	// the audit view of past sessions with their reveals.
+	OpenBreakGlassSession(ctx context.Context, in *OpenBreakGlassSessionRequest, opts ...grpc.CallOption) (*OpenBreakGlassSessionResponse, error)
+	GetBreakGlassSession(ctx context.Context, in *GetBreakGlassSessionRequest, opts ...grpc.CallOption) (*GetBreakGlassSessionResponse, error)
+	ListBreakGlassItems(ctx context.Context, in *ListBreakGlassItemsRequest, opts ...grpc.CallOption) (*ListBreakGlassItemsResponse, error)
+	CloseBreakGlassSession(ctx context.Context, in *CloseBreakGlassSessionRequest, opts ...grpc.CallOption) (*CloseBreakGlassSessionResponse, error)
+	ListBreakGlassSessions(ctx context.Context, in *ListBreakGlassSessionsRequest, opts ...grpc.CallOption) (*ListBreakGlassSessionsResponse, error)
 	CopySecret(ctx context.Context, in *CopySecretRequest, opts ...grpc.CallOption) (*CopySecretResponse, error)
 	// Secret lifecycle: soft-retire (recoverable), restore, and hard delete (permanent).
 	RetireSecret(ctx context.Context, in *RetireSecretRequest, opts ...grpc.CallOption) (*RetireSecretResponse, error)
@@ -859,6 +871,56 @@ func (c *vaultServiceClient) BreakGlassSecret(ctx context.Context, in *BreakGlas
 	return out, nil
 }
 
+func (c *vaultServiceClient) OpenBreakGlassSession(ctx context.Context, in *OpenBreakGlassSessionRequest, opts ...grpc.CallOption) (*OpenBreakGlassSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OpenBreakGlassSessionResponse)
+	err := c.cc.Invoke(ctx, VaultService_OpenBreakGlassSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) GetBreakGlassSession(ctx context.Context, in *GetBreakGlassSessionRequest, opts ...grpc.CallOption) (*GetBreakGlassSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetBreakGlassSessionResponse)
+	err := c.cc.Invoke(ctx, VaultService_GetBreakGlassSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) ListBreakGlassItems(ctx context.Context, in *ListBreakGlassItemsRequest, opts ...grpc.CallOption) (*ListBreakGlassItemsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListBreakGlassItemsResponse)
+	err := c.cc.Invoke(ctx, VaultService_ListBreakGlassItems_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) CloseBreakGlassSession(ctx context.Context, in *CloseBreakGlassSessionRequest, opts ...grpc.CallOption) (*CloseBreakGlassSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CloseBreakGlassSessionResponse)
+	err := c.cc.Invoke(ctx, VaultService_CloseBreakGlassSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) ListBreakGlassSessions(ctx context.Context, in *ListBreakGlassSessionsRequest, opts ...grpc.CallOption) (*ListBreakGlassSessionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListBreakGlassSessionsResponse)
+	err := c.cc.Invoke(ctx, VaultService_ListBreakGlassSessions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vaultServiceClient) CopySecret(ctx context.Context, in *CopySecretRequest, opts ...grpc.CallOption) (*CopySecretResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CopySecretResponse)
@@ -1370,6 +1432,13 @@ type VaultServiceServer interface {
 	// Emergency access: bypasses checkout/approval gating for a read-eligible
 	// actor; high-severity audit + owner notify + forced rotation-enqueue.
 	BreakGlassSecret(context.Context, *BreakGlassSecretRequest) (*BreakGlassSecretResponse, error)
+	// Break-glass browse for human site admins: open, check, list, close, and
+	// the audit view of past sessions with their reveals.
+	OpenBreakGlassSession(context.Context, *OpenBreakGlassSessionRequest) (*OpenBreakGlassSessionResponse, error)
+	GetBreakGlassSession(context.Context, *GetBreakGlassSessionRequest) (*GetBreakGlassSessionResponse, error)
+	ListBreakGlassItems(context.Context, *ListBreakGlassItemsRequest) (*ListBreakGlassItemsResponse, error)
+	CloseBreakGlassSession(context.Context, *CloseBreakGlassSessionRequest) (*CloseBreakGlassSessionResponse, error)
+	ListBreakGlassSessions(context.Context, *ListBreakGlassSessionsRequest) (*ListBreakGlassSessionsResponse, error)
 	CopySecret(context.Context, *CopySecretRequest) (*CopySecretResponse, error)
 	// Secret lifecycle: soft-retire (recoverable), restore, and hard delete (permanent).
 	RetireSecret(context.Context, *RetireSecretRequest) (*RetireSecretResponse, error)
@@ -1616,6 +1685,21 @@ func (UnimplementedVaultServiceServer) RestoreSecretVersion(context.Context, *Re
 }
 func (UnimplementedVaultServiceServer) BreakGlassSecret(context.Context, *BreakGlassSecretRequest) (*BreakGlassSecretResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BreakGlassSecret not implemented")
+}
+func (UnimplementedVaultServiceServer) OpenBreakGlassSession(context.Context, *OpenBreakGlassSessionRequest) (*OpenBreakGlassSessionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method OpenBreakGlassSession not implemented")
+}
+func (UnimplementedVaultServiceServer) GetBreakGlassSession(context.Context, *GetBreakGlassSessionRequest) (*GetBreakGlassSessionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBreakGlassSession not implemented")
+}
+func (UnimplementedVaultServiceServer) ListBreakGlassItems(context.Context, *ListBreakGlassItemsRequest) (*ListBreakGlassItemsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListBreakGlassItems not implemented")
+}
+func (UnimplementedVaultServiceServer) CloseBreakGlassSession(context.Context, *CloseBreakGlassSessionRequest) (*CloseBreakGlassSessionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CloseBreakGlassSession not implemented")
+}
+func (UnimplementedVaultServiceServer) ListBreakGlassSessions(context.Context, *ListBreakGlassSessionsRequest) (*ListBreakGlassSessionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListBreakGlassSessions not implemented")
 }
 func (UnimplementedVaultServiceServer) CopySecret(context.Context, *CopySecretRequest) (*CopySecretResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CopySecret not implemented")
@@ -2811,6 +2895,96 @@ func _VaultService_BreakGlassSecret_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VaultService_OpenBreakGlassSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OpenBreakGlassSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).OpenBreakGlassSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_OpenBreakGlassSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).OpenBreakGlassSession(ctx, req.(*OpenBreakGlassSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_GetBreakGlassSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBreakGlassSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).GetBreakGlassSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_GetBreakGlassSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).GetBreakGlassSession(ctx, req.(*GetBreakGlassSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_ListBreakGlassItems_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListBreakGlassItemsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ListBreakGlassItems(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ListBreakGlassItems_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ListBreakGlassItems(ctx, req.(*ListBreakGlassItemsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_CloseBreakGlassSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CloseBreakGlassSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).CloseBreakGlassSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_CloseBreakGlassSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).CloseBreakGlassSession(ctx, req.(*CloseBreakGlassSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_ListBreakGlassSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListBreakGlassSessionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ListBreakGlassSessions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ListBreakGlassSessions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ListBreakGlassSessions(ctx, req.(*ListBreakGlassSessionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VaultService_CopySecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CopySecretRequest)
 	if err := dec(in); err != nil {
@@ -3823,6 +3997,26 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BreakGlassSecret",
 			Handler:    _VaultService_BreakGlassSecret_Handler,
+		},
+		{
+			MethodName: "OpenBreakGlassSession",
+			Handler:    _VaultService_OpenBreakGlassSession_Handler,
+		},
+		{
+			MethodName: "GetBreakGlassSession",
+			Handler:    _VaultService_GetBreakGlassSession_Handler,
+		},
+		{
+			MethodName: "ListBreakGlassItems",
+			Handler:    _VaultService_ListBreakGlassItems_Handler,
+		},
+		{
+			MethodName: "CloseBreakGlassSession",
+			Handler:    _VaultService_CloseBreakGlassSession_Handler,
+		},
+		{
+			MethodName: "ListBreakGlassSessions",
+			Handler:    _VaultService_ListBreakGlassSessions_Handler,
 		},
 		{
 			MethodName: "CopySecret",

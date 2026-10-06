@@ -9,11 +9,14 @@
 // credential is rotated out. The gateway performs the MFA step-up before calling
 // this RPC; vault owns the crypto, audit, notify and
 // rotation queue, so the reveal + event + audit + notify + rotation happen in
-// one place. Field values NEVER travel into the audit or the ledger.
+// one place. Field values NEVER travel into the audit or the ledger. A reveal
+// inside a break-glass browse session (breakglass_session.go) is this same
+// call, carrying the session id.
 package grpcsvc
 
 import (
 	"context"
+	"strings"
 
 	log "github.com/Bugs5382/go-log"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
@@ -38,6 +41,11 @@ import (
 func (s *Server) BreakGlassSecret(ctx context.Context, req *vaultv1.BreakGlassSecretRequest) (*vaultv1.BreakGlassSecretResponse, error) {
 	if req.GetActor().GetPrincipalKind() != vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN {
 		return nil, status.Error(codes.PermissionDenied, "break-glass is available to signed-in people only")
+	}
+	sessionID := req.GetSessionId()
+	reason, err := s.breakGlassReason(ctx, req)
+	if err != nil {
+		return nil, err
 	}
 	// A write lock: nextID mutates s.seq, and it keeps the reveal + snapshot
 	// atomic against concurrent mutation (mirrors RevealSecretField's Lock).
@@ -71,22 +79,18 @@ func (s *Server) BreakGlassSecret(ctx context.Context, req *vaultv1.BreakGlassSe
 	secName := sec.GetName()
 	rotationCapable := s.rotationEligible(sec)
 	intervalDays := policyRotationDays(s.policyForSecret(sec))
-	ownerUserID := ""
-	if f := s.findFolder(sec.GetFolderId()); f != nil {
-		ownerUserID = f.GetOwnerUserId()
-	}
+	ownerUserID := s.folderOwnerUserID(sec.GetFolderId())
 	eventID := s.nextID("break-glass")
 	s.mu.Unlock()
 
 	actor := req.GetActor().GetUserId()
-	reason := req.GetReason()
 
 	// HIGH-severity audit FIRST, FAIL-CLOSED: the tamper-evident tier
 	// (audit.TierAudit), sensitive, with the reason as a non-sensitive attribute
 	// (NEVER a field value). This event is the compensating control for the
 	// deliberate policy bypass below, so if it can't be recorded, the secret
 	// must not be disclosed either — no fields are returned.
-	if err := s.emitTierErr(ctx, audit.TierAudit, actor, "break_glass", secID, true, map[string]string{"reason": reason}); err != nil {
+	if err := s.emitTierErr(ctx, audit.TierAudit, actor, "break_glass", secID, true, breakGlassAttrs(reason, sessionID)); err != nil {
 		return nil, status.Errorf(codes.Internal, "record break-glass audit: %v", err)
 	}
 
@@ -113,7 +117,7 @@ func (s *Server) BreakGlassSecret(ctx context.Context, req *vaultv1.BreakGlassSe
 	// recorded this reveal.
 	notified := ownerUserID != ""
 	if s.bg != nil {
-		if err := s.bg.Insert(ctx, eventID, secID, actor, reason, postRotationScheduled, notified); err != nil {
+		if err := s.bg.Insert(ctx, eventID, secID, actor, reason, sessionID, postRotationScheduled, notified); err != nil {
 			l.Error(err, "break-glass: ledger insert failed", log.F("secret_id", secID))
 		}
 	}
@@ -128,6 +132,43 @@ func (s *Server) BreakGlassSecret(ctx context.Context, req *vaultv1.BreakGlassSe
 	}
 
 	return &vaultv1.BreakGlassSecretResponse{Fields: fields}, nil
+}
+
+// breakGlassAttrs are a reveal's audit attributes: the reason, and the browse
+// session it was made in, if any. Never a field value.
+func breakGlassAttrs(reason, sessionID string) map[string]string {
+	attrs := map[string]string{"reason": reason}
+	if sessionID != "" {
+		attrs["session_id"] = sessionID
+	}
+	return attrs
+}
+
+// folderOwnerUserID is the personal-folder owner of folderID, or "". Caller
+// holds s.mu.
+func (s *Server) folderOwnerUserID(folderID string) string {
+	if f := s.findFolder(folderID); f != nil {
+		return f.GetOwnerUserId()
+	}
+	return ""
+}
+
+// breakGlassReason checks the browse session a reveal names, if any, and
+// returns the reason to record: the request's, or the session's when the
+// request gives none inside a session.
+func (s *Server) breakGlassReason(ctx context.Context, req *vaultv1.BreakGlassSecretRequest) (string, error) {
+	reason := req.GetReason()
+	if req.GetSessionId() == "" {
+		return reason, nil
+	}
+	sess, err := s.liveBreakGlassSession(ctx, req.GetActor(), req.GetSessionId(), "BreakGlassSecret")
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(reason) == "" {
+		reason = sess.Reason
+	}
+	return reason, nil
 }
 
 // notifyBreakGlass fires a best-effort notification to the secret's owner that
