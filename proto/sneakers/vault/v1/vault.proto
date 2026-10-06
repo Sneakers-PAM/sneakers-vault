@@ -1007,6 +1007,9 @@ message Target {
   string id = 1;
   string name = 2;
   string hostname = 3;
+  // Legacy alias for the default entry in `connections`, kept so a caller
+  // that hasn't moved to the list still reads and writes the same field.
+  // Always in sync with the default entry on every response.
   string connection_id = 4;
   string description = 5;
   int32 secret_count = 6;     // output-only: secrets pointing at this target
@@ -1020,6 +1023,21 @@ message Target {
   // no options and not be a private key or certificate). A save replaces the
   // whole list; empty means not pinned, and the broker refuses to connect.
   repeated string ssh_host_keys = 11;
+  // The target's connections, in display order, one connector protocol
+  // apiece (no two entries may resolve to the same Connection.protocol) and
+  // exactly one marked default. A save with this list empty and connection_id
+  // set is normalized into a one-item list on write; a target saved before
+  // this field existed is read back the same way, so no data is lost.
+  repeated TargetConnection connections = 12;
+}
+
+// One of a target's connections: a reference to a shared Connection (which
+// carries the protocol, port and TLS/credential settings) plus whether this
+// is the target's default — the one a session starts on unless the caller
+// names another.
+message TargetConnection {
+  string connection_id = 1;
+  bool is_default = 2;
 }
 
 message ListConnectionsRequest {}
