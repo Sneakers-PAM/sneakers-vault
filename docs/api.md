@@ -241,6 +241,18 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   the vault records either as a failed check with the connector's reason (counted as drift,
   notified like a drift, audited as `secret.heartbeat.host_key`), but doesn't pause the schedule,
   because no credential was tried.
+- **Target connections:** `Target.connections` is an ordered list of `TargetConnection`
+  (`connection_id` plus `is_default`), one entry per protocol a host answers on; exactly one entry
+  is default. `connection_id` on `Target` stays as an alias for the default entry — reading it
+  always returns the default's id, and a `SaveTarget` that sets only `connection_id` (no
+  `connections` list) is read as the alias for backward compatibility: on a create it becomes a
+  one-item list; on an edit of a target that already has the named connection, it just moves the
+  default there, so an old caller can't drop the target's other connections by saving without one.
+  A target saved before this field existed is read back as a one-item default list built from its
+  `connection_id`, with nothing lost. `SaveTarget` answers `InvalidArgument` for an empty list, two
+  entries resolving to the same `Connection.protocol`, or anything but exactly one default.
+  `DeleteConnection` answers `removed: false` while any target still names the connection, default
+  or not.
 - **Type changes:** see [type-change.md](type-change.md).
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
   through `seed-catalog`.

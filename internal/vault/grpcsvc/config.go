@@ -30,8 +30,11 @@ func (s *Server) ListConnections(_ context.Context, _ *vaultv1.ListConnectionsRe
 func (s *Server) countTargetsFor(connID string) int32 {
 	var n int32
 	for _, t := range s.targets {
-		if t.GetConnectionId() == connID {
-			n++
+		for _, c := range targetConnections(t) {
+			if c.GetConnectionId() == connID {
+				n++
+				break
+			}
 		}
 	}
 	return n
@@ -91,8 +94,10 @@ func (s *Server) DeleteConnection(ctx context.Context, req *vaultv1.DeleteConnec
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, t := range s.targets {
-		if t.ConnectionId == req.GetId() {
-			return &vaultv1.DeleteConnectionResponse{Removed: false}, nil
+		for _, c := range targetConnections(t) {
+			if c.GetConnectionId() == req.GetId() {
+				return &vaultv1.DeleteConnectionResponse{Removed: false}, nil
+			}
 		}
 	}
 	s.connections = removeByID(s.connections, req.GetId())
@@ -117,14 +122,14 @@ func (s *Server) ListTargets(_ context.Context, req *vaultv1.ListTargetsRequest)
 		}
 		cp := proto.Clone(t).(*vaultv1.Target)
 		cp.SecretCount = s.countSecretsFor(t.GetId())
-		out = append(out, cp)
+		out = append(out, withResolvedConnections(cp))
 	}
 	return &vaultv1.ListTargetsResponse{Targets: out}, nil
 }
 
 func (s *Server) SaveTarget(ctx context.Context, req *vaultv1.SaveTargetRequest) (*vaultv1.SaveTargetResponse, error) {
 	in := req.GetTarget()
-	if in == nil || in.GetName() == "" || in.GetHostname() == "" || in.GetConnectionId() == "" {
+	if in == nil || in.GetName() == "" || in.GetHostname() == "" {
 		return nil, status.Error(codes.InvalidArgument, "target name, hostname, and connection are required")
 	}
 	actor := req.GetActor()
@@ -136,11 +141,12 @@ func (s *Server) SaveTarget(ctx context.Context, req *vaultv1.SaveTargetRequest)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if findByID(s.connections, in.GetConnectionId()) == nil {
-		return nil, errNotFound("connection")
-	}
 	var hostKeyChange map[string]string
 	if in.GetId() == "" {
+		conns, defaultConnID, err := resolveTargetConnections(s.connections, nil, in)
+		if err != nil {
+			return nil, err
+		}
 		keys, change, err := applyHostKeys(actor, nil, in.GetSshHostKeys())
 		if err != nil {
 			s.lg(ctx).Warn("target save refused: SSH host keys", log.F("actor_user_id", actor.GetUserId()), log.F("reason", status.Convert(err).Message()))
@@ -148,6 +154,7 @@ func (s *Server) SaveTarget(ctx context.Context, req *vaultv1.SaveTargetRequest)
 		}
 		in.SshHostKeys, hostKeyChange = keys, change
 		in.Id = s.nextID("target")
+		in.Connections, in.ConnectionId = conns, defaultConnID //nolint:staticcheck // the deprecated field is the intentional alias this keeps in sync
 		// A non-admin's target is personal (owned by the actor); an admin's is
 		// shared (owner left empty). The caller cannot spoof another owner.
 		if admin {
@@ -166,6 +173,10 @@ func (s *Server) SaveTarget(ctx context.Context, req *vaultv1.SaveTargetRequest)
 		if !admin && existing.GetOwnerUserId() != actor.GetUserId() {
 			return nil, status.Error(codes.PermissionDenied, "not permitted to edit this target")
 		}
+		conns, defaultConnID, err := resolveTargetConnections(s.connections, existing, in)
+		if err != nil {
+			return nil, err
+		}
 		keys, change, err := applyHostKeys(actor, existing.GetSshHostKeys(), in.GetSshHostKeys())
 		if err != nil {
 			s.lg(ctx).Warn("target save refused: SSH host keys", log.F("target_id", existing.GetId()),
@@ -174,7 +185,8 @@ func (s *Server) SaveTarget(ctx context.Context, req *vaultv1.SaveTargetRequest)
 		}
 		existing.SshHostKeys, hostKeyChange = keys, change
 		existing.Name, existing.Hostname = in.GetName(), in.GetHostname()
-		existing.ConnectionId, existing.Description = in.GetConnectionId(), in.GetDescription()
+		existing.Connections, existing.ConnectionId = conns, defaultConnID //nolint:staticcheck // the deprecated field is the intentional alias this keeps in sync
+		existing.Description = in.GetDescription()
 		existing.Kind, existing.Domain, existing.Realm = in.GetKind(), in.GetDomain(), in.GetRealm()
 		in = existing
 	}
