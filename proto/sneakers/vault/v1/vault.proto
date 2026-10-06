@@ -332,6 +332,10 @@ message ActorContext {
   bool is_recovery = 10;
   // Directory group ids, matched by GROUP rules that carry a subject_id.
   repeated string group_ids = 11;
+  // An opaque reference the gateway derives from the signed-in web session
+  // (never the session token itself). A break-glass browse session is bound to
+  // the reference it was opened with.
+  string session_ref = 12;
 }
 
 message ListSecretTypesRequest {}
@@ -791,8 +795,67 @@ message SetFolderRevealStepUpResponse { Folder folder = 1; }
 // read-eligible actor (gateway MFA step-up gates the call before this RPC is
 // reached). Reveals ALL fields, records a high-severity audited event,
 // notifies the secret's owner, and enqueues a forced post-use rotation.
-message BreakGlassSecretRequest { ActorContext actor = 1; string secret_id = 2; string reason = 3; }
+//
+// session_id, when set, makes this a reveal inside a break-glass browse
+// session: the session must be open, the caller's, and bound to the caller's
+// session_ref. The session id is recorded on the audit event and the ledger
+// row, and an empty reason takes the session's reason.
+message BreakGlassSecretRequest { ActorContext actor = 1; string secret_id = 2; string reason = 3; string session_id = 4; }
 message BreakGlassSecretResponse { map<string, string> fields = 1; }
+
+// A break-glass browse session: a short-lived window, opened by a human site
+// admin or root with a reason and a fresh MFA, in which every folder and
+// secret is listed (metadata only). It grants no edit or manage rights.
+message BreakGlassSession {
+  string id = 1;
+  string actor_user_id = 2;
+  string reason = 3;
+  int64 opened_at_unix = 4;
+  int64 expires_at_unix = 5;
+  // 0 while the session is open.
+  int64 ended_at_unix = 6;
+  // How it ended: "exit", "expired" or "replaced"; empty while open.
+  string end_reason = 7;
+  // The reveals made in the session, oldest first. Filled by
+  // ListBreakGlassSessions only.
+  repeated BreakGlassReveal reveals = 8;
+}
+
+// One break-glass reveal made in a session. Never a value.
+message BreakGlassReveal {
+  string event_id = 1;
+  string secret_id = 2;
+  // The secret's current name; empty once the secret is gone.
+  string secret_name = 3;
+  int64 revealed_at_unix = 4;
+  bool post_rotation_scheduled = 5;
+  bool owner_notified = 6;
+}
+
+// Open a break-glass browse session. Human site admin or root only, with a
+// session_ref, a reason and a fresh MFA. Any session the caller still has
+// open ends first ("replaced"). Audited as break_glass.entered.
+message OpenBreakGlassSessionRequest { ActorContext actor = 1; string reason = 2; }
+message OpenBreakGlassSessionResponse { BreakGlassSession session = 1; }
+
+// The caller's open session bound to their session_ref; unset when none.
+message GetBreakGlassSessionRequest { ActorContext actor = 1; }
+message GetBreakGlassSessionResponse { BreakGlassSession session = 1; }
+
+// List every folder (personal ones included) and every live secret, metadata
+// only, while the caller's session is open. folder_id, when set, limits the
+// secrets to that folder; folders are always all listed.
+message ListBreakGlassItemsRequest { ActorContext actor = 1; string session_id = 2; string folder_id = 3; }
+message ListBreakGlassItemsResponse { repeated Folder folders = 1; repeated Secret secrets = 2; }
+
+// End the caller's session. Audited as break_glass.left.
+message CloseBreakGlassSessionRequest { ActorContext actor = 1; string session_id = 2; }
+message CloseBreakGlassSessionResponse { BreakGlassSession session = 1; }
+
+// Break-glass sessions, newest first, each with its reveals, for the audit
+// view. Human site admin or root only. limit 0 means 50; at most 200.
+message ListBreakGlassSessionsRequest { ActorContext actor = 1; int32 limit = 2; }
+message ListBreakGlassSessionsResponse { repeated BreakGlassSession sessions = 1; }
 
 // Copy the secret's primary sensitive field value to the clipboard; recorded as
 // a distinct audited "copy" access event. Empty value if the secret has none.
@@ -1373,6 +1436,19 @@ service VaultService {
   // Emergency access: bypasses checkout/approval gating for a read-eligible
   // actor; high-severity audit + owner notify + forced rotation-enqueue.
   rpc BreakGlassSecret(BreakGlassSecretRequest) returns (BreakGlassSecretResponse);
+  // Break-glass browse for human site admins: open, check, list, close, and
+  // the audit view of past sessions with their reveals.
+  rpc OpenBreakGlassSession(OpenBreakGlassSessionRequest) returns (OpenBreakGlassSessionResponse);
+  rpc GetBreakGlassSession(GetBreakGlassSessionRequest) returns (GetBreakGlassSessionResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ListBreakGlassItems(ListBreakGlassItemsRequest) returns (ListBreakGlassItemsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc CloseBreakGlassSession(CloseBreakGlassSessionRequest) returns (CloseBreakGlassSessionResponse);
+  rpc ListBreakGlassSessions(ListBreakGlassSessionsRequest) returns (ListBreakGlassSessionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc CopySecret(CopySecretRequest) returns (CopySecretResponse);
   // Secret lifecycle: soft-retire (recoverable), restore, and hard delete (permanent).
   rpc RetireSecret(RetireSecretRequest) returns (RetireSecretResponse);

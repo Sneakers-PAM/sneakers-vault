@@ -50,6 +50,7 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 | Folders | `ListFolders`, `CreateFolder`, `RenameFolder`, `MoveFolder`, `DeleteFolder`, `ReorderFolders` |
 | Access rules | `GetFolderRuleset`, `SetFolderRuleset`, `GetMyAccess`, `SimulateFolder`, `SimulateSecret`, `GetSecretRuleset`, `SetSecretRuleset`, `GetMySecretAccess`, `GetTargetRuleset`, `SetTargetRuleset`; the older `ListFolderRules`, `GetInheritedFolderRules`, `AddFolderRule`, `RemoveFolderRule` |
 | Secrets | `ListSecretsInFolder`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
+| Break-glass browse | `OpenBreakGlassSession`, `GetBreakGlassSession`, `ListBreakGlassItems`, `CloseBreakGlassSession`, `ListBreakGlassSessions` |
 | Dashboard | `GetSecretStats`, `GetTopAccessedSecrets`, `ListSecretsByStatus`, `FindSecretsByPublicKey` |
 | Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
 | Secret uses and approvals | `PrepareSecretUse`, `GetSecretUse`, `ListPendingSecretUses`, `ListSecretUsesToDecide`, `DecideSecretUse`, `ConfirmSecretUse`, `RedeemSecretUse`, `CreateUseGrant`, `ListUseGrants`, `RevokeUseGrant`, `SetSecretTokenApproval` |
@@ -158,6 +159,32 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   only its own token's pending uses, and only with a `run_id` (`PermissionDenied` without one).
   Deciding stays one use at a time through `DecideSecretUse` and `ConfirmSecretUse`, each with its
   own checks and audit.
+- **Break-glass:** `BreakGlassSecret` reveals every field of a secret the caller can read, past
+  a check-out lock or a pending approval. People only (`PermissionDenied` for service accounts,
+  workloads and personal tokens). It records a high-severity `break_glass` audit event first and
+  fails closed if that can't be written, then queues a forced rotation for a rotatable secret,
+  writes a `break_glass_events` ledger row and notifies a personal folder's owner.
+- **Break-glass browse:** a human site admin or root opens a session with
+  `OpenBreakGlassSession`: a reason (at most 500 characters), `ActorContext.session_ref` (an
+  opaque reference the gateway derives from the web session) and an MFA within `MFA_MAX_AGE`
+  (`STEP_UP_REQUIRED` otherwise). Anyone else, and every service account, workload and personal
+  token, gets `NOT_SITE_ADMIN`. A session lasts 15 minutes and is bound to the person and the
+  `session_ref` it was opened with; opening another ends the open one as `replaced`. While it is
+  open, `ListBreakGlassItems` lists every folder, other users' personal folders included, and every
+  live secret, as metadata only (`folder_id` narrows the secrets). Folders come back with
+  `can_manage` false: a session grants no edit or manage rights. Each value is revealed with
+  `BreakGlassSecret` and the `session_id`, which keeps that call's audit, rotation and owner
+  notification, and adds the session id to the audit event and the ledger row (an empty reason
+  takes the session's). A call naming a session that has ended, expired, or belongs to someone
+  else or another web session is refused with `FailedPrecondition` and
+  `BREAK_GLASS_SESSION_CLOSED`. `GetBreakGlassSession` returns the caller's open session for their
+  `session_ref`, if any. A session is audited as one `break_glass.entered` event (reason, expiry,
+  written fail-closed: no session opens without it) and one `break_glass.left` event (`end_reason`
+  `exit`, `expired` or `replaced`, and the number of reveals). `CloseBreakGlassSession` ends it as
+  `exit`, and a sweep on every replica ends expired sessions every 30 seconds; either way the left
+  event is written once. `ListBreakGlassSessions` (site admin or root; `limit` defaults to 50, at
+  most 200) lists sessions newest first, each with the secrets revealed in it, for the audit view.
+  Without the vault database these calls answer `Unavailable`.
 - **Moves:** personal to shared is free. Shared to personal needs a site admin; for anyone else the
   vault moves nothing, answers `approval_required`, and the caller files a move request with the
   workflow service. A move is audited as `secret.move` (or `secret.move.principal`) with
@@ -314,8 +341,10 @@ refused.
   `RevealForHeartbeat`, `ReportHeartbeat` and `ReportRotation` finish work claimed before the mode
   went on (a reported rotation records a password the connector already changed on the target).
   `RevealForRotation` is refused, because it would start a new change on a target.
-  `GetHeartbeatStatusForPrincipal`, a status read without the proto mark, is served too.
-- **Refused:** everything else, including check-out, check-in, rotation requests, break-glass,
+  `GetHeartbeatStatusForPrincipal`, a status read without the proto mark, is served too, and so is
+  `CloseBreakGlassSession`, so an admin can always leave break-glass.
+- **Refused:** everything else, including check-out, check-in, rotation requests, break-glass
+  (`BreakGlassSecret` and `OpenBreakGlassSession`),
   approvals, imports and every create, update and delete.
 - **Paused:** the vault's KEK rotation schedule, and the workflow's lease reaper and history
   purge (and `workflow-purge`). A lease that expires during maintenance is returned on the

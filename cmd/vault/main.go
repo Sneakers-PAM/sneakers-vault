@@ -49,6 +49,9 @@ func env(k, def string) string {
 // KEK_SCHEDULER_CHECK_MINUTES (falling back to 60 minutes when unset or not a
 // valid positive integer). This is just the poll cadence — the rotation
 // interval itself is SecuritySettings.kek_rotation_days.
+// breakGlassExpiryInterval is how often expired break-glass sessions are closed.
+const breakGlassExpiryInterval = 30 * time.Second
+
 func kekSchedulerCheckInterval() time.Duration {
 	v := env("KEK_SCHEDULER_CHECK_MINUTES", "60")
 	n, err := strconv.Atoi(v)
@@ -268,6 +271,9 @@ func main() {
 	// SetHeartbeat is irrelevant.
 	srv.SetRotation(db, workerVerifier)
 	srv.SetSecretUses(db)
+	// Break-glass browse sessions end on their own at expiry; the sweep writes
+	// each one's left event (exactly once across replicas).
+	go srv.RunBreakGlassExpiry(ctx, breakGlassExpiryInterval)
 
 	// HA read-consistency: wire Redis pub/sub cache invalidation so every replica
 	// re-hydrates from Postgres after any pod's write (fixes stale reads when
