@@ -57,6 +57,10 @@ func (s *Server) RunKekScheduler(ctx context.Context, checkEvery time.Duration) 
 // Every log line carries refs/counts only, never key material.
 func (s *Server) kekSchedulerTick(ctx context.Context) error {
 	l := s.lg(ctx)
+	if s.maint.On() {
+		l.Debug("kek scheduler: paused for read-only maintenance")
+		return nil
+	}
 
 	s.mu.RLock()
 	days := s.settings.GetKekRotationDays()

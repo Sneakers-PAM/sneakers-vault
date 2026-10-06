@@ -18,6 +18,7 @@ import (
 	sagapg "github.com/Bugs5382/go-saga-orchestration/store/postgres"
 	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/maintenance"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/auditclient"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/grpcsvc"
@@ -45,6 +46,8 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("config")
 	}
+
+	maint := mustMaintenance(logger)
 
 	otelShutdown, err := otel.Init(ctx, serviceName, cfg.OTLPEndpoint)
 	if err != nil {
@@ -112,6 +115,7 @@ func main() {
 	svcLog := log.NewLogger(serviceName)
 	svc := grpcsvc.New(st, engine, vault)
 	svc.SetLogger(svcLog)
+	svc.SetMaintenance(maint)
 	svc.SetMFAMaxAge(mustMFAMaxAge(logger))
 	auditConn := mustDialAudit(logger)
 	defer func() { _ = auditConn.Close() }()
@@ -124,6 +128,8 @@ func main() {
 	go svc.RunHistoryPurge(ctx, historyPurgeInterval, vault)
 
 	authOpts := mustCallerAuth(ctx, logger, svcLog)
+	maintUnary, maintStream := grpcsvc.MaintenanceInterceptors(maint, svcLog)
+	authOpts = append(authOpts, grpc.ChainUnaryInterceptor(maintUnary), grpc.ChainStreamInterceptor(maintStream))
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
 	checker := mustChecker(logger, svcLog, dependencies(db, vault.Conn(), auditConn))
 	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, func(gs *grpc.Server) {
@@ -165,4 +171,17 @@ func recordDBVersion(ctx context.Context, logger zerolog.Logger, db *postgres.DB
 		return
 	}
 	logger.Info().Str("postgresql_version", v).Msg("database version read")
+}
+
+// mustMaintenance reads MAINTENANCE_READONLY; a value that isn't a bool stops
+// the boot.
+func mustMaintenance(logger zerolog.Logger) *maintenance.Mode {
+	m, err := maintenance.FromEnv(os.Getenv)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("config")
+	}
+	if m.On() {
+		logger.Info().Msg("read-only maintenance is on: mutating calls are refused and the lease reaper and history purge are paused")
+	}
+	return m
 }

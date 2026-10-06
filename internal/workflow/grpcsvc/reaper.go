@@ -32,6 +32,10 @@ func (s *Server) RunReaper(ctx context.Context, interval time.Duration) {
 // reapOnce performs one sweep and returns the number of leases signaled.
 func (s *Server) reapOnce(ctx context.Context) int {
 	l := s.lg(ctx)
+	if s.maint.On() {
+		l.Debug("reaper: paused for read-only maintenance")
+		return 0
+	}
 	due, err := s.store.DueLeases(ctx, nowRFC3339())
 	if err != nil {
 		l.Warn("reaper: list due leases", log.F("error", err.Error()))

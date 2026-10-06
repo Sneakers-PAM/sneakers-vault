@@ -19,6 +19,7 @@ import (
 	sagasdk "github.com/Bugs5382/go-saga-orchestration/saga"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	workflowv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/workflow/v1"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/maintenance"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -40,6 +41,8 @@ type Server struct {
 	mfaMaxAge time.Duration
 	// now is the clock; nil = time.Now (tests pin it).
 	now func() time.Time
+	// maint is the read-only maintenance switch; nil is off.
+	maint *maintenance.Mode
 }
 
 func New(store Store, saga *sagasdk.Saga, vault vaultv1.VaultServiceClient) *Server {

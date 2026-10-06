@@ -15235,65 +15235,65 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x19SECRET_USE_STATE_APPROVED\x10\x02\x12\x1b\n" +
 	"\x17SECRET_USE_STATE_DENIED\x10\x03\x12\x1d\n" +
 	"\x19SECRET_USE_STATE_REDEEMED\x10\x04\x12\x1c\n" +
-	"\x18SECRET_USE_STATE_EXPIRED\x10\x052\xd6W\n" +
-	"\fVaultService\x12h\n" +
-	"\x0fListConnections\x12).sneakers.vault.v1.ListConnectionsRequest\x1a*.sneakers.vault.v1.ListConnectionsResponse\x12e\n" +
+	"\x18SECRET_USE_STATE_EXPIRED\x10\x052\xf2X\n" +
+	"\fVaultService\x12m\n" +
+	"\x0fListConnections\x12).sneakers.vault.v1.ListConnectionsRequest\x1a*.sneakers.vault.v1.ListConnectionsResponse\"\x03\x90\x02\x01\x12e\n" +
 	"\x0eSaveConnection\x12(.sneakers.vault.v1.SaveConnectionRequest\x1a).sneakers.vault.v1.SaveConnectionResponse\x12k\n" +
-	"\x10DeleteConnection\x12*.sneakers.vault.v1.DeleteConnectionRequest\x1a+.sneakers.vault.v1.DeleteConnectionResponse\x12\\\n" +
-	"\vListTargets\x12%.sneakers.vault.v1.ListTargetsRequest\x1a&.sneakers.vault.v1.ListTargetsResponse\x12Y\n" +
+	"\x10DeleteConnection\x12*.sneakers.vault.v1.DeleteConnectionRequest\x1a+.sneakers.vault.v1.DeleteConnectionResponse\x12a\n" +
+	"\vListTargets\x12%.sneakers.vault.v1.ListTargetsRequest\x1a&.sneakers.vault.v1.ListTargetsResponse\"\x03\x90\x02\x01\x12Y\n" +
 	"\n" +
 	"SaveTarget\x12$.sneakers.vault.v1.SaveTargetRequest\x1a%.sneakers.vault.v1.SaveTargetResponse\x12_\n" +
-	"\fDeleteTarget\x12&.sneakers.vault.v1.DeleteTargetRequest\x1a'.sneakers.vault.v1.DeleteTargetResponse\x12k\n" +
-	"\x10GetTargetRuleset\x12*.sneakers.vault.v1.GetTargetRulesetRequest\x1a+.sneakers.vault.v1.GetTargetRulesetResponse\x12k\n" +
+	"\fDeleteTarget\x12&.sneakers.vault.v1.DeleteTargetRequest\x1a'.sneakers.vault.v1.DeleteTargetResponse\x12p\n" +
+	"\x10GetTargetRuleset\x12*.sneakers.vault.v1.GetTargetRulesetRequest\x1a+.sneakers.vault.v1.GetTargetRulesetResponse\"\x03\x90\x02\x01\x12k\n" +
 	"\x10SetTargetRuleset\x12*.sneakers.vault.v1.SetTargetRulesetRequest\x1a+.sneakers.vault.v1.SetTargetRulesetResponse\x12n\n" +
 	"\x11ImportCertificate\x12+.sneakers.vault.v1.ImportCertificateRequest\x1a,.sneakers.vault.v1.ImportCertificateResponse\x12n\n" +
 	"\x11ExportCertificate\x12+.sneakers.vault.v1.ExportCertificateRequest\x1a,.sneakers.vault.v1.ExportCertificateResponse\x12q\n" +
-	"\x12ReplaceCertificate\x12,.sneakers.vault.v1.ReplaceCertificateRequest\x1a-.sneakers.vault.v1.ReplaceCertificateResponse\x12h\n" +
-	"\x0fListSecretTypes\x12).sneakers.vault.v1.ListSecretTypesRequest\x1a*.sneakers.vault.v1.ListSecretTypesResponse\x12k\n" +
+	"\x12ReplaceCertificate\x12,.sneakers.vault.v1.ReplaceCertificateRequest\x1a-.sneakers.vault.v1.ReplaceCertificateResponse\x12m\n" +
+	"\x0fListSecretTypes\x12).sneakers.vault.v1.ListSecretTypesRequest\x1a*.sneakers.vault.v1.ListSecretTypesResponse\"\x03\x90\x02\x01\x12k\n" +
 	"\x10CreateSecretType\x12*.sneakers.vault.v1.CreateSecretTypeRequest\x1a+.sneakers.vault.v1.CreateSecretTypeResponse\x12k\n" +
 	"\x10UpdateSecretType\x12*.sneakers.vault.v1.UpdateSecretTypeRequest\x1a+.sneakers.vault.v1.UpdateSecretTypeResponse\x12k\n" +
 	"\x10DeleteSecretType\x12*.sneakers.vault.v1.DeleteSecretTypeRequest\x1a+.sneakers.vault.v1.DeleteSecretTypeResponse\x12h\n" +
-	"\x0fCloneSecretType\x12).sneakers.vault.v1.CloneSecretTypeRequest\x1a*.sneakers.vault.v1.CloneSecretTypeResponse\x12\x80\x01\n" +
-	"\x17ListAvailableExtensions\x121.sneakers.vault.v1.ListAvailableExtensionsRequest\x1a2.sneakers.vault.v1.ListAvailableExtensionsResponse\x12h\n" +
+	"\x0fCloneSecretType\x12).sneakers.vault.v1.CloneSecretTypeRequest\x1a*.sneakers.vault.v1.CloneSecretTypeResponse\x12\x85\x01\n" +
+	"\x17ListAvailableExtensions\x121.sneakers.vault.v1.ListAvailableExtensionsRequest\x1a2.sneakers.vault.v1.ListAvailableExtensionsResponse\"\x03\x90\x02\x01\x12h\n" +
 	"\x0fImportExtension\x12).sneakers.vault.v1.ImportExtensionRequest\x1a*.sneakers.vault.v1.ImportExtensionResponse\x12\x80\x01\n" +
-	"\x17ImportExtensionFromJson\x121.sneakers.vault.v1.ImportExtensionFromJsonRequest\x1a2.sneakers.vault.v1.ImportExtensionFromJsonResponse\x12\\\n" +
-	"\vListFolders\x12%.sneakers.vault.v1.ListFoldersRequest\x1a&.sneakers.vault.v1.ListFoldersResponse\x12_\n" +
+	"\x17ImportExtensionFromJson\x121.sneakers.vault.v1.ImportExtensionFromJsonRequest\x1a2.sneakers.vault.v1.ImportExtensionFromJsonResponse\x12a\n" +
+	"\vListFolders\x12%.sneakers.vault.v1.ListFoldersRequest\x1a&.sneakers.vault.v1.ListFoldersResponse\"\x03\x90\x02\x01\x12_\n" +
 	"\fCreateFolder\x12&.sneakers.vault.v1.CreateFolderRequest\x1a'.sneakers.vault.v1.CreateFolderResponse\x12_\n" +
 	"\fRenameFolder\x12&.sneakers.vault.v1.RenameFolderRequest\x1a'.sneakers.vault.v1.RenameFolderResponse\x12Y\n" +
 	"\n" +
 	"MoveFolder\x12$.sneakers.vault.v1.MoveFolderRequest\x1a%.sneakers.vault.v1.MoveFolderResponse\x12_\n" +
 	"\fDeleteFolder\x12&.sneakers.vault.v1.DeleteFolderRequest\x1a'.sneakers.vault.v1.DeleteFolderResponse\x12e\n" +
-	"\x0eReorderFolders\x12(.sneakers.vault.v1.ReorderFoldersRequest\x1a).sneakers.vault.v1.ReorderFoldersResponse\x12h\n" +
-	"\x0fListFolderRules\x12).sneakers.vault.v1.ListFolderRulesRequest\x1a*.sneakers.vault.v1.ListFolderRulesResponse\x12\x80\x01\n" +
-	"\x17GetInheritedFolderRules\x121.sneakers.vault.v1.GetInheritedFolderRulesRequest\x1a2.sneakers.vault.v1.GetInheritedFolderRulesResponse\x12b\n" +
+	"\x0eReorderFolders\x12(.sneakers.vault.v1.ReorderFoldersRequest\x1a).sneakers.vault.v1.ReorderFoldersResponse\x12m\n" +
+	"\x0fListFolderRules\x12).sneakers.vault.v1.ListFolderRulesRequest\x1a*.sneakers.vault.v1.ListFolderRulesResponse\"\x03\x90\x02\x01\x12\x85\x01\n" +
+	"\x17GetInheritedFolderRules\x121.sneakers.vault.v1.GetInheritedFolderRulesRequest\x1a2.sneakers.vault.v1.GetInheritedFolderRulesResponse\"\x03\x90\x02\x01\x12b\n" +
 	"\rAddFolderRule\x12'.sneakers.vault.v1.AddFolderRuleRequest\x1a(.sneakers.vault.v1.AddFolderRuleResponse\x12k\n" +
-	"\x10RemoveFolderRule\x12*.sneakers.vault.v1.RemoveFolderRuleRequest\x1a+.sneakers.vault.v1.RemoveFolderRuleResponse\x12k\n" +
-	"\x10GetFolderRuleset\x12*.sneakers.vault.v1.GetFolderRulesetRequest\x1a+.sneakers.vault.v1.GetFolderRulesetResponse\x12k\n" +
+	"\x10RemoveFolderRule\x12*.sneakers.vault.v1.RemoveFolderRuleRequest\x1a+.sneakers.vault.v1.RemoveFolderRuleResponse\x12p\n" +
+	"\x10GetFolderRuleset\x12*.sneakers.vault.v1.GetFolderRulesetRequest\x1a+.sneakers.vault.v1.GetFolderRulesetResponse\"\x03\x90\x02\x01\x12k\n" +
 	"\x10SetFolderRuleset\x12*.sneakers.vault.v1.SetFolderRulesetRequest\x1a+.sneakers.vault.v1.SetFolderRulesetResponse\x12z\n" +
-	"\x15SetFolderRevealStepUp\x12/.sneakers.vault.v1.SetFolderRevealStepUpRequest\x1a0.sneakers.vault.v1.SetFolderRevealStepUpResponse\x12\\\n" +
-	"\vGetMyAccess\x12%.sneakers.vault.v1.GetMyAccessRequest\x1a&.sneakers.vault.v1.GetMyAccessResponse\x12e\n" +
-	"\x0eSimulateFolder\x12(.sneakers.vault.v1.SimulateFolderRequest\x1a).sneakers.vault.v1.SimulateFolderResponse\x12e\n" +
-	"\x0eSimulateSecret\x12(.sneakers.vault.v1.SimulateSecretRequest\x1a).sneakers.vault.v1.SimulateSecretResponse\x12t\n" +
-	"\x13ListSecretsInFolder\x12-.sneakers.vault.v1.ListSecretsInFolderRequest\x1a..sneakers.vault.v1.ListSecretsInFolderResponse\x12V\n" +
-	"\tGetSecret\x12#.sneakers.vault.v1.GetSecretRequest\x1a$.sneakers.vault.v1.GetSecretResponse\x12_\n" +
+	"\x15SetFolderRevealStepUp\x12/.sneakers.vault.v1.SetFolderRevealStepUpRequest\x1a0.sneakers.vault.v1.SetFolderRevealStepUpResponse\x12a\n" +
+	"\vGetMyAccess\x12%.sneakers.vault.v1.GetMyAccessRequest\x1a&.sneakers.vault.v1.GetMyAccessResponse\"\x03\x90\x02\x01\x12j\n" +
+	"\x0eSimulateFolder\x12(.sneakers.vault.v1.SimulateFolderRequest\x1a).sneakers.vault.v1.SimulateFolderResponse\"\x03\x90\x02\x01\x12j\n" +
+	"\x0eSimulateSecret\x12(.sneakers.vault.v1.SimulateSecretRequest\x1a).sneakers.vault.v1.SimulateSecretResponse\"\x03\x90\x02\x01\x12y\n" +
+	"\x13ListSecretsInFolder\x12-.sneakers.vault.v1.ListSecretsInFolderRequest\x1a..sneakers.vault.v1.ListSecretsInFolderResponse\"\x03\x90\x02\x01\x12[\n" +
+	"\tGetSecret\x12#.sneakers.vault.v1.GetSecretRequest\x1a$.sneakers.vault.v1.GetSecretResponse\"\x03\x90\x02\x01\x12_\n" +
 	"\fCreateSecret\x12&.sneakers.vault.v1.CreateSecretRequest\x1a'.sneakers.vault.v1.CreateSecretResponse\x12_\n" +
 	"\fUpdateSecret\x12&.sneakers.vault.v1.UpdateSecretRequest\x1a'.sneakers.vault.v1.UpdateSecretResponse\x12t\n" +
-	"\x13SetSecretAutomation\x12-.sneakers.vault.v1.SetSecretAutomationRequest\x1a..sneakers.vault.v1.SetSecretAutomationResponse\x12h\n" +
-	"\x0fGetSecretFields\x12).sneakers.vault.v1.GetSecretFieldsRequest\x1a*.sneakers.vault.v1.GetSecretFieldsResponse\x12n\n" +
+	"\x13SetSecretAutomation\x12-.sneakers.vault.v1.SetSecretAutomationRequest\x1a..sneakers.vault.v1.SetSecretAutomationResponse\x12m\n" +
+	"\x0fGetSecretFields\x12).sneakers.vault.v1.GetSecretFieldsRequest\x1a*.sneakers.vault.v1.GetSecretFieldsResponse\"\x03\x90\x02\x01\x12n\n" +
 	"\x11RevealSecretField\x12+.sneakers.vault.v1.RevealSecretFieldRequest\x1a,.sneakers.vault.v1.RevealSecretFieldResponse\x12\x92\x01\n" +
-	"\x1dRevealSecretFieldForPrincipal\x127.sneakers.vault.v1.RevealSecretFieldForPrincipalRequest\x1a8.sneakers.vault.v1.RevealSecretFieldForPrincipalResponse\x12\x80\x01\n" +
-	"\x17ListSecretsForPrincipal\x121.sneakers.vault.v1.ListSecretsForPrincipalRequest\x1a2.sneakers.vault.v1.ListSecretsForPrincipalResponse\x12\x83\x01\n" +
+	"\x1dRevealSecretFieldForPrincipal\x127.sneakers.vault.v1.RevealSecretFieldForPrincipalRequest\x1a8.sneakers.vault.v1.RevealSecretFieldForPrincipalResponse\x12\x85\x01\n" +
+	"\x17ListSecretsForPrincipal\x121.sneakers.vault.v1.ListSecretsForPrincipalRequest\x1a2.sneakers.vault.v1.ListSecretsForPrincipalResponse\"\x03\x90\x02\x01\x12\x83\x01\n" +
 	"\x18CreateSecretForPrincipal\x122.sneakers.vault.v1.CreateSecretForPrincipalRequest\x1a3.sneakers.vault.v1.CreateSecretForPrincipalResponse\x12\x89\x01\n" +
 	"\x1aGenerateSecretForPrincipal\x124.sneakers.vault.v1.GenerateSecretForPrincipalRequest\x1a5.sneakers.vault.v1.GenerateSecretForPrincipalResponse\x12}\n" +
 	"\x16MoveSecretForPrincipal\x120.sneakers.vault.v1.MoveSecretForPrincipalRequest\x1a1.sneakers.vault.v1.MoveSecretForPrincipalResponse\x12\x8f\x01\n" +
 	"\x1cChangeSecretTypeForPrincipal\x126.sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest\x1a7.sneakers.vault.v1.ChangeSecretTypeForPrincipalResponse\x12\x83\x01\n" +
 	"\x18RenameSecretForPrincipal\x122.sneakers.vault.v1.RenameSecretForPrincipalRequest\x1a3.sneakers.vault.v1.RenameSecretForPrincipalResponse\x12\x95\x01\n" +
-	"\x1eUpdateSecretFieldsForPrincipal\x128.sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest\x1a9.sneakers.vault.v1.UpdateSecretFieldsForPrincipalResponse\x12\x80\x01\n" +
-	"\x17ListFoldersForPrincipal\x121.sneakers.vault.v1.ListFoldersForPrincipalRequest\x1a2.sneakers.vault.v1.ListFoldersForPrincipalResponse\x12\x83\x01\n" +
+	"\x1eUpdateSecretFieldsForPrincipal\x128.sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest\x1a9.sneakers.vault.v1.UpdateSecretFieldsForPrincipalResponse\x12\x85\x01\n" +
+	"\x17ListFoldersForPrincipal\x121.sneakers.vault.v1.ListFoldersForPrincipalRequest\x1a2.sneakers.vault.v1.ListFoldersForPrincipalResponse\"\x03\x90\x02\x01\x12\x83\x01\n" +
 	"\x18CreateFolderForPrincipal\x122.sneakers.vault.v1.CreateFolderForPrincipalRequest\x1a3.sneakers.vault.v1.CreateFolderForPrincipalResponse\x12\x83\x01\n" +
 	"\x18RenameFolderForPrincipal\x122.sneakers.vault.v1.RenameFolderForPrincipalRequest\x1a3.sneakers.vault.v1.RenameFolderForPrincipalResponse\x12}\n" +
-	"\x16MoveFolderForPrincipal\x120.sneakers.vault.v1.MoveFolderForPrincipalRequest\x1a1.sneakers.vault.v1.MoveFolderForPrincipalResponse\x12q\n" +
-	"\x12ListSecretVersions\x12,.sneakers.vault.v1.ListSecretVersionsRequest\x1a-.sneakers.vault.v1.ListSecretVersionsResponse\x12\x83\x01\n" +
+	"\x16MoveFolderForPrincipal\x120.sneakers.vault.v1.MoveFolderForPrincipalRequest\x1a1.sneakers.vault.v1.MoveFolderForPrincipalResponse\x12v\n" +
+	"\x12ListSecretVersions\x12,.sneakers.vault.v1.ListSecretVersionsRequest\x1a-.sneakers.vault.v1.ListSecretVersionsResponse\"\x03\x90\x02\x01\x12\x83\x01\n" +
 	"\x18RevealSecretVersionField\x122.sneakers.vault.v1.RevealSecretVersionFieldRequest\x1a3.sneakers.vault.v1.RevealSecretVersionFieldResponse\x12w\n" +
 	"\x14RestoreSecretVersion\x12..sneakers.vault.v1.RestoreSecretVersionRequest\x1a/.sneakers.vault.v1.RestoreSecretVersionResponse\x12k\n" +
 	"\x10BreakGlassSecret\x12*.sneakers.vault.v1.BreakGlassSecretRequest\x1a+.sneakers.vault.v1.BreakGlassSecretResponse\x12Y\n" +
@@ -15301,38 +15301,38 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"CopySecret\x12$.sneakers.vault.v1.CopySecretRequest\x1a%.sneakers.vault.v1.CopySecretResponse\x12_\n" +
 	"\fRetireSecret\x12&.sneakers.vault.v1.RetireSecretRequest\x1a'.sneakers.vault.v1.RetireSecretResponse\x12b\n" +
 	"\rRestoreSecret\x12'.sneakers.vault.v1.RestoreSecretRequest\x1a(.sneakers.vault.v1.RestoreSecretResponse\x12_\n" +
-	"\fDeleteSecret\x12&.sneakers.vault.v1.DeleteSecretRequest\x1a'.sneakers.vault.v1.DeleteSecretResponse\x12e\n" +
-	"\x0eGetSecretStats\x12(.sneakers.vault.v1.GetSecretStatsRequest\x1a).sneakers.vault.v1.GetSecretStatsResponse\x12z\n" +
-	"\x15GetTopAccessedSecrets\x12/.sneakers.vault.v1.GetTopAccessedSecretsRequest\x1a0.sneakers.vault.v1.GetTopAccessedSecretsResponse\x12t\n" +
-	"\x13ListSecretsByStatus\x12-.sneakers.vault.v1.ListSecretsByStatusRequest\x1a..sneakers.vault.v1.ListSecretsByStatusResponse\x12}\n" +
-	"\x16FindSecretsByPublicKey\x120.sneakers.vault.v1.FindSecretsByPublicKeyRequest\x1a1.sneakers.vault.v1.FindSecretsByPublicKeyResponse\x12k\n" +
-	"\x10GetSecretRuleset\x12*.sneakers.vault.v1.GetSecretRulesetRequest\x1a+.sneakers.vault.v1.GetSecretRulesetResponse\x12k\n" +
-	"\x10SetSecretRuleset\x12*.sneakers.vault.v1.SetSecretRulesetRequest\x1a+.sneakers.vault.v1.SetSecretRulesetResponse\x12n\n" +
-	"\x11GetMySecretAccess\x12+.sneakers.vault.v1.GetMySecretAccessRequest\x1a,.sneakers.vault.v1.GetMySecretAccessResponse\x12q\n" +
+	"\fDeleteSecret\x12&.sneakers.vault.v1.DeleteSecretRequest\x1a'.sneakers.vault.v1.DeleteSecretResponse\x12j\n" +
+	"\x0eGetSecretStats\x12(.sneakers.vault.v1.GetSecretStatsRequest\x1a).sneakers.vault.v1.GetSecretStatsResponse\"\x03\x90\x02\x01\x12\x7f\n" +
+	"\x15GetTopAccessedSecrets\x12/.sneakers.vault.v1.GetTopAccessedSecretsRequest\x1a0.sneakers.vault.v1.GetTopAccessedSecretsResponse\"\x03\x90\x02\x01\x12y\n" +
+	"\x13ListSecretsByStatus\x12-.sneakers.vault.v1.ListSecretsByStatusRequest\x1a..sneakers.vault.v1.ListSecretsByStatusResponse\"\x03\x90\x02\x01\x12\x82\x01\n" +
+	"\x16FindSecretsByPublicKey\x120.sneakers.vault.v1.FindSecretsByPublicKeyRequest\x1a1.sneakers.vault.v1.FindSecretsByPublicKeyResponse\"\x03\x90\x02\x01\x12p\n" +
+	"\x10GetSecretRuleset\x12*.sneakers.vault.v1.GetSecretRulesetRequest\x1a+.sneakers.vault.v1.GetSecretRulesetResponse\"\x03\x90\x02\x01\x12k\n" +
+	"\x10SetSecretRuleset\x12*.sneakers.vault.v1.SetSecretRulesetRequest\x1a+.sneakers.vault.v1.SetSecretRulesetResponse\x12s\n" +
+	"\x11GetMySecretAccess\x12+.sneakers.vault.v1.GetMySecretAccessRequest\x1a,.sneakers.vault.v1.GetMySecretAccessResponse\"\x03\x90\x02\x01\x12q\n" +
 	"\x12ClaimDueHeartbeats\x12,.sneakers.vault.v1.ClaimDueHeartbeatsRequest\x1a-.sneakers.vault.v1.ClaimDueHeartbeatsResponse\x12q\n" +
 	"\x12RevealForHeartbeat\x12,.sneakers.vault.v1.RevealForHeartbeatRequest\x1a-.sneakers.vault.v1.RevealForHeartbeatResponse\x12h\n" +
 	"\x0fReportHeartbeat\x12).sneakers.vault.v1.ReportHeartbeatRequest\x1a*.sneakers.vault.v1.ReportHeartbeatResponse\x12h\n" +
 	"\x0fEnqueueRotation\x12).sneakers.vault.v1.EnqueueRotationRequest\x1a*.sneakers.vault.v1.EnqueueRotationResponse\x12n\n" +
 	"\x11ClaimDueRotations\x12+.sneakers.vault.v1.ClaimDueRotationsRequest\x1a,.sneakers.vault.v1.ClaimDueRotationsResponse\x12n\n" +
 	"\x11RevealForRotation\x12+.sneakers.vault.v1.RevealForRotationRequest\x1a,.sneakers.vault.v1.RevealForRotationResponse\x12e\n" +
-	"\x0eReportRotation\x12(.sneakers.vault.v1.ReportRotationRequest\x1a).sneakers.vault.v1.ReportRotationResponse\x12e\n" +
-	"\x0eListConnectors\x12(.sneakers.vault.v1.ListConnectorsRequest\x1a).sneakers.vault.v1.ListConnectorsResponse\x12w\n" +
-	"\x14ListPasswordPolicies\x12..sneakers.vault.v1.ListPasswordPoliciesRequest\x1a/.sneakers.vault.v1.ListPasswordPoliciesResponse\x12q\n" +
+	"\x0eReportRotation\x12(.sneakers.vault.v1.ReportRotationRequest\x1a).sneakers.vault.v1.ReportRotationResponse\x12j\n" +
+	"\x0eListConnectors\x12(.sneakers.vault.v1.ListConnectorsRequest\x1a).sneakers.vault.v1.ListConnectorsResponse\"\x03\x90\x02\x01\x12|\n" +
+	"\x14ListPasswordPolicies\x12..sneakers.vault.v1.ListPasswordPoliciesRequest\x1a/.sneakers.vault.v1.ListPasswordPoliciesResponse\"\x03\x90\x02\x01\x12q\n" +
 	"\x12SavePasswordPolicy\x12,.sneakers.vault.v1.SavePasswordPolicyRequest\x1a-.sneakers.vault.v1.SavePasswordPolicyResponse\x12w\n" +
-	"\x14DeletePasswordPolicy\x12..sneakers.vault.v1.DeletePasswordPolicyRequest\x1a/.sneakers.vault.v1.DeletePasswordPolicyResponse\x12t\n" +
-	"\x13GetSecuritySettings\x12-.sneakers.vault.v1.GetSecuritySettingsRequest\x1a..sneakers.vault.v1.GetSecuritySettingsResponse\x12}\n" +
+	"\x14DeletePasswordPolicy\x12..sneakers.vault.v1.DeletePasswordPolicyRequest\x1a/.sneakers.vault.v1.DeletePasswordPolicyResponse\x12y\n" +
+	"\x13GetSecuritySettings\x12-.sneakers.vault.v1.GetSecuritySettingsRequest\x1a..sneakers.vault.v1.GetSecuritySettingsResponse\"\x03\x90\x02\x01\x12}\n" +
 	"\x16UpdateSecuritySettings\x120.sneakers.vault.v1.UpdateSecuritySettingsRequest\x1a1.sneakers.vault.v1.UpdateSecuritySettingsResponse\x12_\n" +
-	"\fSeedBuiltins\x12&.sneakers.vault.v1.SeedBuiltinsRequest\x1a'.sneakers.vault.v1.SeedBuiltinsResponse\x12h\n" +
-	"\x0fGenerateKeyPair\x12).sneakers.vault.v1.GenerateKeyPairRequest\x1a*.sneakers.vault.v1.GenerateKeyPairResponse\x12V\n" +
+	"\fSeedBuiltins\x12&.sneakers.vault.v1.SeedBuiltinsRequest\x1a'.sneakers.vault.v1.SeedBuiltinsResponse\x12m\n" +
+	"\x0fGenerateKeyPair\x12).sneakers.vault.v1.GenerateKeyPairRequest\x1a*.sneakers.vault.v1.GenerateKeyPairResponse\"\x03\x90\x02\x01\x12V\n" +
 	"\tRotateKek\x12#.sneakers.vault.v1.RotateKekRequest\x1a$.sneakers.vault.v1.RotateKekResponse\x12b\n" +
 	"\rSealForImport\x12'.sneakers.vault.v1.SealForImportRequest\x1a(.sneakers.vault.v1.SealForImportResponse\x12k\n" +
-	"\x10PrepareSecretUse\x12*.sneakers.vault.v1.PrepareSecretUseRequest\x1a+.sneakers.vault.v1.PrepareSecretUseResponse\x12_\n" +
-	"\fGetSecretUse\x12&.sneakers.vault.v1.GetSecretUseRequest\x1a'.sneakers.vault.v1.GetSecretUseResponse\x12z\n" +
-	"\x15ListPendingSecretUses\x12/.sneakers.vault.v1.ListPendingSecretUsesRequest\x1a0.sneakers.vault.v1.ListPendingSecretUsesResponse\x12h\n" +
+	"\x10PrepareSecretUse\x12*.sneakers.vault.v1.PrepareSecretUseRequest\x1a+.sneakers.vault.v1.PrepareSecretUseResponse\x12d\n" +
+	"\fGetSecretUse\x12&.sneakers.vault.v1.GetSecretUseRequest\x1a'.sneakers.vault.v1.GetSecretUseResponse\"\x03\x90\x02\x01\x12\x7f\n" +
+	"\x15ListPendingSecretUses\x12/.sneakers.vault.v1.ListPendingSecretUsesRequest\x1a0.sneakers.vault.v1.ListPendingSecretUsesResponse\"\x03\x90\x02\x01\x12h\n" +
 	"\x0fDecideSecretUse\x12).sneakers.vault.v1.DecideSecretUseRequest\x1a*.sneakers.vault.v1.DecideSecretUseResponse\x12h\n" +
 	"\x0fRedeemSecretUse\x12).sneakers.vault.v1.RedeemSecretUseRequest\x1a*.sneakers.vault.v1.RedeemSecretUseResponse\x12e\n" +
-	"\x0eCreateUseGrant\x12(.sneakers.vault.v1.CreateUseGrantRequest\x1a).sneakers.vault.v1.CreateUseGrantResponse\x12b\n" +
-	"\rListUseGrants\x12'.sneakers.vault.v1.ListUseGrantsRequest\x1a(.sneakers.vault.v1.ListUseGrantsResponse\x12e\n" +
+	"\x0eCreateUseGrant\x12(.sneakers.vault.v1.CreateUseGrantRequest\x1a).sneakers.vault.v1.CreateUseGrantResponse\x12g\n" +
+	"\rListUseGrants\x12'.sneakers.vault.v1.ListUseGrantsRequest\x1a(.sneakers.vault.v1.ListUseGrantsResponse\"\x03\x90\x02\x01\x12e\n" +
 	"\x0eRevokeUseGrant\x12(.sneakers.vault.v1.RevokeUseGrantRequest\x1a).sneakers.vault.v1.RevokeUseGrantResponse\x12}\n" +
 	"\x16SetSecretTokenApproval\x120.sneakers.vault.v1.SetSecretTokenApprovalRequest\x1a1.sneakers.vault.v1.SetSecretTokenApprovalResponse\x12\x8c\x01\n" +
 	"\x1bSetSecretTargetForPrincipal\x125.sneakers.vault.v1.SetSecretTargetForPrincipalRequest\x1a6.sneakers.vault.v1.SetSecretTargetForPrincipalResponse\x12\x98\x01\n" +

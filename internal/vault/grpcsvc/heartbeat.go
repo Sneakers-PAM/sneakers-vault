@@ -120,6 +120,10 @@ func (s *Server) ClaimDueHeartbeats(ctx context.Context, req *vaultv1.ClaimDueHe
 	if _, err := s.verifyWorker(ctx, req.GetIdentity()); err != nil {
 		return nil, err
 	}
+	if s.maint.On() {
+		s.lg(ctx).Debug("heartbeat claim answered empty: read-only maintenance")
+		return &vaultv1.ClaimDueHeartbeatsResponse{}, nil
+	}
 	limit := int(req.GetLimit())
 	if limit <= 0 || limit > 100 {
 		limit = 50

@@ -13,6 +13,8 @@
 //   - VAULT_ADDR       (optional) vault gRPC address; when reachable the
 //     retention window is read from SecuritySettings.requestHistoryRetentionDays.
 //   - RETENTION_DAYS   (optional) explicit override; used when > 0.
+//   - MAINTENANCE_READONLY (optional) true skips the purge and exits 0, so a
+//     scheduled run during read-only maintenance deletes nothing.
 //
 // Retention resolution order: RETENTION_DAYS env > vault SecuritySettings >
 // the 90-day default.
@@ -28,6 +30,7 @@ import (
 	postgres "github.com/Bugs5382/go-postgres"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/maintenance"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/grpcsvc"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/vaultclient"
 	"github.com/rs/zerolog"
@@ -40,6 +43,14 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		logger.Fatal().Err(err).Msg("config")
+	}
+	maint, err := maintenance.FromEnv(os.Getenv)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("config")
+	}
+	if maint.On() {
+		logger.Info().Msg("read-only maintenance is on: nothing purged")
+		return
 	}
 	db, err := postgres.New(ctx, cfg.DatabaseDSN)
 	if err != nil {

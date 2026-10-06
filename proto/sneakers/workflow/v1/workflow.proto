@@ -129,11 +129,17 @@ message RotateSecretRequest { ActorContext actor = 1; string secret_id = 2; }
 message RotateSecretResponse { bool ok = 1; }
 
 service WorkflowService {
-  rpc ListActiveLeasesForUser(ListActiveLeasesForUserRequest) returns (ListActiveLeasesForUserResponse);
-  rpc GetActiveLease(GetActiveLeaseRequest) returns (GetActiveLeaseResponse);
+  rpc ListActiveLeasesForUser(ListActiveLeasesForUserRequest) returns (ListActiveLeasesForUserResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetActiveLease(GetActiveLeaseRequest) returns (GetActiveLeaseResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc CheckoutSecret(CheckoutSecretRequest) returns (CheckoutSecretResponse);
   rpc CheckinSecret(CheckinSecretRequest) returns (CheckinSecretResponse);
-  rpc ListApprovalRequests(ListApprovalRequestsRequest) returns (ListApprovalRequestsResponse);
+  rpc ListApprovalRequests(ListApprovalRequestsRequest) returns (ListApprovalRequestsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc CreateAccessRequest(CreateAccessRequestRequest) returns (CreateAccessRequestResponse);
   rpc CreateFolderMoveRequest(CreateFolderMoveRequestRequest) returns (CreateFolderMoveRequestResponse);
   rpc CreateSecretMoveRequest(CreateSecretMoveRequestRequest) returns (CreateSecretMoveRequestResponse);

@@ -26,6 +26,9 @@ or values.
 - `internal/workflow/` - the workflow service: `grpcsvc` (service, saga, store) and `vaultclient`.
 - `internal/config/`, `internal/server/` - the env loader and the gRPC server bootstrap both use,
   with the health service and readiness checks from `github.com/Bugs5382/go-buildinfo`.
+- `internal/maintenance/` - the read-only maintenance mode both services share: the switch, the
+  read/mutation classification from the protos' `idempotency_level`, and the refusing interceptors.
+  A new read RPC gets `option idempotency_level = NO_SIDE_EFFECTS;`.
 - `internal/workloadauth/` - service-to-service authentication (workload token verifier, per-method
   allow-list interceptors, caller credentials). Self-contained and copied byte for byte into the
   other services; change it here first. See docs/workload-auth.md.

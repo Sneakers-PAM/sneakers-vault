@@ -24,6 +24,7 @@ import (
 	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	notifyv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/notify/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/maintenance"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/auditclient"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
@@ -178,6 +179,8 @@ func main() {
 		logger.Fatal().Err(err).Msg("config")
 	}
 
+	maint := mustMaintenance(logger)
+
 	otelShutdown, err := otel.Init(ctx, serviceName, cfg.OTLPEndpoint)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("otel init")
@@ -242,6 +245,7 @@ func main() {
 	}
 	svcLog := log.NewLogger(serviceName)
 	srv.SetLogger(svcLog)
+	srv.SetMaintenance(maint)
 	srv.SetMFAMaxAge(mustMFAMaxAge(logger))
 	srv.SetNotifier(notifyclient.New(notifyv1.NewNotifyServiceClient(notifyConn)))
 	// RotateKek needs the keyring, its durable store, and the root KEK +
@@ -287,7 +291,9 @@ func main() {
 	}
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
 	checker := mustChecker(logger, svcLog, dependencies(db, auditConn, notifyConn, valkeyPing))
-	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, srv.RegisterInto, append(authOpts, grpc.ChainUnaryInterceptor(srv.PersistUnary))...); err != nil {
+	maintUnary, maintStream := grpcsvc.MaintenanceInterceptors(maint, svcLog)
+	opts := append(authOpts, grpc.ChainUnaryInterceptor(maintUnary, srv.PersistUnary), grpc.ChainStreamInterceptor(maintStream))
+	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, srv.RegisterInto, opts...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
 	}
 }
@@ -329,4 +335,17 @@ func recordDBVersion(ctx context.Context, logger zerolog.Logger, db *postgres.DB
 		return
 	}
 	logger.Info().Str("postgresql_version", v).Msg("database version read")
+}
+
+// mustMaintenance reads MAINTENANCE_READONLY; a value that isn't a bool stops
+// the boot.
+func mustMaintenance(logger zerolog.Logger) *maintenance.Mode {
+	m, err := maintenance.FromEnv(os.Getenv)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("config")
+	}
+	if m.On() {
+		logger.Info().Msg("read-only maintenance is on: mutating calls are refused, the connector is handed no jobs and the KEK schedule is paused")
+	}
+	return m
 }

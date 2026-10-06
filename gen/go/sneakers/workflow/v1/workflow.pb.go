@@ -1771,14 +1771,14 @@ const file_sneakers_workflow_v1_workflow_proto_rawDesc = "" +
 	"\vRequestKind\x12\x1c\n" +
 	"\x18REQUEST_KIND_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18REQUEST_KIND_FOLDER_MOVE\x10\x01\x12\x1c\n" +
-	"\x18REQUEST_KIND_SECRET_MOVE\x10\x022\xbb\n" +
+	"\x18REQUEST_KIND_SECRET_MOVE\x10\x022\xcb\n" +
 	"\n" +
-	"\x0fWorkflowService\x12\x86\x01\n" +
-	"\x17ListActiveLeasesForUser\x124.sneakers.workflow.v1.ListActiveLeasesForUserRequest\x1a5.sneakers.workflow.v1.ListActiveLeasesForUserResponse\x12k\n" +
-	"\x0eGetActiveLease\x12+.sneakers.workflow.v1.GetActiveLeaseRequest\x1a,.sneakers.workflow.v1.GetActiveLeaseResponse\x12k\n" +
+	"\x0fWorkflowService\x12\x8b\x01\n" +
+	"\x17ListActiveLeasesForUser\x124.sneakers.workflow.v1.ListActiveLeasesForUserRequest\x1a5.sneakers.workflow.v1.ListActiveLeasesForUserResponse\"\x03\x90\x02\x01\x12p\n" +
+	"\x0eGetActiveLease\x12+.sneakers.workflow.v1.GetActiveLeaseRequest\x1a,.sneakers.workflow.v1.GetActiveLeaseResponse\"\x03\x90\x02\x01\x12k\n" +
 	"\x0eCheckoutSecret\x12+.sneakers.workflow.v1.CheckoutSecretRequest\x1a,.sneakers.workflow.v1.CheckoutSecretResponse\x12h\n" +
-	"\rCheckinSecret\x12*.sneakers.workflow.v1.CheckinSecretRequest\x1a+.sneakers.workflow.v1.CheckinSecretResponse\x12}\n" +
-	"\x14ListApprovalRequests\x121.sneakers.workflow.v1.ListApprovalRequestsRequest\x1a2.sneakers.workflow.v1.ListApprovalRequestsResponse\x12z\n" +
+	"\rCheckinSecret\x12*.sneakers.workflow.v1.CheckinSecretRequest\x1a+.sneakers.workflow.v1.CheckinSecretResponse\x12\x82\x01\n" +
+	"\x14ListApprovalRequests\x121.sneakers.workflow.v1.ListApprovalRequestsRequest\x1a2.sneakers.workflow.v1.ListApprovalRequestsResponse\"\x03\x90\x02\x01\x12z\n" +
 	"\x13CreateAccessRequest\x120.sneakers.workflow.v1.CreateAccessRequestRequest\x1a1.sneakers.workflow.v1.CreateAccessRequestResponse\x12\x86\x01\n" +
 	"\x17CreateFolderMoveRequest\x124.sneakers.workflow.v1.CreateFolderMoveRequestRequest\x1a5.sneakers.workflow.v1.CreateFolderMoveRequestResponse\x12\x86\x01\n" +
 	"\x17CreateSecretMoveRequest\x124.sneakers.workflow.v1.CreateSecretMoveRequestRequest\x1a5.sneakers.workflow.v1.CreateSecretMoveRequestResponse\x12n\n" +
