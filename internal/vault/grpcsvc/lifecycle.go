@@ -43,6 +43,8 @@ func (s *Server) RetireSecret(ctx context.Context, req *vaultv1.RetireSecretRequ
 	}
 	sec.Retired = true
 	sec.RetiredAt = time.Now().UTC().Format(time.RFC3339)
+	sec.Position = 0
+	s.compactFolder(sec.GetFolderId())
 	s.emit(ctx, req.GetActor().GetUserId(), "secret.retire", sec.Id, false)
 	s.notifyInformed(ctx, req.GetActor().GetUserId(), "secret.retire", "secret", sec.GetId(), sec.GetName(), s.secretChain(sec))
 	if s.hb != nil {
@@ -61,6 +63,9 @@ func (s *Server) RestoreSecret(ctx context.Context, req *vaultv1.RestoreSecretRe
 	}
 	if !s.canManageOrOwnSecret(req.GetActor(), sec) {
 		return nil, status.Error(codes.PermissionDenied, "not permitted to restore this secret")
+	}
+	if sec.GetRetired() {
+		sec.Position = s.nextPosition(sec.GetFolderId())
 	}
 	sec.Retired = false
 	sec.RetiredAt = ""
@@ -98,6 +103,7 @@ func (s *Server) DeleteSecret(ctx context.Context, req *vaultv1.DeleteSecretRequ
 	chain := s.secretChain(sec) // captured before removal
 	s.secrets = removeByID(s.secrets, req.GetId())
 	delete(s.records, req.GetId())
+	s.compactFolder(sec.GetFolderId())
 	s.emit(ctx, req.GetActor().GetUserId(), "secret.delete", req.GetId(), false)
 	s.notifyInformed(ctx, req.GetActor().GetUserId(), "secret.delete", "secret", sec.GetId(), sec.GetName(), chain)
 	if s.hb != nil {

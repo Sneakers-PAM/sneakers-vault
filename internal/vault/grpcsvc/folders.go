@@ -286,6 +286,9 @@ func (s *Server) reassignChildren(id, reassign string) {
 			f.ParentId = reassign
 		}
 	}
+	for _, sec := range s.activeInFolder(id) {
+		s.moveSecretTo(sec, reassign)
+	}
 	for _, sec := range s.secrets {
 		if sec.FolderId == id {
 			sec.FolderId = reassign

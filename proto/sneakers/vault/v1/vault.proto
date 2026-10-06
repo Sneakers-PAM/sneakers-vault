@@ -294,6 +294,12 @@ message Secret {
   // person needs approval for each use or reveal, owners included. Another
   // owner or a designated approver (RACI A) decides, never the requester.
   bool always_require_approval = 32;
+  // The secret's manual place in its folder, 1-based and dense across the
+  // folder's active secrets; 0 for a retired secret. Set by the vault: a new,
+  // moved-in or restored secret goes last, and retire, delete and move-out
+  // close the gap. ReorderSecrets sets the whole order. ListSecretsInFolder
+  // returns secrets in this order.
+  int32 position = 33;
 }
 
 // ---- Request/response messages ----------------------------------------------
@@ -406,6 +412,12 @@ message AddFolderRuleResponse { FolderAccessRule rule = 1; }
 
 message RemoveFolderRuleRequest { ActorContext actor = 1; string id = 2; }
 message RemoveFolderRuleResponse {}
+
+// ReorderSecretsRequest sets the manual order of a folder's active secrets.
+// ordered_ids must name every active secret in the folder exactly once, first
+// to last; anything else is InvalidArgument and changes nothing.
+message ReorderSecretsRequest { ActorContext actor = 1; string folder_id = 2; repeated string ordered_ids = 3; }
+message ReorderSecretsResponse { repeated Secret secrets = 1; }
 
 message ListSecretsInFolderRequest {
   ActorContext actor = 1;
@@ -1414,6 +1426,9 @@ service VaultService {
   rpc ListSecretsInFolder(ListSecretsInFolderRequest) returns (ListSecretsInFolderResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // ReorderSecrets sets the manual order of a folder's active secrets. The
+  // caller needs RACI Author on the folder or must own it.
+  rpc ReorderSecrets(ReorderSecretsRequest) returns (ReorderSecretsResponse);
   rpc GetSecret(GetSecretRequest) returns (GetSecretResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }

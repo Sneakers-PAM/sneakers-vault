@@ -111,6 +111,7 @@ func (s *Server) buildAndStoreSecret(ctx context.Context, actor *vaultv1.ActorCo
 	sec := &vaultv1.Secret{
 		Id: s.nextID("secret"), Name: spec.name, FolderId: spec.folderID, TypeId: spec.typeID, TargetId: spec.targetID,
 		RotationOptOut: spec.disableRotation, HeartbeatOptOut: spec.disableHeartbeat,
+		Position: s.nextPosition(spec.folderID),
 	}
 	rec, err := s.crypt.Seal(fields)
 	if err != nil {

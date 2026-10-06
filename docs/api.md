@@ -49,7 +49,7 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 | Secret types | `ListSecretTypes`, `CreateSecretType`, `UpdateSecretType`, `DeleteSecretType`, `CloneSecretType`, `ListAvailableExtensions`, `ImportExtension`, `ImportExtensionFromJson` |
 | Folders | `ListFolders`, `CreateFolder`, `RenameFolder`, `MoveFolder`, `DeleteFolder`, `ReorderFolders` |
 | Access rules | `GetFolderRuleset`, `SetFolderRuleset`, `GetMyAccess`, `SimulateFolder`, `SimulateSecret`, `GetSecretRuleset`, `SetSecretRuleset`, `GetMySecretAccess`, `GetTargetRuleset`, `SetTargetRuleset`; the older `ListFolderRules`, `GetInheritedFolderRules`, `AddFolderRule`, `RemoveFolderRule` |
-| Secrets | `ListSecretsInFolder`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
+| Secrets | `ListSecretsInFolder`, `ReorderSecrets`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
 | Break-glass browse | `OpenBreakGlassSession`, `GetBreakGlassSession`, `ListBreakGlassItems`, `CloseBreakGlassSession`, `ListBreakGlassSessions` |
 | Dashboard | `GetSecretStats`, `GetTopAccessedSecrets`, `ListSecretsByStatus`, `FindSecretsByPublicKey` |
 | Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
@@ -222,6 +222,16 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   never rotated (heartbeat still runs). Manual rotation and turning rotation back on answer
   `FailedPrecondition`; check-in and break-glass rotations are skipped so the lease still closes.
   `admin_count` (adminCount=1) is recorded but doesn't block rotation.
+- **Secret order:** `Secret.position` is a secret's manual place in its folder, 1-based and dense
+  across the folder's active secrets; a retired secret has 0. A new, moved-in or restored secret
+  goes last, and retire, hard delete and move-out close the gap (a folder deleted with
+  `reassign_to_id` appends its secrets to the target folder in their order). `ListSecretsInFolder`
+  returns active secrets in position order, then retired ones. `ReorderSecrets(folder_id,
+  ordered_ids)` sets the whole order: the caller needs RACI Author on the folder or must own it
+  (`PermissionDenied` otherwise), and `ordered_ids` must name every active secret in the folder
+  exactly once (`InvalidArgument` otherwise, with nothing changed). It returns the folder's secrets
+  in the new order and is audited as `secret.reorder` on the folder. Migration 0003 backfilled
+  existing secrets by name.
 - **AD logon format:** the Active Directory type's optional `logonFormat` field (`NETBIOS` or
   `UPN`) says how consumers present the account's logon name: `NETBIOS` as `netbios\username`,
   `UPN` as `username@upnSuffix`, or `username@domain` when `upnSuffix` is empty. Unset (every
