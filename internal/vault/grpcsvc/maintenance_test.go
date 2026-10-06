@@ -29,7 +29,7 @@ var maintenanceGolden = map[maintenance.Class][]string{
 		"ListSecretsForPrincipal", "ListFoldersForPrincipal", "ListSecretVersions", "GetSecretStats",
 		"GetTopAccessedSecrets", "ListSecretsByStatus", "FindSecretsByPublicKey", "GetSecretRuleset",
 		"GetMySecretAccess", "ListConnectors", "ListPasswordPolicies", "GetSecuritySettings",
-		"GenerateKeyPair", "GetSecretUse", "ListPendingSecretUses", "ListUseGrants",
+		"GenerateKeyPair", "GetSecretUse", "ListPendingSecretUses", "ListSecretUsesToDecide", "ListUseGrants",
 	},
 	maintenance.Allowed: {
 		"RevealSecretField", "RevealSecretFieldForPrincipal", "RevealSecretVersionField", "CopySecret",
@@ -48,7 +48,7 @@ var maintenanceGolden = map[maintenance.Class][]string{
 		"MoveFolderForPrincipal", "RestoreSecretVersion", "BreakGlassSecret", "RetireSecret",
 		"RestoreSecret", "DeleteSecret", "SetSecretRuleset", "EnqueueRotation", "RevealForRotation",
 		"SavePasswordPolicy", "DeletePasswordPolicy", "UpdateSecuritySettings", "SeedBuiltins",
-		"RotateKek", "SealForImport", "PrepareSecretUse", "DecideSecretUse", "RedeemSecretUse",
+		"RotateKek", "SealForImport", "PrepareSecretUse", "DecideSecretUse", "ConfirmSecretUse", "RedeemSecretUse",
 		"CreateUseGrant", "RevokeUseGrant", "SetSecretTokenApproval", "SetSecretTargetForPrincipal",
 		"SetSecretAutomationForPrincipal", "RequestHeartbeatForPrincipal",
 	},

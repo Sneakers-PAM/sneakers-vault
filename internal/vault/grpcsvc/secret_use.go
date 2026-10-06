@@ -9,11 +9,13 @@ import (
 	"path"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
 
+	log "github.com/Bugs5382/go-log"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -82,38 +84,27 @@ func (s *Server) useRefused(ctx context.Context, actor *vaultv1.ActorContext, ac
 	s.emitAttrs(ctx, actor.GetUserId(), action, subject, true, out)
 }
 
-// PrepareSecretUse records a request by a personal token to use one field of
-// one secret for one exact command. It is approved at once when a use grant
-// the owner created covers it; otherwise it waits for the owner.
+// PrepareSecretUse records a request to use one field of one secret: by a
+// personal token for one exact command or a reveal to the token, or by a
+// signed-in person for a reveal in the web. It is approved at once unless the
+// secret's approval level says the requester needs a decision (see
+// approval.go); then it waits for another owner or approver, or, when nobody
+// else can decide, for the requester's one-time confirmation.
 func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecretUseRequest) (*vaultv1.PrepareSecretUseResponse, error) {
 	st, err := s.useStoreOrUnavailable()
 	if err != nil {
 		return nil, err
 	}
 	actor := req.GetActor()
-	if !isUserToken(actor) {
-		return nil, status.Error(codes.PermissionDenied, "secret use is for personal tokens")
+	if err := checkPrepareCaller(actor, req.GetReveal()); err != nil {
+		return nil, err
 	}
 	argv := req.GetArgv()
 	if err := checkPrepareRequest(req); err != nil {
 		return nil, err
 	}
-	s.mu.RLock()
-	sec := s.findSecret(req.GetSecretId())
-	readable := sec != nil && !sec.GetRetired() && s.canRead(actor, sec)
-	var apiErr error
-	if readable {
-		apiErr = s.checkAPIForSensitive(ctx, actor, sec, req.GetFieldKey(), "use.prepare")
-	}
-	var hasField, needsApproval bool
-	if readable {
-		_, hasField = s.records[sec.GetId()].Fields[req.GetFieldKey()]
-		if req.GetReveal() {
-			hasField = hasField && s.isSensitiveField(s.findType(sec.TypeId), req.GetFieldKey())
-		}
-		needsApproval = sec.GetRequireTokenApproval()
-	}
-	s.mu.RUnlock()
+	sec, chk, apiErr := s.prepareChecks(ctx, actor, req)
+	readable, hasField, needsApproval, confirm, decidable := chk.readable, chk.hasField, chk.needsApproval, chk.confirm, chk.decidable
 	if apiErr != nil {
 		return nil, apiErr
 	}
@@ -126,13 +117,17 @@ func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecre
 		s.useRefused(ctx, actor, "secret.use.prepare", req.GetSecretId(), "failed", "no such field", attempt)
 		return nil, status.Error(codes.NotFound, "secret field not found")
 	}
+	if needsApproval && !decidable {
+		s.useRefused(ctx, actor, "secret.use.prepare", req.GetSecretId(), "failed", ReasonNoApprover, attempt)
+		return nil, refuseCode(codes.FailedPrecondition, ReasonNoApprover, "nobody can approve this use: the secret has no active owner or approver")
+	}
 	now := s.clock()
 	use := &vaultv1.SecretUse{
 		Id: s.nextID("use"), SecretId: sec.GetId(), SecretName: sec.GetName(), FieldKey: req.GetFieldKey(),
 		Argv: argv, UserId: actor.GetUserId(), TokenId: actor.GetTokenId(),
 		State: vaultv1.SecretUseState_SECRET_USE_STATE_PENDING, CreatedAtUnix: now.Unix(),
 		ExpiresAtUnix: now.Add(secretUseTTL).Unix(), ClientLabel: req.GetClientLabel(), Reveal: req.GetReveal(),
-		RunId: req.GetRunId(), Purpose: req.GetPurpose(),
+		RunId: req.GetRunId(), Purpose: req.GetPurpose(), Confirm: confirm,
 	}
 	if err := s.approveAtPrepare(ctx, st, use, sec, needsApproval, now); err != nil {
 		return nil, err
@@ -140,16 +135,41 @@ func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecre
 	if err := st.PutUse(ctx, use); err != nil {
 		return nil, status.Errorf(codes.Internal, "store secret use: %v", err)
 	}
-	s.emitAttrs(ctx, actor.GetUserId(), "secret.use.prepare", sec.GetId(), true, useAttrs(use, map[string]string{"grant_id": use.GetGrantId()}))
+	s.lg(ctx).Debug("secret use prepared", log.F("use_id", use.GetId()), log.F("secret_id", sec.GetId()),
+		log.F("state", use.GetState().String()), log.F("confirm", use.GetConfirm()), log.F("run_id", use.GetRunId()))
+	s.emitAttrs(ctx, actor.GetUserId(), "secret.use.prepare", sec.GetId(), true, useAttrs(use, map[string]string{
+		"grant_id": use.GetGrantId(), "approval_level": strconv.Itoa(approvalLevel(sec)), "confirm": strconv.FormatBool(use.GetConfirm()),
+	}))
 	return &vaultv1.PrepareSecretUseResponse{Use: use}, nil
 }
 
-// approveAtPrepare approves a use on the spot when that needs no person: a
-// reveal of a secret without token approval, or a use a grant covers.
+// approveAtPrepare approves a use on the spot when that needs no person: the
+// requester needs no approval, or nobody else can decide and the requester
+// already confirmed this run (or holds a use grant, an MFA-backed
+// pre-confirmation). A grant never stands in for another approver.
 func (s *Server) approveAtPrepare(ctx context.Context, st useStore, use *vaultv1.SecretUse, sec *vaultv1.Secret, needsApproval bool, now time.Time) error {
-	if use.GetReveal() && !needsApproval {
+	approve := func() {
 		use.State = vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED
 		use.ExpiresAtUnix = now.Add(redeemAfterApproval).Unix()
+	}
+	if !needsApproval {
+		approve()
+		return nil
+	}
+	if !use.GetConfirm() {
+		return nil
+	}
+	if use.GetRunId() != "" {
+		ok, err := st.RunConfirmedSince(ctx, use.GetUserId(), use.GetTokenId(), use.GetRunId(), now.Add(-runConfirmSpan).Unix())
+		if err != nil {
+			return status.Errorf(codes.Internal, "check run confirmation: %v", err)
+		}
+		if ok {
+			approve()
+			return nil
+		}
+	}
+	if use.GetTokenId() == "" {
 		return nil
 	}
 	g, err := s.coveringGrant(ctx, st, use, sec, now)
@@ -157,10 +177,49 @@ func (s *Server) approveAtPrepare(ctx context.Context, st useStore, use *vaultv1
 		return status.Errorf(codes.Internal, "check use grants: %v", err)
 	}
 	if g != nil {
-		use.State, use.GrantId = vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED, g.GetId()
-		use.ExpiresAtUnix = now.Add(redeemAfterApproval).Unix()
+		approve()
+		use.GrantId = g.GetId()
 	}
 	return nil
+}
+
+// checkPrepareCaller allows a personal token, or a signed-in person for a
+// reveal only.
+func checkPrepareCaller(actor *vaultv1.ActorContext, reveal bool) error {
+	person := isHumanUser(actor)
+	if !isUserToken(actor) && !person {
+		return status.Error(codes.PermissionDenied, "secret use is for personal tokens and signed-in people")
+	}
+	if person && !reveal {
+		return status.Error(codes.InvalidArgument, "a person's secret use is a reveal")
+	}
+	return nil
+}
+
+type prepareCheck struct{ readable, hasField, needsApproval, confirm, decidable bool }
+
+// prepareChecks reads, under the lock, what PrepareSecretUse decides on.
+func (s *Server) prepareChecks(ctx context.Context, actor *vaultv1.ActorContext, req *vaultv1.PrepareSecretUseRequest) (*vaultv1.Secret, prepareCheck, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var c prepareCheck
+	sec := s.findSecret(req.GetSecretId())
+	c.readable = sec != nil && !sec.GetRetired() && s.canRead(actor, sec)
+	if !c.readable {
+		return sec, c, nil
+	}
+	if err := s.checkAPIForSensitive(ctx, actor, sec, req.GetFieldKey(), "use.prepare"); err != nil {
+		return sec, c, err
+	}
+	_, c.hasField = s.records[sec.GetId()].Fields[req.GetFieldKey()]
+	if req.GetReveal() {
+		c.hasField = c.hasField && s.isSensitiveField(s.findType(sec.TypeId), req.GetFieldKey())
+	}
+	c.needsApproval = s.useNeedsApproval(actor.GetUserId(), sec)
+	if c.needsApproval {
+		c.confirm, c.decidable = s.confirmMode(actor, sec, req.GetActiveUsers())
+	}
+	return sec, c, nil
 }
 
 func checkPrepareRequest(req *vaultv1.PrepareSecretUseRequest) error {
@@ -260,7 +319,14 @@ func (s *Server) GetSecretUse(ctx context.Context, req *vaultv1.GetSecretUseRequ
 	}
 	actor := req.GetActor()
 	owner := actor.GetUserId() == use.GetUserId()
-	if !owner || (isUserToken(actor) && actor.GetTokenId() != use.GetTokenId()) {
+	if owner && (!isUserToken(actor) || actor.GetTokenId() == use.GetTokenId()) {
+		return &vaultv1.GetSecretUseResponse{Use: use}, nil
+	}
+	s.mu.RLock()
+	sec := s.findSecret(use.GetSecretId())
+	decider := sec != nil && s.mayDecide(actor, sec, use.GetUserId())
+	s.mu.RUnlock()
+	if !decider {
 		return nil, status.Error(codes.NotFound, "secret use not found")
 	}
 	return &vaultv1.GetSecretUseResponse{Use: use}, nil
@@ -300,23 +366,39 @@ func (s *Server) ListPendingSecretUses(ctx context.Context, req *vaultv1.ListPen
 	return &vaultv1.ListPendingSecretUsesResponse{Uses: out}, nil
 }
 
-// DecideSecretUse lets only the token's owner, signed in as themselves, approve
-// or deny a pending use; the gateway requires a fresh second factor first.
+// DecideSecretUse lets an eligible person approve or deny someone else's
+// pending use: an owner of the secret, or for an always-approve secret also a
+// designated approver (RACI A). The requester may deny (withdraw) their own
+// use but never approve it. The gateway requires a second factor within the
+// step-up window first.
 func (s *Server) DecideSecretUse(ctx context.Context, req *vaultv1.DecideSecretUseRequest) (*vaultv1.DecideSecretUseResponse, error) {
 	st, err := s.useStoreOrUnavailable()
 	if err != nil {
 		return nil, err
 	}
 	actor := req.GetActor()
-	if actor.GetPrincipalKind() != vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN {
-		return nil, status.Error(codes.PermissionDenied, "only the signed-in owner can decide a secret use")
+	if !isHumanUser(actor) {
+		return nil, status.Error(codes.PermissionDenied, "only a signed-in person can decide a secret use")
 	}
 	use, err := s.liveUse(ctx, st, req.GetUseId())
 	if err != nil {
 		return nil, err
 	}
-	if use.GetUserId() != actor.GetUserId() {
-		return nil, status.Error(codes.PermissionDenied, "only the token's owner can decide this use")
+	own := use.GetUserId() == actor.GetUserId()
+	s.mu.RLock()
+	sec := s.findSecret(use.GetSecretId())
+	allowed := sec != nil && s.mayDecide(actor, sec, use.GetUserId())
+	s.mu.RUnlock()
+	refused := func(reason, msg string) error {
+		s.lg(ctx).Warn("secret use decision refused", log.F("use_id", use.GetId()), log.F("user_id", actor.GetUserId()), log.F("reason", reason))
+		s.useRefused(ctx, actor, "secret.use.decide", use.GetSecretId(), "denied", reason, useAttrs(use, nil))
+		return refuseCode(codes.PermissionDenied, reason, msg)
+	}
+	switch {
+	case own && req.GetApprove():
+		return nil, refused(ReasonSelfApproval, "you can't approve your own request")
+	case !own && !allowed:
+		return nil, refused(ReasonNotApprover, "only an owner or approver of this secret can decide this use")
 	}
 	if use.GetState() != vaultv1.SecretUseState_SECRET_USE_STATE_PENDING {
 		return nil, status.Errorf(codes.FailedPrecondition, "secret use is %s", use.GetState())
@@ -328,11 +410,105 @@ func (s *Server) DecideSecretUse(ctx context.Context, req *vaultv1.DecideSecretU
 		use.State = vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED
 		use.ExpiresAtUnix = s.clock().Add(redeemAfterApproval).Unix()
 	}
+	use.DecidedByUserId = actor.GetUserId()
 	if err := st.PutUse(ctx, use); err != nil {
 		return nil, status.Errorf(codes.Internal, "store secret use: %v", err)
 	}
-	s.emitAttrs(ctx, actor.GetUserId(), action, use.GetSecretId(), true, useAttrs(use, nil))
+	s.lg(ctx).Info("secret use decided", log.F("use_id", use.GetId()), log.F("decided_by", actor.GetUserId()), log.F("state", use.GetState().String()))
+	s.emitAttrs(ctx, actor.GetUserId(), action, use.GetSecretId(), true, useAttrs(use, map[string]string{"requested_by": use.GetUserId()}))
 	return &vaultv1.DecideSecretUseResponse{Use: use}, nil
+}
+
+// ConfirmSecretUse is the requester's one-time confirmation of their own
+// pending use when nobody else can decide it: a single-user install, or an
+// always-approve secret whose only approver is the requester. It needs a
+// second factor within MFA_MAX_AGE, and is refused while another owner or
+// approver could decide instead.
+func (s *Server) ConfirmSecretUse(ctx context.Context, req *vaultv1.ConfirmSecretUseRequest) (*vaultv1.ConfirmSecretUseResponse, error) {
+	st, err := s.useStoreOrUnavailable()
+	if err != nil {
+		return nil, err
+	}
+	actor := req.GetActor()
+	if !isHumanUser(actor) {
+		return nil, status.Error(codes.PermissionDenied, "only a signed-in person can confirm a secret use")
+	}
+	use, err := s.liveUse(ctx, st, req.GetUseId())
+	if err != nil {
+		return nil, err
+	}
+	refused := func(code codes.Code, reason, msg string) error {
+		s.lg(ctx).Warn("secret use confirmation refused", log.F("use_id", use.GetId()), log.F("user_id", actor.GetUserId()), log.F("reason", reason))
+		s.useRefused(ctx, actor, "secret.use.confirm", use.GetSecretId(), "denied", reason, useAttrs(use, nil))
+		return refuseCode(code, reason, msg)
+	}
+	if use.GetUserId() != actor.GetUserId() {
+		return nil, refused(codes.PermissionDenied, ReasonNotRequester, "only the person who asked can confirm this use")
+	}
+	if use.GetState() != vaultv1.SecretUseState_SECRET_USE_STATE_PENDING {
+		return nil, status.Errorf(codes.FailedPrecondition, "secret use is %s", use.GetState())
+	}
+	if !s.mfaFresh(actor) {
+		return nil, refused(codes.PermissionDenied, ReasonStepUpRequired, "confirm your MFA again to continue")
+	}
+	s.mu.RLock()
+	sec := s.findSecret(use.GetSecretId())
+	readable := sec != nil && !sec.GetRetired() && s.canRead(actor, sec)
+	var confirm, decidable bool
+	if readable {
+		confirm, decidable = s.confirmMode(actor, sec, req.GetActiveUsers())
+	}
+	s.mu.RUnlock()
+	switch {
+	case !readable:
+		return nil, refused(codes.PermissionDenied, ReasonNoAccess, "not permitted to use this secret any more")
+	case !decidable:
+		return nil, refused(codes.FailedPrecondition, ReasonNoApprover, "nobody can approve this use")
+	case !confirm:
+		return nil, refused(codes.FailedPrecondition, ReasonOtherApprover, "an owner or approver of this secret decides this use")
+	}
+	now := s.clock()
+	use.State = vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED
+	use.ExpiresAtUnix = now.Add(redeemAfterApproval).Unix()
+	use.ConfirmedAtUnix = now.Unix()
+	if err := st.PutUse(ctx, use); err != nil {
+		return nil, status.Errorf(codes.Internal, "store secret use: %v", err)
+	}
+	s.lg(ctx).Info("secret use confirmed by the requester", log.F("use_id", use.GetId()), log.F("run_id", use.GetRunId()))
+	s.emitAttrs(ctx, actor.GetUserId(), "secret.use.confirm", use.GetSecretId(), true, useAttrs(use, nil))
+	return &vaultv1.ConfirmSecretUseResponse{Use: use}, nil
+}
+
+// ListSecretUsesToDecide lists other people's pending uses the signed-in
+// person may decide. A use only its requester can confirm still shows when
+// the caller may decide it now.
+func (s *Server) ListSecretUsesToDecide(ctx context.Context, req *vaultv1.ListSecretUsesToDecideRequest) (*vaultv1.ListSecretUsesToDecideResponse, error) {
+	st, err := s.useStoreOrUnavailable()
+	if err != nil {
+		return nil, err
+	}
+	actor := req.GetActor()
+	if !isHumanUser(actor) {
+		return nil, status.Error(codes.PermissionDenied, "only a signed-in person can list uses to decide")
+	}
+	uses, err := st.AllPendingUses(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list secret uses: %v", err)
+	}
+	now := s.clock().Unix()
+	out := make([]*vaultv1.SecretUse, 0, len(uses))
+	s.mu.RLock()
+	for _, u := range uses {
+		if now >= u.GetExpiresAtUnix() {
+			continue
+		}
+		if sec := s.findSecret(u.GetSecretId()); sec != nil && s.mayDecide(actor, sec, u.GetUserId()) {
+			out = append(out, u)
+		}
+	}
+	s.mu.RUnlock()
+	s.lg(ctx).Debug("secret uses to decide listed", log.F("user_id", actor.GetUserId()), log.F("count", len(out)))
+	return &vaultv1.ListSecretUsesToDecideResponse{Uses: out}, nil
 }
 
 // RedeemSecretUse releases the value once, to the token that prepared the use,
@@ -347,9 +523,10 @@ func (s *Server) RedeemSecretUse(ctx context.Context, req *vaultv1.RedeemSecretU
 	if err != nil {
 		return nil, err
 	}
-	if !isUserToken(actor) || actor.GetTokenId() != use.GetTokenId() || actor.GetUserId() != use.GetUserId() {
-		s.useRefused(ctx, actor, "secret.use.redeem", use.GetSecretId(), "denied", "not the preparing token", map[string]string{"use_id": use.GetId(), "run_id": use.GetRunId()})
-		return nil, status.Error(codes.PermissionDenied, "only the token that prepared this use can redeem it")
+	webUse := use.GetTokenId() == ""
+	if !sameRequester(actor, use) {
+		s.useRefused(ctx, actor, "secret.use.redeem", use.GetSecretId(), "denied", "not the preparing requester", map[string]string{"use_id": use.GetId(), "run_id": use.GetRunId()})
+		return nil, status.Error(codes.PermissionDenied, "only the token or person that prepared this use can redeem it")
 	}
 	if use.GetState() != vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED {
 		s.useRefused(ctx, actor, "secret.use.redeem", use.GetSecretId(), "failed", "use is "+use.GetState().String(), useAttrs(use, nil))
@@ -362,6 +539,9 @@ func (s *Server) RedeemSecretUse(ctx context.Context, req *vaultv1.RedeemSecretU
 	var apiErr error
 	if readable {
 		apiErr = s.checkAPIForSensitive(ctx, actor, sec, use.GetFieldKey(), "use.redeem")
+		if apiErr == nil {
+			apiErr = s.checkRevealStepUp(ctx, actor, sec, "reveal")
+		}
 	}
 	s.mu.RUnlock()
 	if apiErr != nil {
@@ -381,15 +561,31 @@ func (s *Server) RedeemSecretUse(ctx context.Context, req *vaultv1.RedeemSecretU
 		return nil, status.Errorf(codes.Internal, "store secret use: %v", err)
 	}
 	if use.GetReveal() {
+		via := "mcp"
+		if webUse {
+			via = "web"
+		}
 		// Reads as the person revealing it, like a UI reveal.
 		s.emitAttrs(ctx, actor.GetUserId(), "secret.reveal", use.GetSecretId()+"#"+use.GetFieldKey(), true, map[string]string{
-			"principal_kind": actor.GetPrincipalKind().String(), "token_id": actor.GetTokenId(), "via": "mcp",
+			"principal_kind": actor.GetPrincipalKind().String(), "token_id": actor.GetTokenId(), "via": via,
 			"use_id": use.GetId(), "grant_id": use.GetGrantId(), "client_label": use.GetClientLabel(),
 		})
 	} else {
 		s.emitAttrs(ctx, actor.GetUserId(), "secret.use.redeem", use.GetSecretId(), true, useAttrs(use, map[string]string{"grant_id": use.GetGrantId()}))
 	}
 	return &vaultv1.RedeemSecretUseResponse{Use: use, Value: value}, nil
+}
+
+// sameRequester reports whether actor is the token, or for a web use the
+// person, that prepared use.
+func sameRequester(actor *vaultv1.ActorContext, use *vaultv1.SecretUse) bool {
+	if actor.GetUserId() != use.GetUserId() || actor.GetTokenId() != use.GetTokenId() {
+		return false
+	}
+	if use.GetTokenId() == "" {
+		return isHumanUser(actor)
+	}
+	return isUserToken(actor)
 }
 
 // validGrantProgram accepts a bare name, which sneakers-run resolves only from
@@ -402,6 +598,12 @@ func validGrantProgram(p string) bool {
 		return true
 	}
 	return path.IsAbs(p) && path.Clean(p) == p
+}
+
+// isHumanUser reports a signed-in person with a real user id.
+func isHumanUser(a *vaultv1.ActorContext) bool {
+	uid := a.GetUserId()
+	return a.GetPrincipalKind() == vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN && uid != "" && uid != "system"
 }
 
 func requireHumanOwner(actor *vaultv1.ActorContext) error {

@@ -112,6 +112,8 @@ const (
 	VaultService_GetSecretUse_FullMethodName                    = "/sneakers.vault.v1.VaultService/GetSecretUse"
 	VaultService_ListPendingSecretUses_FullMethodName           = "/sneakers.vault.v1.VaultService/ListPendingSecretUses"
 	VaultService_DecideSecretUse_FullMethodName                 = "/sneakers.vault.v1.VaultService/DecideSecretUse"
+	VaultService_ConfirmSecretUse_FullMethodName                = "/sneakers.vault.v1.VaultService/ConfirmSecretUse"
+	VaultService_ListSecretUsesToDecide_FullMethodName          = "/sneakers.vault.v1.VaultService/ListSecretUsesToDecide"
 	VaultService_RedeemSecretUse_FullMethodName                 = "/sneakers.vault.v1.VaultService/RedeemSecretUse"
 	VaultService_CreateUseGrant_FullMethodName                  = "/sneakers.vault.v1.VaultService/CreateUseGrant"
 	VaultService_ListUseGrants_FullMethodName                   = "/sneakers.vault.v1.VaultService/ListUseGrants"
@@ -256,6 +258,8 @@ type VaultServiceClient interface {
 	GetSecretUse(ctx context.Context, in *GetSecretUseRequest, opts ...grpc.CallOption) (*GetSecretUseResponse, error)
 	ListPendingSecretUses(ctx context.Context, in *ListPendingSecretUsesRequest, opts ...grpc.CallOption) (*ListPendingSecretUsesResponse, error)
 	DecideSecretUse(ctx context.Context, in *DecideSecretUseRequest, opts ...grpc.CallOption) (*DecideSecretUseResponse, error)
+	ConfirmSecretUse(ctx context.Context, in *ConfirmSecretUseRequest, opts ...grpc.CallOption) (*ConfirmSecretUseResponse, error)
+	ListSecretUsesToDecide(ctx context.Context, in *ListSecretUsesToDecideRequest, opts ...grpc.CallOption) (*ListSecretUsesToDecideResponse, error)
 	RedeemSecretUse(ctx context.Context, in *RedeemSecretUseRequest, opts ...grpc.CallOption) (*RedeemSecretUseResponse, error)
 	CreateUseGrant(ctx context.Context, in *CreateUseGrantRequest, opts ...grpc.CallOption) (*CreateUseGrantResponse, error)
 	ListUseGrants(ctx context.Context, in *ListUseGrantsRequest, opts ...grpc.CallOption) (*ListUseGrantsResponse, error)
@@ -1175,6 +1179,26 @@ func (c *vaultServiceClient) DecideSecretUse(ctx context.Context, in *DecideSecr
 	return out, nil
 }
 
+func (c *vaultServiceClient) ConfirmSecretUse(ctx context.Context, in *ConfirmSecretUseRequest, opts ...grpc.CallOption) (*ConfirmSecretUseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConfirmSecretUseResponse)
+	err := c.cc.Invoke(ctx, VaultService_ConfirmSecretUse_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) ListSecretUsesToDecide(ctx context.Context, in *ListSecretUsesToDecideRequest, opts ...grpc.CallOption) (*ListSecretUsesToDecideResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSecretUsesToDecideResponse)
+	err := c.cc.Invoke(ctx, VaultService_ListSecretUsesToDecide_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vaultServiceClient) RedeemSecretUse(ctx context.Context, in *RedeemSecretUseRequest, opts ...grpc.CallOption) (*RedeemSecretUseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RedeemSecretUseResponse)
@@ -1398,6 +1422,8 @@ type VaultServiceServer interface {
 	GetSecretUse(context.Context, *GetSecretUseRequest) (*GetSecretUseResponse, error)
 	ListPendingSecretUses(context.Context, *ListPendingSecretUsesRequest) (*ListPendingSecretUsesResponse, error)
 	DecideSecretUse(context.Context, *DecideSecretUseRequest) (*DecideSecretUseResponse, error)
+	ConfirmSecretUse(context.Context, *ConfirmSecretUseRequest) (*ConfirmSecretUseResponse, error)
+	ListSecretUsesToDecide(context.Context, *ListSecretUsesToDecideRequest) (*ListSecretUsesToDecideResponse, error)
 	RedeemSecretUse(context.Context, *RedeemSecretUseRequest) (*RedeemSecretUseResponse, error)
 	CreateUseGrant(context.Context, *CreateUseGrantRequest) (*CreateUseGrantResponse, error)
 	ListUseGrants(context.Context, *ListUseGrantsRequest) (*ListUseGrantsResponse, error)
@@ -1686,6 +1712,12 @@ func (UnimplementedVaultServiceServer) ListPendingSecretUses(context.Context, *L
 }
 func (UnimplementedVaultServiceServer) DecideSecretUse(context.Context, *DecideSecretUseRequest) (*DecideSecretUseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DecideSecretUse not implemented")
+}
+func (UnimplementedVaultServiceServer) ConfirmSecretUse(context.Context, *ConfirmSecretUseRequest) (*ConfirmSecretUseResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConfirmSecretUse not implemented")
+}
+func (UnimplementedVaultServiceServer) ListSecretUsesToDecide(context.Context, *ListSecretUsesToDecideRequest) (*ListSecretUsesToDecideResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSecretUsesToDecide not implemented")
 }
 func (UnimplementedVaultServiceServer) RedeemSecretUse(context.Context, *RedeemSecretUseRequest) (*RedeemSecretUseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RedeemSecretUse not implemented")
@@ -3355,6 +3387,42 @@ func _VaultService_DecideSecretUse_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VaultService_ConfirmSecretUse_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfirmSecretUseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ConfirmSecretUse(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ConfirmSecretUse_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ConfirmSecretUse(ctx, req.(*ConfirmSecretUseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_ListSecretUsesToDecide_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSecretUsesToDecideRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ListSecretUsesToDecide(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ListSecretUsesToDecide_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ListSecretUsesToDecide(ctx, req.(*ListSecretUsesToDecideRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VaultService_RedeemSecretUse_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RedeemSecretUseRequest)
 	if err := dec(in); err != nil {
@@ -3883,6 +3951,14 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DecideSecretUse",
 			Handler:    _VaultService_DecideSecretUse_Handler,
+		},
+		{
+			MethodName: "ConfirmSecretUse",
+			Handler:    _VaultService_ConfirmSecretUse_Handler,
+		},
+		{
+			MethodName: "ListSecretUsesToDecide",
+			Handler:    _VaultService_ListSecretUsesToDecide_Handler,
 		},
 		{
 			MethodName: "RedeemSecretUse",

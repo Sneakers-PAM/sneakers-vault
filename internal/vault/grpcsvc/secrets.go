@@ -5,6 +5,7 @@ package grpcsvc
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	log "github.com/Bugs5382/go-log"
@@ -277,8 +278,9 @@ func (s *Server) UpdateSecret(ctx context.Context, req *vaultv1.UpdateSecretRequ
 	return &vaultv1.UpdateSecretResponse{Secret: sec}, nil
 }
 
-// SetSecretTokenApproval turns the per-secret requirement for the owner to
-// approve each personal-token reveal on or off.
+// SetSecretTokenApproval sets a secret's approval level: required alone is
+// level 1 (approval-required, owners exempt), required with always is level 2
+// (always-approve, everyone), and required false turns both off.
 func (s *Server) SetSecretTokenApproval(ctx context.Context, req *vaultv1.SetSecretTokenApprovalRequest) (*vaultv1.SetSecretTokenApprovalResponse, error) {
 	actor := req.GetActor()
 	// A person only: a token of the secret's owner would pass canManage, and a
@@ -295,13 +297,15 @@ func (s *Server) SetSecretTokenApproval(ctx context.Context, req *vaultv1.SetSec
 	if !s.canManage(actor, sec.FolderId) {
 		return nil, status.Error(codes.PermissionDenied, "not permitted to change this secret's token approval")
 	}
-	if sec.GetRequireTokenApproval() != req.GetRequired() {
-		sec.RequireTokenApproval = req.GetRequired()
+	always := req.GetRequired() && req.GetAlways()
+	if sec.GetRequireTokenApproval() != req.GetRequired() || sec.GetAlwaysRequireApproval() != always {
+		sec.RequireTokenApproval, sec.AlwaysRequireApproval = req.GetRequired(), always
 		action := "secret.token_approval.disable"
 		if sec.RequireTokenApproval {
 			action = "secret.token_approval.enable"
 		}
-		s.emit(ctx, actor.GetUserId(), action, sec.GetId(), false)
+		s.lg(ctx).Info("secret approval level set", log.F("secret_id", sec.GetId()), log.F("level", approvalLevel(sec)))
+		s.emitAttrs(ctx, actor.GetUserId(), action, sec.GetId(), false, map[string]string{"approval_level": strconv.Itoa(approvalLevel(sec))})
 	}
 	return &vaultv1.SetSecretTokenApprovalResponse{Secret: sec}, nil
 }
@@ -437,6 +441,9 @@ func (s *Server) RevealSecretField(ctx context.Context, req *vaultv1.RevealSecre
 		s.auditRevealDenied(ctx, req.GetActor(), sec.Id+"#"+req.GetFieldKey(), "reveal", ReasonNoAccess)
 		return nil, refuseCode(codes.PermissionDenied, ReasonNoAccess, "not permitted to reveal this secret")
 	}
+	if err := s.checkWebApproval(ctx, req.GetActor(), sec, "reveal"); err != nil {
+		return nil, err
+	}
 	if err := s.checkRevealStepUp(ctx, req.GetActor(), sec, "reveal"); err != nil {
 		return nil, err
 	}
@@ -519,11 +526,11 @@ func (s *Server) revealForPrincipal(ctx context.Context, actor *vaultv1.ActorCon
 	if !sensitive {
 		return s.plainReadForPrincipal(ctx, actor, sec, fieldKey, val), nil
 	}
-	if isUserToken(actor) && sec.GetRequireTokenApproval() {
+	if isUserToken(actor) && s.useNeedsApproval(actor.GetUserId(), sec) {
 		s.emitAttrs(ctx, actor.GetUserId(), "secret.reveal.approval_required", sec.Id+"#"+fieldKey, true, map[string]string{
 			"principal_kind": actor.GetPrincipalKind().String(), "token_id": actor.GetTokenId(), "via": "mcp",
 		})
-		return nil, status.Error(codes.FailedPrecondition, "approval_required: this secret needs the owner's approval for each token reveal; prepare a reveal use")
+		return nil, refuseCode(codes.FailedPrecondition, ReasonApprovalRequired, "approval_required: this secret needs an owner's or approver's approval for each reveal; prepare a reveal use")
 	}
 	bumpView(sec)
 	// A personal token reveals as its user: the same action a UI reveal records,
@@ -585,6 +592,9 @@ func (s *Server) CopySecret(ctx context.Context, req *vaultv1.CopySecretRequest)
 	if !s.canRead(req.GetActor(), sec) {
 		s.auditRevealDenied(ctx, req.GetActor(), sec.Id, "copy", ReasonNoAccess)
 		return nil, refuseCode(codes.PermissionDenied, ReasonNoAccess, "not permitted to copy this secret")
+	}
+	if err := s.checkWebApproval(ctx, req.GetActor(), sec, "copy"); err != nil {
+		return nil, err
 	}
 	if err := s.checkRevealStepUp(ctx, req.GetActor(), sec, "copy"); err != nil {
 		return nil, err

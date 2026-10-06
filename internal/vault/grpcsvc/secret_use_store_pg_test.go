@@ -98,3 +98,54 @@ func TestPGUseStoreKeepsRunFieldsAndLoadsOldRows(t *testing.T) {
 		t.Fatalf("an old row = %v, %v", got, err)
 	}
 }
+
+func TestPGUseStoreQueueAndRunConfirmation(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_DSN")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_DSN not set")
+	}
+	ctx := context.Background()
+	pool, err := postgres.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if _, err := pool.Querier().Exec(ctx, `TRUNCATE secret_uses`); err != nil {
+		t.Fatal(err)
+	}
+	st := &pgUseStore{db: pool.Querier()}
+	pending := vaultv1.SecretUseState_SECRET_USE_STATE_PENDING
+	for _, u := range []*vaultv1.SecretUse{
+		{Id: "use-a", UserId: "u-ada", TokenId: "utok-1", State: pending, ExpiresAtUnix: 4102444800, RunId: "run-1"},
+		{Id: "use-b", UserId: "u-bob", State: pending, ExpiresAtUnix: 4102444800, RunId: "web-1"},
+		{Id: "use-c", UserId: "u-ada", TokenId: "utok-1", State: vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED,
+			ExpiresAtUnix: 4102444800, RunId: "run-1", ConfirmedAtUnix: 1790000000},
+		{Id: "use-d", UserId: "u-bob", State: vaultv1.SecretUseState_SECRET_USE_STATE_REDEEMED,
+			ExpiresAtUnix: 4102444800, RunId: "web-1", ConfirmedAtUnix: 1790000000},
+	} {
+		if err := st.PutUse(ctx, u); err != nil {
+			t.Fatal(err)
+		}
+	}
+	all, err := st.AllPendingUses(ctx)
+	if err != nil || len(all) != 2 {
+		t.Fatalf("AllPendingUses = %v, %v", all, err)
+	}
+	for name, c := range map[string]struct {
+		user, token, run string
+		since            int64
+		want             bool
+	}{
+		"token run confirmed":   {"u-ada", "utok-1", "run-1", 1789999000, true},
+		"web run confirmed":     {"u-bob", "", "web-1", 1789999000, true},
+		"confirmation too old":  {"u-ada", "utok-1", "run-1", 1790000001, false},
+		"another token":         {"u-ada", "utok-2", "run-1", 0, false},
+		"another run":           {"u-ada", "utok-1", "run-2", 0, false},
+		"a run never confirmed": {"u-bob", "", "web-2", 0, false},
+	} {
+		got, err := st.RunConfirmedSince(ctx, c.user, c.token, c.run, c.since)
+		if err != nil || got != c.want {
+			t.Errorf("%s: %v, %v; want %v", name, got, err, c.want)
+		}
+	}
+}

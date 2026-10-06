@@ -52,7 +52,7 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 | Secrets | `ListSecretsInFolder`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
 | Dashboard | `GetSecretStats`, `GetTopAccessedSecrets`, `ListSecretsByStatus`, `FindSecretsByPublicKey` |
 | Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
-| Use without reveal | `PrepareSecretUse`, `GetSecretUse`, `ListPendingSecretUses`, `DecideSecretUse`, `RedeemSecretUse`, `CreateUseGrant`, `ListUseGrants`, `RevokeUseGrant`, `SetSecretTokenApproval` |
+| Secret uses and approvals | `PrepareSecretUse`, `GetSecretUse`, `ListPendingSecretUses`, `ListSecretUsesToDecide`, `DecideSecretUse`, `ConfirmSecretUse`, `RedeemSecretUse`, `CreateUseGrant`, `ListUseGrants`, `RevokeUseGrant`, `SetSecretTokenApproval` |
 | Certificates | `ImportCertificate`, `ExportCertificate`, `ReplaceCertificate` |
 | Connections and targets | `ListConnections`, `SaveConnection`, `DeleteConnection`, `ListTargets`, `SaveTarget`, `DeleteTarget` |
 | Connector | `ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeartbeat`, `EnqueueRotation`, `ClaimDueRotations`, `RevealForRotation`, `ReportRotation` |
@@ -103,12 +103,50 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   tree only; a service account never creates inside a personal tree. Names may not contain `/` or
   `\`. `RevealSecretFieldForPrincipal` also returns non-sensitive fields, audited as
   `secret.read.principal`.
-- **Token approval** (`SetSecretTokenApproval`, `require_token_approval`) covers **personal
-  tokens only**: with it on, a personal token's reveal of a sensitive field answers
-  `approval_required` until the token's owner approves the use (or a use grant with
-  `allow_reveal` covers it). It doesn't apply to service accounts, which have no person to
-  approve: their reveals are governed by their RACI grants and by `allow_api_for_sensitive`
-  (off by default, which keeps super-sensitive fields from them).
+- **Approval levels** (`SetSecretTokenApproval`). A secret has one of three levels, and they apply
+  the same way to a person revealing or copying in the web and to a personal token (MCP
+  `get_secret`, `sneakers-run`):
+
+  | Requester | Normal | Approval-required (`required`) | Always-approve (`required` + `always`) |
+  |---|---|---|---|
+  | An owner of the secret | no approval | no approval | another owner or a designated approver decides |
+  | A non-owner with read access | no approval | any one owner decides | an owner or a designated approver decides |
+  | No read access | refused | refused | refused |
+
+  **Owners** are the owners of the secret's folder and of every folder above it (`owners`), plus
+  a personal folder's `owner_user_id`; a secret can have several. A **designated approver** is
+  anyone the secret's RACI resolution grants approve (`A`), from a rule on the secret or on a
+  folder above it: the same check the workflow uses for access requests. Site admin and root are
+  not approvers by themselves. Approval-required is decided by owners only; always-approve by any
+  owner or designated approver. The requester never approves their own use (`DecideSecretUse`
+  refuses with `SELF_APPROVAL`), but may deny it to withdraw it. Anyone else is refused with
+  `NOT_APPROVER`.
+
+  A use that needs a decision waits as a `PENDING` `SecretUse`. A person's direct
+  `RevealSecretField` or `CopySecret`, and a token's `RevealSecretFieldForPrincipal`, answer
+  `FAILED_PRECONDITION` with reason `APPROVAL_REQUIRED` (the token message still starts
+  `approval_required`), and the caller prepares a reveal use instead: a person may call
+  `PrepareSecretUse` for a reveal only, and redeems it from the same signed-in session, still under
+  the step-up window. `ListSecretUsesToDecide` lists the other people's pending uses the caller
+  may decide; it never lists the caller's own.
+
+  **When nobody else can decide**, the requester confirms once instead (`SecretUse.confirm`,
+  `ConfirmSecretUse`, a second factor within `MFA_MAX_AGE`, audited as `secret.use.confirm`). That
+  happens in a single-user install, or on an always-approve secret whose only approver is the
+  requester. The gateway passes the active people it found in identity (`ActiveUsers`): owners and
+  user-subject approver rules count only while their person is active, and a group or everyone
+  approver rule always counts outside a single-user install, since its members aren't known here.
+  Without `ActiveUsers` the install never counts as single-user. A confirmation is never queued for
+  anyone, and `ConfirmSecretUse` is refused with `OTHER_APPROVER` while someone else could decide.
+  If nobody at all can decide (no active owner or approver, more than one active person),
+  `PrepareSecretUse` refuses at once with `NO_APPROVER` rather than leaving a use waiting.
+
+  **One prompt per task:** after the requester confirms a use of a run, later uses of the same run
+  by the same token (or the same web session) are approved at prepare for an hour. A use grant
+  (`CreateUseGrant`) stands in for that confirmation only when the requester alone could confirm;
+  it never replaces another owner's or approver's decision. Service accounts are outside the
+  levels: they have no person to approve, and their reveals are governed by their RACI grants and
+  by `allow_api_for_sensitive` (off by default). Break-glass is unchanged.
 - **Runs of secret uses:** `PrepareSecretUse` takes an optional `run_id` and `purpose`, stored on
   the `SecretUse`, so the uses one agent run raises can be shown and decided on one page. `run_id`
   must match `[A-Za-z0-9_-]{1,64}`; `purpose` is at most 200 characters of plain text (valid
@@ -118,7 +156,8 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   `run_id`, empty for a use without one. `ListPendingSecretUses` takes an optional `run_id`
   filter: the signed-in owner lists all their pending uses or one run's; a personal token lists
   only its own token's pending uses, and only with a `run_id` (`PermissionDenied` without one).
-  Deciding stays one use at a time through `DecideSecretUse`, with its own checks and audit.
+  Deciding stays one use at a time through `DecideSecretUse` and `ConfirmSecretUse`, each with its
+  own checks and audit.
 - **Moves:** personal to shared is free. Shared to personal needs a site admin; for anyone else the
   vault moves nothing, answers `approval_required`, and the caller files a move request with the
   workflow service. A move is audited as `secret.move` (or `secret.move.principal`) with

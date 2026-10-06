@@ -26,7 +26,7 @@ func (fx *useFixture) reveal() (*vaultv1.RevealSecretFieldForPrincipalResponse, 
 func (fx *useFixture) prepareReveal(t *testing.T) *vaultv1.SecretUse {
 	t.Helper()
 	resp, err := fx.s.PrepareSecretUse(context.Background(), &vaultv1.PrepareSecretUseRequest{
-		Actor: fx.token, SecretId: fx.secret, FieldKey: "password", Reveal: true, ClientLabel: "Example CLI",
+		Actor: fx.token, SecretId: fx.secret, FieldKey: "password", Reveal: true, ClientLabel: "Example CLI", ActiveUsers: fx.users,
 	})
 	if err != nil {
 		t.Fatalf("prepare reveal: %v", err)
@@ -38,8 +38,12 @@ var carolManager = &vaultv1.ActorContext{UserId: "user-carol"}
 
 func TestTokenApprovalDefaultsOffAndAnOffSecretRevealsDirectly(t *testing.T) {
 	fx := newUseFixture(t)
-	if fx.s.findSecret(fx.secret).GetRequireTokenApproval() {
+	fresh := secretIn(t, fx.s, carolManager, fx.folder, "fresh")
+	if sec := fx.s.findSecret(fresh); sec.GetRequireTokenApproval() || sec.GetAlwaysRequireApproval() {
 		t.Fatal("a secret must default to no token approval")
+	}
+	if err := fx.setApproval(carolManager, false); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := fx.reveal(); err != nil {
 		t.Fatalf("OFF reveal: %v", err)
@@ -90,7 +94,7 @@ func TestOnSecretRevealIsReleasedOnceAfterApproval(t *testing.T) {
 	if _, err := fx.redeem(fx.token, u.GetId()); err == nil {
 		t.Fatal("released before approval")
 	}
-	if err := fx.decide(fx.owner, u.GetId(), true); err != nil {
+	if err := fx.decide(fx.approver, u.GetId(), true); err != nil {
 		t.Fatal(err)
 	}
 	fx.ca.events = nil
