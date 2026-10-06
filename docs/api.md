@@ -236,7 +236,9 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   `UPN`) says how consumers present the account's logon name: `NETBIOS` as `netbios\username`,
   `UPN` as `username@upnSuffix`, or `username@domain` when `upnSuffix` is empty. Unset (every
   secret saved before the field existed) keeps each consumer's existing behaviour. Both fields are
-  optional and added by `seed-catalog` without touching stored secrets.
+  optional and added by `seed-catalog` without touching stored secrets. Heartbeat and rotation
+  jobs carry them for the connector as `logon` (`LogonFormat`: `format`, `netbios`,
+  `upn_suffix`), set only when the secret has any of them.
 - **Connections:** `SaveConnection` (site admin only) changes `target_id` and
   `privileged_secret_id` only when the request sets them; a change of the privileged secret is
   audited as `connection.privileged_secret.change`.

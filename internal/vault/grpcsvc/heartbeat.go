@@ -152,6 +152,7 @@ func (s *Server) ClaimDueHeartbeats(ctx context.Context, req *vaultv1.ClaimDueHe
 			SecretId: id, SecretName: sec.GetName(),
 			Username:   s.nonSensitiveField(id, "username"),
 			Connection: conn, Target: tgt,
+			Logon: s.jobLogonFormat(id),
 		})
 	}
 	return &vaultv1.ClaimDueHeartbeatsResponse{Jobs: jobs}, nil
@@ -368,6 +369,20 @@ func (s *Server) nonSensitiveField(secretID, key string) string {
 		return ""
 	}
 	return all[key]
+}
+
+// jobLogonFormat returns the secret's logon format fields for a connector
+// job, or nil when it sets none. Caller holds s.mu.
+func (s *Server) jobLogonFormat(secretID string) *vaultv1.LogonFormat {
+	lf := &vaultv1.LogonFormat{
+		Format:    s.nonSensitiveField(secretID, "logonFormat"),
+		Netbios:   s.nonSensitiveField(secretID, "netbios"),
+		UpnSuffix: s.nonSensitiveField(secretID, "upnSuffix"),
+	}
+	if lf.GetFormat() == "" && lf.GetNetbios() == "" && lf.GetUpnSuffix() == "" {
+		return nil
+	}
+	return lf
 }
 
 // bumpUnreachable increments the schedule's consecutive-unreachable counter

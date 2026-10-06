@@ -344,6 +344,7 @@ func (s *Server) ClaimDueRotations(ctx context.Context, req *vaultv1.ClaimDueRot
 			SecretId: id, SecretName: sec.GetName(),
 			Username:   s.nonSensitiveField(id, "username"),
 			Connection: conn, Target: tgt,
+			Logon: s.jobLogonFormat(id),
 		})
 	}
 	return &vaultv1.ClaimDueRotationsResponse{Jobs: jobs}, nil
