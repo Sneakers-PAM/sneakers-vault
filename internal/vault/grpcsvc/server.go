@@ -91,8 +91,10 @@ type Server struct {
 	maint *maintenance.Mode
 	vers  *versionStore
 	rot   *rotationStore
-	// mfaMaxAge is how recent MFA must be (MFA_MAX_AGE); 0 = default.
-	mfaMaxAge time.Duration
+	// mfaMaxAge is how recent MFA must be (MFA_MAX_AGE), once mfaMaxAgeSet;
+	// unset means config.DefaultMFAMaxAge.
+	mfaMaxAge    time.Duration
+	mfaMaxAgeSet bool
 	// uses holds secret use handles and use grants, shared by every replica.
 	uses useStore
 	// now is the clock for use-handle and grant expiry; nil means time.Now.

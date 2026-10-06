@@ -37,8 +37,10 @@ type Server struct {
 	log log.Logger
 	// audit records workflow events; nil only logs them.
 	audit Auditor
-	// mfaMaxAge is how recent MFA must be (MFA_MAX_AGE); 0 = default.
-	mfaMaxAge time.Duration
+	// mfaMaxAge is how recent MFA must be (MFA_MAX_AGE), once mfaMaxAgeSet;
+	// unset means config.DefaultMFAMaxAge.
+	mfaMaxAge    time.Duration
+	mfaMaxAgeSet bool
 	// now is the clock; nil = time.Now (tests pin it).
 	now func() time.Time
 	// maint is the read-only maintenance switch; nil is off.

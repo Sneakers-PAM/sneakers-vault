@@ -76,7 +76,7 @@ func refusedRecoveryActors() map[string]struct {
 	reason string
 } {
 	stale := recoveryUser("user-carol")
-	stale.MfaVerifiedAtUnix = recoveryNow.Add(-10 * time.Minute).Unix()
+	stale.MfaVerifiedAtUnix = recoveryNow.Add(-31 * time.Minute).Unix()
 	noMFA := recoveryUser("user-carol")
 	noMFA.MfaVerifiedAtUnix = 0
 	future := recoveryUser("user-carol")
