@@ -222,6 +222,11 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   never rotated (heartbeat still runs). Manual rotation and turning rotation back on answer
   `FailedPrecondition`; check-in and break-glass rotations are skipped so the lease still closes.
   `admin_count` (adminCount=1) is recorded but doesn't block rotation.
+- **AD logon format:** the Active Directory type's optional `logonFormat` field (`NETBIOS` or
+  `UPN`) says how consumers present the account's logon name: `NETBIOS` as `netbios\username`,
+  `UPN` as `username@upnSuffix`, or `username@domain` when `upnSuffix` is empty. Unset (every
+  secret saved before the field existed) keeps each consumer's existing behaviour. Both fields are
+  optional and added by `seed-catalog` without touching stored secrets.
 - **Connections:** `SaveConnection` (site admin only) changes `target_id` and
   `privileged_secret_id` only when the request sets them; a change of the privileged secret is
   audited as `connection.privileged_secret.change`.

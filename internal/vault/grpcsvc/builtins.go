@@ -9,6 +9,14 @@ import (
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/certsvc"
 )
 
+// Values of the Active Directory type's logonFormat field. NETBIOS presents
+// the logon name as NETBIOS\username (from the netbios field); UPN presents it
+// as username@suffix (from upnSuffix, or the domain when that is empty).
+const (
+	ADLogonFormatNetbios = "NETBIOS"
+	ADLogonFormatUPN     = "UPN"
+)
+
 // BuiltinTypes returns the full built-in secret-type catalogue that ships with
 // Sneakers. It mirrors the web UI's mock secret-type catalogue
 // one-for-one so mock and live render identically. Every entry is read-only at
@@ -198,6 +206,10 @@ func BuiltinTypes() []*vaultv1.SecretType {
 			// Optional so secrets saved before it existed stay valid; the down-level
 			// DOMAIN\user logon name is built from it.
 			{Key: "netbios", Label: "NetBIOS domain", Kind: text},
+			// Optional with no default: unset keeps each consumer's existing logon
+			// name, so secrets saved before these fields existed behave as before.
+			{Key: "logonFormat", Label: "Logon format", Kind: sel, Options: []string{ADLogonFormatNetbios, ADLogonFormatUPN}},
+			{Key: "upnSuffix", Label: "UPN suffix", Kind: text},
 			{Key: "username", Label: "Account Name", Kind: text, Required: true},
 			{Key: "password", Label: "Password", Kind: pass, Required: true, Sensitive: true, Rotates: true},
 			// Flags for the privileged account Sneakers uses to perform AD rotation.
