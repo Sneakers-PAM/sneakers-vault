@@ -16,6 +16,7 @@ import (
 	postgres "github.com/Bugs5382/go-postgres"
 	otelpg "github.com/Bugs5382/go-postgres/otel"
 	sagapg "github.com/Bugs5382/go-saga-orchestration/store/postgres"
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/maintenance"
@@ -127,11 +128,11 @@ func main() {
 	go svc.RunReaper(ctx, reaperInterval)
 	go svc.RunHistoryPurge(ctx, historyPurgeInterval, vault)
 
-	authOpts := mustCallerAuth(ctx, logger, svcLog)
+	workloadVerifier, authOpts := mustCallerAuth(ctx, logger, svcLog)
 	maintUnary, maintStream := grpcsvc.MaintenanceInterceptors(maint, svcLog)
 	authOpts = append(authOpts, grpc.ChainUnaryInterceptor(maintUnary), grpc.ChainStreamInterceptor(maintStream))
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	checker := mustChecker(logger, svcLog, dependencies(db, vault.Conn(), auditConn))
+	checker := mustChecker(logger, svcLog, dependencies(db, vault.Conn(), auditConn, workloadVerifier))
 	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, func(gs *grpc.Server) {
 		grpcsvc.Register(gs, svc)
 	}, authOpts...); err != nil {
@@ -143,13 +144,20 @@ func main() {
 // leases, requests and saga runs all live there. The vault is optional, so a
 // vault outage (already shown by the vault's own readiness) doesn't also pull
 // the workflow; the calls that need it fail on their own and the saga steps
-// retry. Audit is optional: a failed emit is logged and the call goes on.
-func dependencies(db server.Database, vault, audit grpc.ClientConnInterface) []health.Dependency {
-	return []health.Dependency{
+// retry. Audit is optional: a failed emit is logged and the call goes on. The
+// workload-identity verifier is required once service-to-service
+// authentication is on; it's left out when authentication is disabled
+// (verifier nil).
+func dependencies(db server.Database, vault, audit grpc.ClientConnInterface, verifier *workloadauth.Verifier) []health.Dependency {
+	deps := []health.Dependency{
 		server.Postgres(db),
 		server.GRPCPeer("vault", vault, false),
 		server.GRPCPeer("audit", audit, false),
 	}
+	if verifier != nil {
+		deps = append(deps, server.WorkloadIdentity(verifier))
+	}
+	return deps
 }
 
 // mustChecker builds readiness over deps. A dependency list it refuses is a

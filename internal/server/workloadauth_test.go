@@ -17,7 +17,7 @@ import (
 func envOf(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
 
 func TestWorkloadAuthUnsetIssuerFailsToBoot(t *testing.T) {
-	_, err := WorkloadAuth(context.Background(), envOf(nil), workloadauth.Policy{}, log.Nop(), nil, nil)
+	_, _, err := WorkloadAuth(context.Background(), envOf(nil), workloadauth.Policy{}, log.Nop(), nil, nil)
 	if !errors.Is(err, workloadauth.ErrNotConfigured) {
 		t.Fatalf("err = %v, want ErrNotConfigured", err)
 	}
@@ -26,21 +26,44 @@ func TestWorkloadAuthUnsetIssuerFailsToBoot(t *testing.T) {
 func TestWorkloadAuthExplicitlyDisabled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	opts, err := WorkloadAuth(ctx, envOf(map[string]string{workloadauth.EnvAuthMode: workloadauth.AuthDisabled}), workloadauth.Policy{}, log.Nop(), nil, nil)
-	if err != nil || len(opts) != 0 {
-		t.Fatalf("opts=%d err=%v, want none", len(opts), err)
+	v, opts, err := WorkloadAuth(ctx, envOf(map[string]string{workloadauth.EnvAuthMode: workloadauth.AuthDisabled}), workloadauth.Policy{}, log.Nop(), nil, nil)
+	if err != nil || len(opts) != 0 || v != nil {
+		t.Fatalf("opts=%d err=%v verifier=%v, want none", len(opts), err, v)
 	}
 }
 
 func TestWorkloadAuthEnabled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	opts, err := WorkloadAuth(ctx, envOf(map[string]string{
+	v, opts, err := WorkloadAuth(ctx, envOf(map[string]string{
 		workloadauth.EnvIssuer:                 "https://issuer.example.org",
 		workloadauth.EnvAllowedServiceAccounts: "sneakers/sneakers-gateway",
 	}), workloadauth.Policy{}, log.Nop(), nil, nil)
-	if err != nil || len(opts) != 2 {
-		t.Fatalf("opts=%d err=%v, want the unary and stream interceptors", len(opts), err)
+	if err != nil || len(opts) != 2 || v == nil {
+		t.Fatalf("opts=%d err=%v verifier=%v, want the unary and stream interceptors and a verifier", len(opts), err, v)
+	}
+}
+
+// fakeReadinessVerifier is a fake behind the ReadinessVerifier interface, not
+// a mock of go-workload-identity's own Verifier.
+type fakeReadinessVerifier struct{ err error }
+
+func (f fakeReadinessVerifier) Ready() error { return f.err }
+
+func TestWorkloadIdentity_NotReadyUntilKeySetLoads(t *testing.T) {
+	dep := WorkloadIdentity(fakeReadinessVerifier{err: workloadauth.ErrUnavailable})
+	if dep.Name != "workload-identity" || !dep.Required {
+		t.Fatalf("dep = %+v, want a required dependency named workload-identity", dep)
+	}
+	if err := dep.Check(context.Background()); !errors.Is(err, workloadauth.ErrUnavailable) {
+		t.Fatalf("check = %v, want ErrUnavailable", err)
+	}
+}
+
+func TestWorkloadIdentity_ReadyOnceKeySetLoads(t *testing.T) {
+	dep := WorkloadIdentity(fakeReadinessVerifier{})
+	if err := dep.Check(context.Background()); err != nil {
+		t.Fatalf("check = %v, want nil", err)
 	}
 }
 

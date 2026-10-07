@@ -7,6 +7,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/Bugs5382/go-buildinfo/health"
 	log "github.com/Bugs5382/go-log"
 	workloadauth "github.com/Bugs5382/go-workload-identity"
 	"google.golang.org/grpc"
@@ -61,24 +62,26 @@ func withWorkloadAudience(getenv func(string) string) func(string) string {
 	}
 }
 
-// WorkloadAuth returns the server options that authenticate every caller
-// against policy (see github.com/Bugs5382/go-workload-identity). It fails closed: with no
-// WORKLOAD_OIDC_ISSUER it returns an error, unless WORKLOAD_AUTH=disabled, in
-// which case it returns no options and warns now and every 5 minutes. before
-// and after are extra unary interceptors run around the authentication one.
+// WorkloadAuth returns the verifier it built (nil when authentication is
+// disabled, for WorkloadIdentity) and the server options that authenticate
+// every caller against policy (see github.com/Bugs5382/go-workload-identity).
+// It fails closed: with no WORKLOAD_OIDC_ISSUER it returns an error, unless
+// WORKLOAD_AUTH=disabled, in which case it returns no verifier or options and
+// warns now and every 5 minutes. before and after are extra unary
+// interceptors run around the authentication one.
 func WorkloadAuth(ctx context.Context, getenv func(string) string, policy workloadauth.Policy, lg log.Logger,
-	before, after []grpc.UnaryServerInterceptor, opts ...workloadauth.Option) ([]grpc.ServerOption, error) {
+	before, after []grpc.UnaryServerInterceptor, opts ...workloadauth.Option) (*workloadauth.Verifier, []grpc.ServerOption, error) {
 	cfg, enabled, err := WorkloadConfigFromEnv(getenv)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if !enabled {
 		go workloadauth.WarnDisabled(ctx, lg, workloadauth.DisabledWarnInterval)
-		return nil, nil
+		return nil, nil, nil
 	}
 	v, err := workloadauth.NewVerifier(cfg, lg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	go v.Run(ctx)
 	lg.Info("service-to-service authentication on",
@@ -87,10 +90,26 @@ func WorkloadAuth(ctx context.Context, getenv func(string) string, policy worklo
 		log.F("allowed_serviceaccounts", strings.Join(cfg.AllowedServiceAccounts, ",")))
 	unary := append(append(append([]grpc.UnaryServerInterceptor{}, before...),
 		workloadauth.UnaryServerInterceptor(v, policy, lg, opts...)), after...)
-	return []grpc.ServerOption{
+	return v, []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(unary...),
 		grpc.ChainStreamInterceptor(workloadauth.StreamServerInterceptor(v, policy, lg, opts...)),
 	}, nil
+}
+
+// ReadinessVerifier reports whether a caller verifier's key set has loaded,
+// the contract go-workload-identity's Verifier.Ready gives.
+type ReadinessVerifier interface {
+	Ready() error
+}
+
+// WorkloadIdentity is the required dependency over a caller verifier: no
+// caller can be checked before its key set has loaded, so readiness answers
+// NOT_SERVING until then (see go-workload-identity's Verifier.Ready). Callers
+// build it only when v is non-nil (WORKLOAD_AUTH is not disabled).
+func WorkloadIdentity(v ReadinessVerifier) health.Dependency {
+	return health.Dependency{Name: "workload-identity", Required: true, Check: func(context.Context) error {
+		return v.Ready()
+	}}
 }
 
 // ClientAuth returns the dial options that send this service's workload

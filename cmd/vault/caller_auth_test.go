@@ -27,19 +27,19 @@ func TestCallerAuth_UnsetIssuerFailsToBoot(t *testing.T) {
 			}
 			return ""
 		}
-		if _, err := callerAuth(context.Background(), getenv, log.Nop(), srv); !errors.Is(err, workloadauth.ErrNotConfigured) {
+		if _, _, err := callerAuth(context.Background(), getenv, log.Nop(), srv); !errors.Is(err, workloadauth.ErrNotConfigured) {
 			t.Fatalf("%s: err = %v, want ErrNotConfigured", environment, err)
 		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	opts, err := callerAuth(ctx, func(k string) string {
+	verifier, opts, err := callerAuth(ctx, func(k string) string {
 		if k == workloadauth.EnvAuthMode {
 			return workloadauth.AuthDisabled
 		}
 		return ""
 	}, log.Nop(), srv)
-	if err != nil || len(opts) != 0 {
-		t.Fatalf("WORKLOAD_AUTH=disabled: opts=%d err=%v", len(opts), err)
+	if err != nil || len(opts) != 0 || verifier != nil {
+		t.Fatalf("WORKLOAD_AUTH=disabled: opts=%d err=%v verifier=%v", len(opts), err, verifier)
 	}
 }

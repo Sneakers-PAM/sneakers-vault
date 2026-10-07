@@ -18,8 +18,9 @@ import (
 
 // callerAuth builds the interceptors that authenticate every caller against
 // the vault's allow-list, audit each refusal, and give a Self caller the
-// vault's own actor for it. It fails closed (see server.WorkloadAuth).
-func callerAuth(ctx context.Context, getenv func(string) string, lg log.Logger, srv *grpcsvc.Server) ([]grpc.ServerOption, error) {
+// vault's own actor for it. It also returns the verifier built (nil when
+// disabled), for the readiness check. It fails closed (see server.WorkloadAuth).
+func callerAuth(ctx context.Context, getenv func(string) string, lg log.Logger, srv *grpcsvc.Server) (*workloadauth.Verifier, []grpc.ServerOption, error) {
 	return server.WorkloadAuth(ctx, getenv, grpcsvc.CallerPolicy(), lg,
 		[]grpc.UnaryServerInterceptor{grpcsvc.RequestContextUnary},
 		[]grpc.UnaryServerInterceptor{srv.SelfActorUnary},
