@@ -7,7 +7,9 @@ import (
 	"context"
 	"testing"
 
+	log "github.com/Bugs5382/go-log"
 	postgres "github.com/Bugs5382/go-postgres"
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -24,14 +26,26 @@ func TestDependencies_OnlyTheDatabaseIsRequired(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = conn.Close() }()
-	want := map[string]bool{"postgres": true, "vault": false, "audit": false}
-	got := dependencies(okPinger{}, conn, conn)
+	verifier, err := workloadauth.NewVerifier(workloadauth.Config{
+		Issuer: "https://issuer.example.test", Audience: "sneakers",
+		AllowedServiceAccounts: []string{"sneakers/sneakers-gateway"},
+	}, log.Nop())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]bool{"postgres": true, "vault": false, "audit": false, "workload-identity": true}
+	got := dependencies(okPinger{}, conn, conn, verifier)
 	if len(got) != len(want) {
 		t.Fatalf("dependencies = %d, want %d", len(got), len(want))
 	}
 	for _, d := range got {
 		if req, ok := want[d.Name]; !ok || req != d.Required {
 			t.Errorf("%s: required=%v, want %v (known %v)", d.Name, d.Required, req, ok)
+		}
+	}
+	for _, d := range dependencies(okPinger{}, conn, conn, nil) {
+		if d.Name == "workload-identity" {
+			t.Error("workload-identity listed without a verifier")
 		}
 	}
 }

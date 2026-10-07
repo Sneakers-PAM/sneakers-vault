@@ -14,6 +14,7 @@ import (
 
 	"github.com/Bugs5382/go-buildinfo/health"
 	log "github.com/Bugs5382/go-log"
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -148,6 +149,42 @@ func TestHealth_OptionalDependencyKeepsServing(t *testing.T) {
 	}
 	if h := hdr.Get(HeaderHealth); len(h) != 1 || !strings.Contains(h[0], `"status":"degraded"`) {
 		t.Fatalf("header = %v", h)
+	}
+}
+
+func TestHealth_ReadinessWaitsForTheWorkloadKeySet(t *testing.T) {
+	v := fakeReadinessVerifier{err: workloadauth.ErrUnavailable}
+	checker := newTestChecker(t, WorkloadIdentity(&v))
+	c := startWithHealth(t, checker)
+
+	ready := func() (healthpb.HealthCheckResponse_ServingStatus, string) {
+		t.Helper()
+		var hdr metadata.MD
+		resp, err := c.Check(context.Background(), &healthpb.HealthCheckRequest{}, grpc.Header(&hdr))
+		if err != nil {
+			t.Fatal(err)
+		}
+		h := hdr.Get(HeaderHealth)
+		if len(h) != 1 {
+			t.Fatalf("no %s header: %v", HeaderHealth, hdr)
+		}
+		return resp.GetStatus(), h[0]
+	}
+
+	st, body := ready()
+	if st != healthpb.HealthCheckResponse_NOT_SERVING {
+		t.Fatalf("readiness before the key set loads = %v (%s)", st, body)
+	}
+	if !strings.Contains(body, `"name":"workload-identity"`) || !strings.Contains(body, `"state":"down"`) {
+		t.Fatalf("health body = %s", body)
+	}
+
+	v.err = nil
+	time.Sleep(testTTL)
+	if st, body := ready(); st != healthpb.HealthCheckResponse_SERVING {
+		t.Fatalf("readiness once the key set loads = %v (%s)", st, body)
+	} else if !strings.Contains(body, `"name":"workload-identity"`) {
+		t.Fatalf("health body = %s", body)
 	}
 }
 

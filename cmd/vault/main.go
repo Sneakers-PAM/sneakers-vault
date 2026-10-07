@@ -21,6 +21,7 @@ import (
 	postgres "github.com/Bugs5382/go-postgres"
 	otelpg "github.com/Bugs5382/go-postgres/otel"
 	bredis "github.com/Bugs5382/go-redis"
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	notifyv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/notify/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
@@ -291,12 +292,12 @@ func main() {
 		srv.SetInvalidation(nil, "") // explicit: subscriber/publisher are no-ops
 	}
 
-	authOpts, err := callerAuth(ctx, os.Getenv, svcLog, srv)
+	workloadVerifier, authOpts, err := callerAuth(ctx, os.Getenv, svcLog, srv)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("workload auth")
 	}
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	checker := mustChecker(logger, svcLog, dependencies(db, auditConn, notifyConn, valkeyPing))
+	checker := mustChecker(logger, svcLog, dependencies(db, auditConn, notifyConn, valkeyPing, workloadVerifier))
 	maintUnary, maintStream := grpcsvc.MaintenanceInterceptors(maint, svcLog)
 	opts := append(authOpts, grpc.ChainUnaryInterceptor(maintUnary, srv.PersistUnary), grpc.ChainStreamInterceptor(maintStream))
 	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, srv.RegisterInto, opts...); err != nil {
@@ -309,8 +310,11 @@ func main() {
 // outage there doesn't pull every vault replica out of service; calls that must
 // record to audit (break-glass) still fail closed on their own. Valkey, when
 // configured, only carries cache invalidation between replicas, so it's
-// optional too; a nil valkey leaves it out.
-func dependencies(db server.Database, audit, notify grpc.ClientConnInterface, valkey func(context.Context) error) []health.Dependency {
+// optional too; a nil valkey leaves it out. The workload-identity verifier is
+// required once service-to-service authentication is on: no caller can be
+// checked before its key set loads; it's left out when authentication is
+// disabled (verifier nil).
+func dependencies(db server.Database, audit, notify grpc.ClientConnInterface, valkey func(context.Context) error, verifier *workloadauth.Verifier) []health.Dependency {
 	deps := []health.Dependency{
 		server.Postgres(db),
 		server.GRPCPeer("audit", audit, false),
@@ -318,6 +322,9 @@ func dependencies(db server.Database, audit, notify grpc.ClientConnInterface, va
 	}
 	if valkey != nil {
 		deps = append(deps, health.Dependency{Name: "valkey", Check: valkey})
+	}
+	if verifier != nil {
+		deps = append(deps, server.WorkloadIdentity(verifier))
 	}
 	return deps
 }

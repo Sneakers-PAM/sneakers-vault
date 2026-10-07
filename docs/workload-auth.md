@@ -70,3 +70,14 @@ to keep in step. A fix to token checking goes into the package and reaches each 
 version bump. `internal/server/workloadauth_tokens_test.go` pins which tokens the vault accepts and
 refuses (wrong audience, wrong issuer, expired, a caller not on the method's list), so a bump that
 changes that fails here.
+
+## Readiness
+
+`server.WorkloadAuth` returns the verifier it built, alongside the server options. Both the vault
+and the workflow process register it as a required dependency (`server.WorkloadIdentity`) on
+their readiness checker: `/readyz` and the gRPC health check answer `NOT_SERVING`, and the
+`workload-identity` entry in the readiness body reports `down`, until the issuer's key set has
+loaded. It's left out of the dependency list when authentication is disabled
+(`WORKLOAD_AUTH=disabled`), since there's then no verifier to wait on. A later failed JWKS refresh
+keeps the last good key set, so once ready the dependency stays ready (see `Verifier.Ready`).
+Liveness is unaffected.

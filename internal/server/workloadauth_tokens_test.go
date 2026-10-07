@@ -30,7 +30,7 @@ func probeConn(t *testing.T, env map[string]string, policy workloadauth.Policy) 
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	opts, err := WorkloadAuth(ctx, envOf(env), policy, log.Nop(), nil, nil)
+	_, opts, err := WorkloadAuth(ctx, envOf(env), policy, log.Nop(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
