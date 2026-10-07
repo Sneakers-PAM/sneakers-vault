@@ -8,9 +8,9 @@ import (
 	"os"
 
 	log "github.com/Bugs5382/go-log"
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/workloadauth"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -29,7 +29,7 @@ func callerAuth(ctx context.Context, getenv func(string) string, lg log.Logger, 
 // mustWorkloadAuthConfig exits when service-to-service authentication isn't
 // configured and wasn't explicitly disabled.
 func mustWorkloadAuthConfig(logger zerolog.Logger) {
-	if _, _, err := workloadauth.ServerConfigFromEnv(os.Getenv); err != nil {
+	if _, _, err := server.WorkloadConfigFromEnv(os.Getenv); err != nil {
 		logger.Fatal().Err(err).Msg("workload auth config")
 	}
 }

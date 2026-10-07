@@ -4,8 +4,8 @@
 package grpcsvc
 
 import (
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	workflowv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/workflow/v1"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/workloadauth"
 )
 
 // CallerGateway is the gateway's caller name, from its service account

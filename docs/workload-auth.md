@@ -1,8 +1,11 @@
 # Service-to-service authentication
 
 Every gRPC call between Sneakers services carries the caller's Kubernetes workload identity. The
-code lives in `internal/workloadauth`. It imports no service code or protos, so the same files are
-copied unchanged into each service; this repository holds the canonical copy.
+verifier, the interceptors and the caller credentials come from the owner's helper package
+[`github.com/Bugs5382/go-workload-identity`](https://github.com/Bugs5382/go-workload-identity)
+(v1.0.0), imported as `workloadauth`. The service sets its Sneakers values explicitly in
+`internal/server/workloadauth.go` (`WorkloadConfigFromEnv`), so it relies on no default of the
+package.
 
 ## Caller side
 
@@ -29,8 +32,9 @@ only works against a callee with authentication off (local development).
 | `WORKLOAD_AUDIENCE` | no | `sneakers` | The token's `aud` must contain it. |
 | `WORKLOAD_ALLOWED_SERVICEACCOUNTS` | yes | | Comma list of `<namespace>/<serviceaccount>`: the callee's callers in the call graph. |
 | `WORKLOAD_AUTH` | no | | `disabled` turns authentication off. No other value is accepted. |
+| `WORKLOAD_SERVICEACCOUNT_PREFIX` | | | Not read. The caller-name prefix is always `sneakers-`. |
 
-Authentication fails closed. `ServerConfigFromEnv` refuses to start a callee with no
+Authentication fails closed. `WorkloadConfigFromEnv` refuses to start a callee with no
 `WORKLOAD_OIDC_ISSUER`, in every environment, unless `WORKLOAD_AUTH=disabled` is set. With that
 flag every caller that reaches the port is trusted, so it's for local development and mock tooling
 only: the charts never set it, and `WarnDisabled` logs a warning at start and every 5 minutes.
@@ -41,7 +45,8 @@ and `iat` (60 s skew), that `sub` is a service account on the list, and that the
 claim names the same one. Keys load at start, every 15 minutes and on an unknown `kid` (at most
 every 30 s); a failed fetch keeps the last good set.
 
-The service account `<namespace>/sneakers-<name>` is the caller `<name>`. The interceptors
+The service account `<namespace>/sneakers-<name>` is the caller `<name>` (the package's
+`ServiceAccountPrefix`, set to `sneakers-`). The interceptors
 (`UnaryServerInterceptor`, `StreamServerInterceptor`) then check the method's allow-list
 (`workloadauth.Policy`, written in code by each service):
 
@@ -58,7 +63,10 @@ service is always exempt. Each refusal is logged (never the token) and handed to
 `WithDenyHook` hook, which the service uses to audit it. A handler reads the verified caller with
 `workloadauth.GrantFromContext`.
 
-## Copying the package
+## The dependency
 
-Copy `internal/workloadauth/` byte for byte, tests included. Change it here first, then copy the
-new version into each service.
+Every Sneakers service imports the same release of `go-workload-identity`; there is no local copy
+to keep in step. A fix to token checking goes into the package and reaches each service as a
+version bump. `internal/server/workloadauth_tokens_test.go` pins which tokens the vault accepts and
+refuses (wrong audience, wrong issuer, expired, a caller not on the method's list), so a bump that
+changes that fails here.

@@ -7,8 +7,8 @@ import (
 	"maps"
 	"testing"
 
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	workflowv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/workflow/v1"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/workloadauth"
 )
 
 func TestCallerPolicyPerMethod(t *testing.T) {

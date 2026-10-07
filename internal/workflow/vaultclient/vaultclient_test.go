@@ -8,9 +8,9 @@ import (
 	"slices"
 	"testing"
 
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	vaultsvc "github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/workloadauth"
 	"google.golang.org/grpc"
 )
 

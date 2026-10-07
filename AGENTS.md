@@ -29,9 +29,9 @@ or values.
 - `internal/maintenance/` - the read-only maintenance mode both services share: the switch, the
   read/mutation classification from the protos' `idempotency_level`, and the refusing interceptors.
   A new read RPC gets `option idempotency_level = NO_SIDE_EFFECTS;`.
-- `internal/workloadauth/` - service-to-service authentication (workload token verifier, per-method
-  allow-list interceptors, caller credentials). Self-contained and copied byte for byte into the
-  other services; change it here first. See docs/workload-auth.md.
+- Service-to-service authentication comes from `github.com/Bugs5382/go-workload-identity`;
+  `internal/server/workloadauth.go` sets the Sneakers audience and caller-name prefix and builds
+  the interceptors. See docs/workload-auth.md.
 - `proto/` - both APIs; `gen/go/` - the generated Go (committed, checked current in CI).
 - `migrations/vault/`, `migrations/workflow/` - each service's Postgres schema, forward only.
 - `docs/` - configuration, API, runbook, worker identity and type changes.

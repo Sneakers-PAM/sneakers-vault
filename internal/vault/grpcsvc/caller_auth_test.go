@@ -10,9 +10,10 @@ import (
 	"time"
 
 	log "github.com/Bugs5382/go-log"
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/workloadid/oidctest"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/workloadauth"
 	"github.com/golang-jwt/jwt/v5"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -42,7 +43,10 @@ func newAuthFixture(t *testing.T) *authFixture {
 	for _, c := range []string{"gateway", "workflow", "sshbroker", "connector", "mcp", "migrate"} {
 		allowed = append(allowed, authNS+"/sneakers-"+c)
 	}
-	v, err := workloadauth.NewVerifier(workloadauth.Config{Issuer: iss.URL, CAFile: iss.CAFile, AllowedServiceAccounts: allowed}, log.Nop())
+	v, err := workloadauth.NewVerifier(workloadauth.Config{
+		Issuer: iss.URL, CAFile: iss.CAFile, AllowedServiceAccounts: allowed,
+		Audience: server.WorkloadAudience, ServiceAccountPrefix: server.WorkloadServiceAccountPrefix,
+	}, log.Nop())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +91,7 @@ func newAuthFixture(t *testing.T) *authFixture {
 func (f *authFixture) as(t *testing.T, caller string) context.Context {
 	t.Helper()
 	tok := f.iss.Sign(t, "rsa-1", "rsa-1", jwt.SigningMethodRS256,
-		oidctest.ServiceAccountClaims(f.iss.URL, workloadauth.DefaultAudience, authNS, "sneakers-"+caller, time.Now()))
+		oidctest.ServiceAccountClaims(f.iss.URL, server.WorkloadAudience, authNS, "sneakers-"+caller, time.Now()))
 	return metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+tok)
 }
 

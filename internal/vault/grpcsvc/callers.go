@@ -8,9 +8,9 @@ import (
 	"strconv"
 
 	log "github.com/Bugs5382/go-log"
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/audit"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/workloadauth"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
