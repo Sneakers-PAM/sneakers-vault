@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	log "github.com/Bugs5382/go-log"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/workloadauth"
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 )
 
 func envOf(m map[string]string) func(string) string { return func(k string) string { return m[k] } }

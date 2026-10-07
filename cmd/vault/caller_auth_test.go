@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	log "github.com/Bugs5382/go-log"
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/workloadauth"
 )
 
 func TestCallerAuth_UnsetIssuerFailsToBoot(t *testing.T) {

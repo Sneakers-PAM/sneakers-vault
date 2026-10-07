@@ -260,7 +260,7 @@ func main() {
 	// for the server's lifetime, stopping on ctx cancellation (SIGINT/SIGTERM).
 	go srv.RunKekScheduler(ctx, kekSchedulerCheckInterval())
 
-	workerVerifier, err := connectorVerifier(ctx, environment, os.Getenv, logger)
+	workerVerifier, err := connectorVerifier(ctx, environment, os.Getenv, svcLog)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("connector worker identity config")
 	}

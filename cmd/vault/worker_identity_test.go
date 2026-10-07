@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/Bugs5382/go-log"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/workloadid"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/workloadid/oidctest"
-	"github.com/rs/zerolog"
 )
 
 func getenvFrom(m map[string]string) func(string) string {
@@ -34,7 +34,7 @@ func TestConnectorVerifierProdInstallsOnlyOIDC(t *testing.T) {
 			env := oidcEnv(iss)
 			env["CONNECTOR_DEV_TOKEN"] = "dev-connector-token"
 			before := iss.JWKSHits.Load()
-			v, err := connectorVerifier(ctx, environment, getenvFrom(env), zerolog.Nop())
+			v, err := connectorVerifier(ctx, environment, getenvFrom(env), log.Nop())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -58,7 +58,7 @@ func TestConnectorVerifierProdInstallsOnlyOIDC(t *testing.T) {
 func TestConnectorVerifierProdWithoutIssuerInstallsNone(t *testing.T) {
 	for _, environment := range []string{"prod", "production"} {
 		v, err := connectorVerifier(context.Background(), environment,
-			getenvFrom(map[string]string{"CONNECTOR_DEV_TOKEN": "dev-connector-token"}), zerolog.Nop())
+			getenvFrom(map[string]string{"CONNECTOR_DEV_TOKEN": "dev-connector-token"}), log.Nop())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,7 +69,7 @@ func TestConnectorVerifierProdWithoutIssuerInstallsNone(t *testing.T) {
 }
 
 func TestConnectorVerifierNonProdDefaultsToDevToken(t *testing.T) {
-	v, err := connectorVerifier(context.Background(), "dev", getenvFrom(nil), zerolog.Nop())
+	v, err := connectorVerifier(context.Background(), "dev", getenvFrom(nil), log.Nop())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestConnectorVerifierNonProdDefaultsToDevToken(t *testing.T) {
 	}
 
 	v, err = connectorVerifier(context.Background(), "qa",
-		getenvFrom(map[string]string{"CONNECTOR_DEV_TOKEN": "qa-token"}), zerolog.Nop())
+		getenvFrom(map[string]string{"CONNECTOR_DEV_TOKEN": "qa-token"}), log.Nop())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestConnectorVerifierOIDCWinsOutsideProd(t *testing.T) {
 	defer cancel()
 	env := oidcEnv(iss)
 	env["CONNECTOR_DEV_TOKEN"] = "dev-connector-token"
-	v, err := connectorVerifier(ctx, "dev", getenvFrom(env), zerolog.Nop())
+	v, err := connectorVerifier(ctx, "dev", getenvFrom(env), log.Nop())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestConnectorVerifierBadConfigFailsStartup(t *testing.T) {
 	for name, env := range cases {
 		for _, environment := range []string{"prod", "dev"} {
 			t.Run(name+"/"+environment, func(t *testing.T) {
-				if _, err := connectorVerifier(context.Background(), environment, getenvFrom(env), zerolog.Nop()); err == nil {
+				if _, err := connectorVerifier(context.Background(), environment, getenvFrom(env), log.Nop()); err == nil {
 					t.Fatal("want a startup error")
 				}
 			})

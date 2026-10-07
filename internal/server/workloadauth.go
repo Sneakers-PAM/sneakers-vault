@@ -8,18 +8,67 @@ import (
 	"strings"
 
 	log "github.com/Bugs5382/go-log"
-	"github.com/Sneakers-PAM/sneakers-vault/internal/workloadauth"
+	workloadauth "github.com/Bugs5382/go-workload-identity"
 	"google.golang.org/grpc"
 )
 
+// The token audience and the service-account prefix every Sneakers service
+// uses. go-workload-identity has no defaults for either, so they are set here.
+const (
+	// WorkloadAudience is the audience required when WORKLOAD_AUDIENCE is unset.
+	WorkloadAudience = "sneakers"
+	// WorkloadServiceAccountPrefix is stripped from a service account to give
+	// the caller name: "sneakers-gateway" is the caller "gateway".
+	WorkloadServiceAccountPrefix = "sneakers-"
+)
+
+// WorkloadConfigFromEnv reads the WORKLOAD_* variables for a callee, failing
+// closed like workloadauth.ServerConfigFromEnv. WORKLOAD_AUDIENCE defaults to
+// WorkloadAudience and the caller name always drops
+// WorkloadServiceAccountPrefix; WORKLOAD_SERVICEACCOUNT_PREFIX is not read.
+func WorkloadConfigFromEnv(getenv func(string) string) (workloadauth.Config, bool, error) {
+	cfg, enabled, err := workloadauth.ServerConfigFromEnv(withWorkloadAudience(getenv))
+	if err != nil || !enabled {
+		return cfg, enabled, err
+	}
+	cfg.ServiceAccountPrefix = WorkloadServiceAccountPrefix
+	return cfg, true, nil
+}
+
+// WorkerConfigFromEnv is WorkloadConfigFromEnv without the WORKLOAD_AUTH
+// switch: ok is false when WORKLOAD_OIDC_ISSUER is unset.
+func WorkerConfigFromEnv(getenv func(string) string) (workloadauth.Config, bool, error) {
+	cfg, ok, err := workloadauth.ConfigFromEnv(withWorkloadAudience(getenv))
+	if err != nil || !ok {
+		return cfg, ok, err
+	}
+	cfg.ServiceAccountPrefix = WorkloadServiceAccountPrefix
+	return cfg, true, nil
+}
+
+func withWorkloadAudience(getenv func(string) string) func(string) string {
+	return func(k string) string {
+		switch k {
+		case workloadauth.EnvAudience:
+			if v := getenv(k); strings.TrimSpace(v) != "" {
+				return v
+			}
+			return WorkloadAudience
+		case workloadauth.EnvServiceAccountPrefix:
+			return ""
+		}
+		return getenv(k)
+	}
+}
+
 // WorkloadAuth returns the server options that authenticate every caller
-// against policy (see internal/workloadauth). It fails closed: with no
+// against policy (see github.com/Bugs5382/go-workload-identity). It fails closed: with no
 // WORKLOAD_OIDC_ISSUER it returns an error, unless WORKLOAD_AUTH=disabled, in
 // which case it returns no options and warns now and every 5 minutes. before
 // and after are extra unary interceptors run around the authentication one.
 func WorkloadAuth(ctx context.Context, getenv func(string) string, policy workloadauth.Policy, lg log.Logger,
 	before, after []grpc.UnaryServerInterceptor, opts ...workloadauth.Option) ([]grpc.ServerOption, error) {
-	cfg, enabled, err := workloadauth.ServerConfigFromEnv(getenv)
+	cfg, enabled, err := WorkloadConfigFromEnv(getenv)
 	if err != nil {
 		return nil, err
 	}

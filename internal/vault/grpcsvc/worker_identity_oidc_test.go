@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/Bugs5382/go-log"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/workloadid"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/workloadid/oidctest"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -49,7 +49,7 @@ func oidcVerifierFor(t *testing.T, iss *oidctest.Issuer) *workloadid.OIDCVerifie
 		CAFile:                 iss.CAFile,
 		Audience:               workloadid.DefaultAudience,
 		AllowedServiceAccounts: []string{"apps/connector"},
-	}, zerolog.Nop())
+	}, log.Nop())
 	if err != nil {
 		t.Fatalf("NewOIDCVerifier: %v", err)
 	}

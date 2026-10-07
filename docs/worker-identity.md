@@ -12,7 +12,7 @@ The connector pull-API (`ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeart
 
 The dev token is never accepted in prod. If both the OIDC settings and `CONNECTOR_DEV_TOKEN` are set outside prod, the OIDC verifier wins.
 
-The verifiers live in `internal/vault/workloadid`. Vault only picks one at boot (`cmd/vault/worker_identity.go`).
+The verifiers live in `internal/vault/workloadid`. Vault only picks one at boot (`cmd/vault/worker_identity.go`). The OIDC verifier is the `go-workload-identity` verifier ([workload-auth.md](workload-auth.md)) with the same settings, read by `server.WorkerConfigFromEnv`; `workloadid` names the worker by the allow-listed `<namespace>/<serviceaccount>`. The dev shared-token verifier stays in `workloadid`: the package has no equivalent, and it must never reach production.
 
 ## OIDC settings
 
