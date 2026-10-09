@@ -16,8 +16,8 @@ github.com/Bugs5382/go-saga-orchestration v0.7.0 h1:kuBXBpSDUPa6sh1D4+OK3TVqJwj6
 github.com/Bugs5382/go-saga-orchestration v0.7.0/go.mod h1:9dpggshks1/hPchW8N0IQuuJfXH5fLAjX92wp466Prg=
 github.com/Bugs5382/go-seed v1.0.1 h1:KUQy2YOBGPWUJkD0U1t58l3d3qGl0LkUuKOrKieWAv0=
 github.com/Bugs5382/go-seed v1.0.1/go.mod h1:jMuXZ2RDXhz/CpdpQVEIWc7ibLQzflTmLt0ulmi0Ero=
-github.com/Bugs5382/go-workload-identity v1.0.0 h1:XEg8Byo7VH6Mb+Fv0kJEdUCiZXX9DG/BuGSsD2oNHgI=
-github.com/Bugs5382/go-workload-identity v1.0.0/go.mod h1:9IEkIsg3BqcmhT7fV9uO/EWp3VF1b7PYBFrX7x3sN/8=
+github.com/Bugs5382/go-workload-identity v1.0.1 h1:QRYOTohudQXO2AS3nU/FFyaq8LaIBCtVYNj9WGfrAdA=
+github.com/Bugs5382/go-workload-identity v1.0.1/go.mod h1:IICUaNuHp//d2wZhOh6SM4NFT9DU8VeBzz/f68s0ekA=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/alicebob/miniredis/v2 v2.38.0 h1:nZAzCR+Lj+Vxk4ZXzm2NuKq2O33RXj1XxJ2e2uP9jiw=
