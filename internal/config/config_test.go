@@ -20,6 +20,9 @@ func TestLoadRequiredAndDefault(t *testing.T) {
 	if c.GRPCPort != "9090" {
 		t.Fatalf("default GRPCPort got %q", c.GRPCPort)
 	}
+	if c.OTLPEndpoint != "" {
+		t.Fatalf("default OTLPEndpoint got %q, want empty (no collector)", c.OTLPEndpoint)
+	}
 }
 
 func TestLoadMissingRequired(t *testing.T) {
