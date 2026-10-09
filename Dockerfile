@@ -4,7 +4,7 @@
 #   docker build --target workflow .      the workflow service and its purge job
 #   docker build --target seed-catalog .  the built-in catalogue upsert, safe for any environment
 #   docker build --target seed .          demo data, for development and test environments only
-ARG GO_VERSION=1.26.6
+ARG GO_VERSION=1.26.9
 FROM golang:${GO_VERSION} AS build
 ARG VERSION=dev
 ARG COMMIT=unknown
