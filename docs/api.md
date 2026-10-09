@@ -52,7 +52,7 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 | Secrets | `ListSecretsInFolder`, `ReorderSecrets`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
 | Break-glass browse | `OpenBreakGlassSession`, `GetBreakGlassSession`, `ListBreakGlassItems`, `CloseBreakGlassSession`, `ListBreakGlassSessions` |
 | Dashboard | `GetSecretStats`, `GetTopAccessedSecrets`, `ListSecretsByStatus`, `FindSecretsByPublicKey` |
-| Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
+| Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `GetSecretForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
 | Secret uses and approvals | `PrepareSecretUse`, `GetSecretUse`, `ListPendingSecretUses`, `ListSecretUsesToDecide`, `DecideSecretUse`, `ConfirmSecretUse`, `RedeemSecretUse`, `CreateUseGrant`, `ListUseGrants`, `RevokeUseGrant`, `SetSecretTokenApproval` |
 | Certificates | `ImportCertificate`, `ExportCertificate`, `ReplaceCertificate` |
 | Connections and targets | `ListConnections`, `SaveConnection`, `DeleteConnection`, `ListTargets`, `SaveTarget`, `DeleteTarget` |
@@ -193,6 +193,16 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   A field the record never stored and one stored as empty are the same value, so an editor that
   re-sends empty fields (on a folder move, say) adds no version, and the change list never names
   such a field.
+- **Change signals:** every secret carries `value_version` and `value_changed_at`. The version
+  goes up each time the stored values change (create, edit, type change, restore, committed
+  rotation) and matches the active `ListSecretVersions` entry unless the history write lagged.
+  Renames, moves, target and automation changes leave it alone; a secret whose values haven't
+  changed since the counter was added reads 0. `ListSecretsForPrincipal` takes `changed_since`
+  (RFC3339) and returns only secrets whose value changed at or after it (`InvalidArgument` for a
+  bad time). `GetSecretForPrincipal` returns one secret's metadata to a principal with read on it,
+  audited as `secret.get.principal`. The `*ForPrincipal` responses also carry computed, never
+  stored, automation flags: `rotation_enabled` (a rotation type, not opted out, a target with a
+  connection), `rotates_on_checkin` (that plus a check-out type) and `heartbeat_enabled`.
 - **Version history (recovery):** `ListSecretVersions` gives a human reader the change list
   (version numbers, authors, times, changed field keys), never values; machine principals are
   refused. Revealing a field of any version (`RevealSecretVersionField`) and

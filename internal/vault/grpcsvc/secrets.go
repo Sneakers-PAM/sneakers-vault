@@ -104,9 +104,11 @@ func (s *Server) CreateSecret(ctx context.Context, req *vaultv1.CreateSecretRequ
 	// Mirror the initial record into the append-only version ledger (v1, active).
 	// Best-effort like the heartbeat schedule: the secret_records hot path already
 	// succeeded and is the authoritative read; the ledger is history/rollback.
+	var ledgerNo int
 	if s.vers != nil {
-		_, _ = s.vers.AppendActive(ctx, sec.Id, rec, req.GetActor().GetUserId())
+		ledgerNo, _ = s.vers.AppendActive(ctx, sec.Id, rec, req.GetActor().GetUserId())
 	}
+	s.markValueChanged(ctx, sec, ledgerNo)
 	s.emit(ctx, req.GetActor().GetUserId(), "secret.create", sec.Id, true)
 	s.ensureLifecycle(ctx, sec)
 	return &vaultv1.CreateSecretResponse{Secret: sec}, nil
@@ -268,9 +270,11 @@ func (s *Server) UpdateSecret(ctx context.Context, req *vaultv1.UpdateSecretRequ
 			s.records[sec.Id] = rec
 			// Append the re-sealed record as the new active version (prior retained
 			// inactive). Best-effort; hot-path read stays secret_records.
+			var ledgerNo int
 			if s.vers != nil {
-				_, _ = s.vers.AppendActive(ctx, sec.Id, rec, req.GetActor().GetUserId())
+				ledgerNo, _ = s.vers.AppendActive(ctx, sec.Id, rec, req.GetActor().GetUserId())
 			}
+			s.markValueChanged(ctx, sec, ledgerNo)
 			s.resumeHeartbeatOnValueChange(ctx, sec, req.GetActor().GetUserId(), map[string]string{"reason": "credential_updated"})
 		}
 	}

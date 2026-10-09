@@ -525,6 +525,7 @@ func (s *Server) ReportRotation(ctx context.Context, req *vaultv1.ReportRotation
 	var newRecord crypto.Record
 	refreshRecord := false // we hold a fresh active record to install in the hot path.
 	alreadyActive := false // OK×active idempotent retry: skip schedule/timestamp rewrites.
+	committedVno := 0      // the ledger version_no the refreshed record holds.
 	skipResult := false    // change=SKIPPED: leave Secret.LastRotationResult as-is.
 
 	switch change {
@@ -646,6 +647,7 @@ func (s *Server) ReportRotation(ctx context.Context, req *vaultv1.ReportRotation
 				return nil, status.Error(codes.FailedPrecondition, "unknown or superseded rotation version")
 			}
 		}
+		committedVno = int(commitVno)
 		if doCommit {
 			if err := s.vers.Commit(ctx, secID, commitVno); err != nil {
 				return nil, status.Errorf(codes.Internal, "commit version: %v", err)
@@ -709,6 +711,11 @@ func (s *Server) ReportRotation(ctx context.Context, req *vaultv1.ReportRotation
 		// PersistUnary interceptor snapshots this after the RPC returns. Set both
 		// on a fresh commit and on an OK×active self-heal.
 		s.records[secID] = newRecord
+		// A self-heal retry reinstalls a value already counted, unless the
+		// earlier attempt failed before it got here.
+		if !alreadyActive || sec.GetValueVersion() < safeconv.Int32(committedVno) {
+			s.markValueChanged(ctx, sec, committedVno)
+		}
 		s.resumeHeartbeatOnValueChange(ctx, sec, "connector", map[string]string{"reason": "credential_rotated"})
 	}
 	if !skipResult {

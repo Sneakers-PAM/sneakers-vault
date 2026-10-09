@@ -20,12 +20,17 @@ import (
 )
 
 // ListSecretsForPrincipal returns the metadata of secrets the non-human
-// principal may READ (RACI C), optionally filtered by name/folder/type. Field
+// principal may READ (RACI C), optionally filtered by name/folder/type and by
+// changed_since (value changed at or after it). Field
 // values are never included — Secret is a metadata-only message.
 func (s *Server) ListSecretsForPrincipal(ctx context.Context, req *vaultv1.ListSecretsForPrincipalRequest) (*vaultv1.ListSecretsForPrincipalResponse, error) {
 	actor := req.GetActor()
 	if actor.GetPrincipalKind() == vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN {
 		return nil, status.Error(codes.PermissionDenied, "principal list is for non-human principals")
+	}
+	since, err := parseChangedSince(req.GetChangedSince())
+	if err != nil {
+		return nil, err
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -44,16 +49,23 @@ func (s *Server) ListSecretsForPrincipal(ctx context.Context, req *vaultv1.ListS
 		if q != "" && !strings.Contains(strings.ToLower(sec.GetName()), q) {
 			continue
 		}
+		if !changedSince(sec, since) {
+			continue
+		}
 		if !s.canRead(actor, sec) {
 			continue
 		}
-		out = append(out, sec)
+		out = append(out, s.principalSecretView(sec))
 	}
-	s.emitAttrs(ctx, principalActorID(actor), "secret.list.principal", req.GetFolderId(), false, map[string]string{
+	attrs := map[string]string{
 		"principal_kind": actor.GetPrincipalKind().String(),
 		"principal_id":   actor.GetPrincipalId(),
 		"count":          strconv.Itoa(len(out)),
-	})
+	}
+	if !since.IsZero() {
+		attrs["changed_since"] = req.GetChangedSince()
+	}
+	s.emitAttrs(ctx, principalActorID(actor), "secret.list.principal", req.GetFolderId(), false, attrs)
 	return &vaultv1.ListSecretsForPrincipalResponse{Secrets: out}, nil
 }
 
@@ -86,7 +98,7 @@ func (s *Server) CreateSecretForPrincipal(ctx context.Context, req *vaultv1.Crea
 	if err != nil {
 		return nil, err
 	}
-	return &vaultv1.CreateSecretForPrincipalResponse{Secret: sec}, nil
+	return &vaultv1.CreateSecretForPrincipalResponse{Secret: s.principalSecretView(sec)}, nil
 }
 
 // newSecretSpec is the metadata of a principal-created secret.
@@ -119,9 +131,11 @@ func (s *Server) buildAndStoreSecret(ctx context.Context, actor *vaultv1.ActorCo
 	}
 	s.secrets = append(s.secrets, sec)
 	s.records[sec.Id] = rec
+	var ledgerNo int
 	if s.vers != nil {
-		_, _ = s.vers.AppendActive(ctx, sec.Id, rec, principalActorID(actor))
+		ledgerNo, _ = s.vers.AppendActive(ctx, sec.Id, rec, principalActorID(actor))
 	}
+	s.markValueChanged(ctx, sec, ledgerNo)
 	var optOuts map[string]string
 	if spec.disableRotation || spec.disableHeartbeat {
 		optOuts = map[string]string{
@@ -214,7 +228,7 @@ func (s *Server) GenerateSecretForPrincipal(ctx context.Context, req *vaultv1.Ge
 	if err != nil {
 		return nil, err
 	}
-	resp := &vaultv1.GenerateSecretForPrincipalResponse{Secret: sec}
+	resp := &vaultv1.GenerateSecretForPrincipalResponse{Secret: s.principalSecretView(sec)}
 	if req.GetReturnValue() {
 		resp.GeneratedValue = pw
 		s.emitAttrs(ctx, principalActorID(actor), "secret.generate.value_returned.principal", sec.Id, true, map[string]string{
