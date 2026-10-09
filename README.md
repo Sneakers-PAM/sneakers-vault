@@ -83,6 +83,7 @@ docker build --target vault .     # or workflow, seed-catalog, seed
   tools.
 - [docs/api.md](docs/api.md): both gRPC APIs, by area, and the rules they enforce.
 - [docs/runbook.md](docs/runbook.md): operating the services, the key ring and the seed tools.
+- [docs/kek-keyring.md](docs/kek-keyring.md): the key ring's design, invariants and failure modes.
 - [docs/workload-auth.md](docs/workload-auth.md): how every caller proves who it is.
 - [docs/worker-identity.md](docs/worker-identity.md): the connector's worker identity on its pull-API.
 - [docs/type-change.md](docs/type-change.md): changing a secret's type as a machine principal.
