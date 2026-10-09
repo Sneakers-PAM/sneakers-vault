@@ -62,6 +62,9 @@ func (s *Server) SaveConnection(ctx context.Context, req *vaultv1.SaveConnection
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if in.GetId() == "" {
+		if id := in.GetPrivilegedSecretId(); id != "" && findByID(s.secrets, id) == nil {
+			return nil, errNotFound("privileged secret")
+		}
 		in.Id = s.nextID("conn")
 		s.connections = append(s.connections, in)
 	} else {
@@ -77,6 +80,9 @@ func (s *Server) SaveConnection(ctx context.Context, req *vaultv1.SaveConnection
 			existing.TargetId = id
 		}
 		if id := in.GetPrivilegedSecretId(); id != "" && id != existing.GetPrivilegedSecretId() {
+			if findByID(s.secrets, id) == nil {
+				return nil, errNotFound("privileged secret")
+			}
 			s.emitAttrs(ctx, req.GetActor().GetUserId(), "connection.privileged_secret.change", existing.GetId(), false,
 				map[string]string{"from": existing.GetPrivilegedSecretId(), "to": id})
 			existing.PrivilegedSecretId = id

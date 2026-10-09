@@ -9,10 +9,18 @@ import (
 	"time"
 
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
+	"google.golang.org/grpc/codes"
 )
+
+// seedSecret adds a bare secret stub with the given id, so a SaveConnection
+// call may reference it as a privileged_secret_id without a full CreateSecret.
+func seedSecret(s *Server, id string) {
+	s.secrets = append(s.secrets, &vaultv1.Secret{Id: id, Name: id})
+}
 
 func linkedConnection(t *testing.T, s *Server) *vaultv1.Connection {
 	t.Helper()
+	seedSecret(s, "sec-priv")
 	resp, err := s.SaveConnection(context.Background(), &vaultv1.SaveConnectionRequest{
 		Actor: siteAdmin, Connection: &vaultv1.Connection{
 			Name: "AD LDAPS", Protocol: "ldap", Port: 636, UseTls: true,
@@ -74,6 +82,7 @@ func TestSaveConnectionUpdateAppliesNewLinkage(t *testing.T) {
 	ca := &capAudit{}
 	s.audit = ca
 	conn := linkedConnection(t, s)
+	seedSecret(s, "sec-gmsa")
 
 	if _, err := s.SaveConnection(context.Background(), &vaultv1.SaveConnectionRequest{
 		Actor: siteAdmin, Connection: &vaultv1.Connection{
@@ -121,6 +130,38 @@ func TestSaveConnectionUpdateWithoutPrivilegedChangeIsNotAuditedAsOne(t *testing
 	}
 	if ca.find("connection.privileged_secret.change") != nil {
 		t.Error("an update that keeps privileged_secret_id was audited as a change")
+	}
+}
+
+// A connection must link to a secret that actually exists: on create and on
+// an update that changes the link, an unknown privileged_secret_id is
+// refused rather than stored.
+func TestSaveConnectionCreateRefusesUnknownPrivilegedSecret(t *testing.T) {
+	s := newServer(t)
+	_, err := s.SaveConnection(context.Background(), &vaultv1.SaveConnectionRequest{
+		Actor: siteAdmin, Connection: &vaultv1.Connection{
+			Name: "AD LDAPS", Protocol: "ldap", Port: 636, PrivilegedSecretId: "sec-ghost",
+		},
+	})
+	if code(err) != codes.NotFound {
+		t.Fatalf("code = %v, want NotFound", code(err))
+	}
+}
+
+func TestSaveConnectionUpdateRefusesUnknownPrivilegedSecret(t *testing.T) {
+	s := newServer(t)
+	conn := linkedConnection(t, s)
+	_, err := s.SaveConnection(context.Background(), &vaultv1.SaveConnectionRequest{
+		Actor: siteAdmin, Connection: &vaultv1.Connection{
+			Id: conn.GetId(), Name: "AD LDAPS", Protocol: "ldap", Port: 636, PrivilegedSecretId: "sec-ghost",
+		},
+	})
+	if code(err) != codes.NotFound {
+		t.Fatalf("code = %v, want NotFound", code(err))
+	}
+	got := listedConnection(t, s, conn.GetId())
+	if got.GetPrivilegedSecretId() != "sec-priv" {
+		t.Errorf("privileged_secret_id = %q, want unchanged sec-priv", got.GetPrivilegedSecretId())
 	}
 }
 
