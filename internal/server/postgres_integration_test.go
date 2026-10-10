@@ -105,12 +105,12 @@ func TestPostgres_ReadinessFollowsARealDatabase(t *testing.T) {
 	}
 	defer db.Close()
 
-	ch := newTestChecker(t, Postgres(db))
+	ch := refreshed(t, newTestChecker(t, Postgres(db)))
 	if r := ch.Report(ctx); r.Status != health.StateOK || r.Dependencies[0].Version == "unknown" {
 		t.Fatalf("database up: %+v", r)
 	}
 	p.cut()
-	time.Sleep(testTTL)
+	time.Sleep(2 * testTTL)
 	r := ch.Report(ctx)
 	if r.Status != health.StateDown || r.Ready || r.Dependencies[0].Error == "" {
 		t.Fatalf("database gone: %+v", r)

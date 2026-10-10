@@ -3,12 +3,12 @@ module github.com/Sneakers-PAM/sneakers-vault
 go 1.26.9
 
 require (
-	github.com/Bugs5382/go-buildinfo v1.0.0
+	github.com/Bugs5382/go-buildinfo v1.1.0
 	github.com/Bugs5382/go-certkit v1.1.1
 	github.com/Bugs5382/go-log v1.3.0
 	github.com/Bugs5382/go-otel v1.3.2
-	github.com/Bugs5382/go-postgres v1.2.2
-	github.com/Bugs5382/go-redis v1.2.0
+	github.com/Bugs5382/go-postgres v1.3.0
+	github.com/Bugs5382/go-redis v1.3.0
 	github.com/Bugs5382/go-saga-orchestration v0.7.0
 	github.com/Bugs5382/go-seed v1.0.1
 	github.com/Bugs5382/go-workload-identity v1.0.1

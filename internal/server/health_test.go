@@ -54,6 +54,9 @@ func startWithHealth(t *testing.T, checker *health.Checker) healthpb.HealthClien
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		if _, err := c.Check(context.Background(), &healthpb.HealthCheckRequest{Service: "liveness"}); err == nil {
+			if checker != nil {
+				awaitFirstPass(t, checker)
+			}
 			return c
 		} else if time.Now().After(deadline) {
 			t.Fatalf("server never answered: %v", err)
@@ -120,7 +123,7 @@ func TestHealth_ReadinessFollowsRequiredDependencyLivenessDoesNot(t *testing.T) 
 	}
 
 	down.Store(true)
-	time.Sleep(testTTL)
+	time.Sleep(2 * testTTL)
 	st, body = ready()
 	if st != healthpb.HealthCheckResponse_NOT_SERVING {
 		t.Fatalf("readiness with postgres down = %v (%s)", st, body)
@@ -133,7 +136,7 @@ func TestHealth_ReadinessFollowsRequiredDependencyLivenessDoesNot(t *testing.T) 
 	}
 
 	down.Store(false)
-	time.Sleep(testTTL)
+	time.Sleep(2 * testTTL)
 	if st, body := ready(); st != healthpb.HealthCheckResponse_SERVING {
 		t.Fatalf("readiness after recovery = %v (%s)", st, body)
 	}
@@ -153,8 +156,8 @@ func TestHealth_OptionalDependencyKeepsServing(t *testing.T) {
 }
 
 func TestHealth_ReadinessWaitsForTheWorkloadKeySet(t *testing.T) {
-	v := fakeReadinessVerifier{err: workloadauth.ErrUnavailable}
-	checker := newTestChecker(t, WorkloadIdentity(&v))
+	v := &fakeReadinessVerifier{err: workloadauth.ErrUnavailable}
+	checker := newTestChecker(t, WorkloadIdentity(v))
 	c := startWithHealth(t, checker)
 
 	ready := func() (healthpb.HealthCheckResponse_ServingStatus, string) {
@@ -179,8 +182,8 @@ func TestHealth_ReadinessWaitsForTheWorkloadKeySet(t *testing.T) {
 		t.Fatalf("health body = %s", body)
 	}
 
-	v.err = nil
-	time.Sleep(testTTL)
+	v.set(nil)
+	time.Sleep(2 * testTTL)
 	if st, body := ready(); st != healthpb.HealthCheckResponse_SERVING {
 		t.Fatalf("readiness once the key set loads = %v (%s)", st, body)
 	} else if !strings.Contains(body, `"name":"workload-identity"`) {

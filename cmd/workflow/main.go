@@ -14,8 +14,6 @@ import (
 	log "github.com/Bugs5382/go-log"
 	otel "github.com/Bugs5382/go-otel"
 	postgres "github.com/Bugs5382/go-postgres"
-	otelpg "github.com/Bugs5382/go-postgres/otel"
-	sagapg "github.com/Bugs5382/go-saga-orchestration/store/postgres"
 	workloadauth "github.com/Bugs5382/go-workload-identity"
 	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
@@ -64,6 +62,16 @@ func main() {
 	// migrations run.
 	mustWorkloadAuthConfig(logger)
 
+	svcLog := log.NewLogger(serviceName)
+	// The port answers health from here on, while the boot waits for
+	// Postgres and runs the migrations: liveness SERVING, so the startup probe
+	// passes on a slow boot, and readiness NOT_SERVING with postgres listed
+	// down until it is reached.
+	boot, err := server.StartBootHealth(cfg.GRPCPort, svcLog, "postgres")
+	if err != nil {
+		logger.Fatal().Err(err).Msg("boot health")
+	}
+
 	migrationsDir := os.Getenv("MIGRATIONS_DIR")
 	if migrationsDir == "" {
 		migrationsDir = "migrations/workflow"
@@ -76,27 +84,17 @@ func main() {
 	if migrateDSN == "" {
 		migrateDSN = cfg.DatabaseDSN
 	}
-	// Service tables use a DISTINCT migration-version table so they don't collide
-	// with the saga engine's own migrations in the same database.
-	if err := postgres.MigrateWithTable(migrateDSN, migrationsDir, "workflow_schema_migrations"); err != nil {
-		logger.Fatal().Err(err).Msg("migrate service")
-	}
-	// The go-saga engine manages its own run/step/signal tables.
-	if err := sagapg.Migrate(migrateDSN); err != nil {
-		logger.Fatal().Err(err).Msg("migrate saga store")
-	}
-
-	db, err := postgres.New(ctx, cfg.DatabaseDSN, otelpg.WithTracing())
+	db, sagaStore, err := openPostgres(ctx, boot, migrateDSN, migrationsDir, cfg.DatabaseDSN)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("db connect")
+		if ctx.Err() != nil {
+			boot.Stop()
+			logger.Info().Msg("stopped while waiting for postgres")
+			return
+		}
+		logger.Fatal().Err(err).Msg("migrate / db connect / open saga store")
 	}
 	defer db.Close()
 	recordDBVersion(ctx, logger, db)
-
-	sagaStore, err := sagapg.Open(ctx, cfg.DatabaseDSN)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("open saga store")
-	}
 
 	vault, err := vaultclient.Dial()
 	if err != nil {
@@ -113,7 +111,6 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("build saga engine")
 	}
-	svcLog := log.NewLogger(serviceName)
 	svc := grpcsvc.New(st, engine, vault)
 	svc.SetLogger(svcLog)
 	svc.SetMaintenance(maint)
@@ -133,6 +130,7 @@ func main() {
 	authOpts = append(authOpts, grpc.ChainUnaryInterceptor(maintUnary), grpc.ChainStreamInterceptor(maintStream))
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
 	checker := mustChecker(logger, svcLog, dependencies(db, vault.Conn(), auditConn, workloadVerifier))
+	boot.Stop()
 	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, func(gs *grpc.Server) {
 		grpcsvc.Register(gs, svc)
 	}, authOpts...); err != nil {
