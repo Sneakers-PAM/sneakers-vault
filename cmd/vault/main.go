@@ -19,7 +19,6 @@ import (
 	log "github.com/Bugs5382/go-log"
 	otel "github.com/Bugs5382/go-otel"
 	postgres "github.com/Bugs5382/go-postgres"
-	otelpg "github.com/Bugs5382/go-postgres/otel"
 	bredis "github.com/Bugs5382/go-redis"
 	workloadauth "github.com/Bugs5382/go-workload-identity"
 	auditv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/thirdparty/audit/v1"
@@ -216,6 +215,13 @@ func main() {
 	}
 	defer func() { _ = notifyConn.Close() }()
 
+	svcLog := log.NewLogger(serviceName)
+	// The port answers health from here on, while the boot waits for
+	// Postgres and runs the preflight and migrations: liveness SERVING, so
+	// the startup probe passes on a slow boot, and readiness NOT_SERVING with
+	// postgres listed down until it is reached.
+	boot := mustBootHealth(logger, cfg.GRPCPort, svcLog)
+
 	migrationsDir := env("MIGRATIONS_DIR", "migrations/vault")
 	// Migrations need a direct/session Postgres connection (advisory locks,
 	// CURRENT_SCHEMA, prepared statements) which break through the
@@ -229,13 +235,14 @@ func main() {
 	// Resolve + validate the root KEK BEFORE migrating: a missing/bad
 	// VAULT_ROOT_KEK must exit with the schema untouched, because once
 	// a new migration is applied the previous image may no longer start.
-	rootKEK, rootRef, err := migrateAfterPreflight(ctx, migrateDSN, migrationsDir, environment)
+	rootKEK, rootRef, db, err := openPostgres(ctx, boot, migrateDSN, migrationsDir, environment, cfg.DatabaseDSN)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("root KEK preflight / migrate")
-	}
-	db, err := postgres.New(ctx, cfg.DatabaseDSN, otelpg.WithTracing())
-	if err != nil {
-		logger.Fatal().Err(err).Msg("db connect")
+		if ctx.Err() != nil {
+			boot.Stop()
+			logger.Info().Msg("stopped while waiting for postgres")
+			return
+		}
+		logger.Fatal().Err(err).Msg("root KEK preflight / migrate / db connect")
 	}
 	defer db.Close()
 	recordDBVersion(ctx, logger, db)
@@ -247,7 +254,6 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("vault init")
 	}
-	svcLog := log.NewLogger(serviceName)
 	srv.SetLogger(svcLog)
 	srv.SetMaintenance(maint)
 	srv.SetMFAMaxAge(mustMFAMaxAge(logger))
@@ -300,6 +306,7 @@ func main() {
 	checker := mustChecker(logger, svcLog, dependencies(db, auditConn, notifyConn, valkeyPing, workloadVerifier))
 	maintUnary, maintStream := grpcsvc.MaintenanceInterceptors(maint, svcLog)
 	opts := append(authOpts, grpc.ChainUnaryInterceptor(maintUnary, srv.PersistUnary), grpc.ChainStreamInterceptor(maintStream))
+	boot.Stop()
 	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, srv.RegisterInto, opts...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
 	}

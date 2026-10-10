@@ -51,8 +51,13 @@ const maxDependencyVersion = 64
 // tagged with one of the classes the gateway's diagnostics know (refused,
 // unavailable, unauthenticated) where go-buildinfo's own class would differ.
 // opts follow the defaults, so a test can shorten the TTL.
+//
+// Probes only read the checker's cache: RunWithHealth runs the checks in the
+// background once per CacheTTL, so a slow dependency never makes a probe
+// wait. Until the first pass settles, each dependency is down with the class
+// "pending".
 func NewChecker(lg log.Logger, deps []health.Dependency, opts ...health.Option) (*health.Checker, error) {
-	c := health.New(append([]health.Option{health.WithTTL(CacheTTL), health.WithTimeout(CheckTimeout), health.WithLogger(lg)}, opts...)...)
+	c := health.New(append([]health.Option{health.WithBackgroundRefresh(), health.WithTTL(CacheTTL), health.WithTimeout(CheckTimeout), health.WithLogger(lg)}, opts...)...)
 	for i := range deps {
 		if deps[i].Check != nil {
 			deps[i].Check = classified(deps[i].Check)

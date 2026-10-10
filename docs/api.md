@@ -27,8 +27,12 @@ Both servers' health checks follow their dependencies:
 - Any other service name gets `NOT_FOUND`. `Watch` streams the serving status of either service as
   it changes.
 
-Each dependency is pinged with a 1-second timeout, and the results are reused for 5 seconds, so
-probes don't load the dependencies. A readiness answer carries the results in the
+The dependencies are pinged in the background every 5 seconds, each with a 1-second timeout, and
+a health check only reads the last results, so a probe never waits on a dependency and probes
+don't load them. Right after the start, before the first pass, each dependency is `down` with the
+class `pending`. The health check also answers during the boot, before the migrations: while vault
+or workflow is still reaching PostgreSQL, `liveness` is `SERVING` and readiness `NOT_SERVING`, with
+`postgres` reported `down`. A readiness answer carries the results in the
 `sneakers-health` header, as compact JSON:
 
 ```json

@@ -74,6 +74,13 @@ The kubelet's liveness probe has to ask for the `liveness` service; otherwise a 
 fails liveness too and restarts the pods. That probe setting lives in the sneakers-release
 chart.
 
+At startup vault and workflow wait for PostgreSQL rather than exiting: while it (or its DNS name)
+isn't reachable, the root KEK preflight, the migrations and the connections are retried with
+backoff (500 ms doubling to 15 s, with jitter), one `dependency not reachable yet; retrying` warning
+per attempt, and the health check already answers (liveness `SERVING`, readiness `NOT_SERVING`).
+Only an error that retrying can't fix stops the boot: a missing or wrong `VAULT_ROOT_KEK` (still
+before any migration runs), bad credentials or a failing migration.
+
 ## First-run setup
 
 Outside `dev`, a new vault starts empty. The gateway's first-run setup creates the first

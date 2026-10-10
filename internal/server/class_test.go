@@ -26,7 +26,7 @@ func reportedClass(t *testing.T, check func(context.Context) error) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return c.Report(context.Background()).Dependencies[0].Error
+	return refreshed(t, c).Report(context.Background()).Dependencies[0].Error
 }
 
 func TestClassify(t *testing.T) {
@@ -61,7 +61,7 @@ func TestReport_NeverCarriesErrorText(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := c.Report(context.Background())
+	r := refreshed(t, c).Report(context.Background())
 	if s := fmt.Sprintf("%+v", r); strings.Contains(s, "hunter2") || strings.Contains(s, "db.example.test") {
 		t.Fatalf("report leaks the error: %s", s)
 	}

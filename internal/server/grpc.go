@@ -94,6 +94,9 @@ func RunWithHealth(ctx context.Context, port string, lg log.Logger, checker *hea
 	biCtx, stopBI := context.WithCancel(ctx)
 	defer stopBI()
 	go bi.Run(biCtx)
+	if checker != nil {
+		go checker.Run(biCtx)
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
