@@ -72,6 +72,7 @@ func newAuthFixture(t *testing.T) *authFixture {
 		RequestContextUnary,
 		workloadauth.UnaryServerInterceptor(v, CallerPolicy(), log.Nop(), workloadauth.WithDenyHook(s.AuditDenial)),
 		s.SelfActorUnary,
+		s.PersonSessionUnary,
 	))
 	vaultv1.RegisterVaultServiceServer(gs, s)
 	go func() { _ = gs.Serve(lis) }()
@@ -119,17 +120,17 @@ func TestCallerAuth_UnlistedPodIsRefusedEvenWithAValidToken(t *testing.T) {
 
 func TestCallerAuth_GatewayPassesTheUser(t *testing.T) {
 	f := newAuthFixture(t)
-	rev, err := f.reveal(f.as(t, "gateway"), &vaultv1.ActorContext{UserId: "user-carol"})
+	rev, err := f.reveal(f.as(t, "gateway"), &vaultv1.ActorContext{UserId: "user-carol", SessionRef: "web-1"})
 	if err != nil || rev.GetValue() != "Sup3r$ecret" {
 		t.Fatalf("gateway reveal: %v %q", err, rev.GetValue())
 	}
-	_, err = f.reveal(f.as(t, "gateway"), &vaultv1.ActorContext{UserId: "user-nobody"})
+	_, err = f.reveal(f.as(t, "gateway"), &vaultv1.ActorContext{UserId: "user-nobody", SessionRef: "web-1"})
 	wantCode(t, err, codes.PermissionDenied)
 }
 
 func TestCallerAuth_SSHBrokerPassesTheSessionUser(t *testing.T) {
 	f := newAuthFixture(t)
-	if _, err := f.reveal(f.as(t, "sshbroker"), &vaultv1.ActorContext{UserId: "user-carol"}); err != nil {
+	if _, err := f.reveal(f.as(t, "sshbroker"), &vaultv1.ActorContext{UserId: "user-carol", SessionRef: "web-1"}); err != nil {
 		t.Fatalf("sshbroker reveal: %v", err)
 	}
 	_, err := f.client.ListFolders(f.as(t, "sshbroker"), &vaultv1.ListFoldersRequest{Actor: &vaultv1.ActorContext{UserId: "user-carol"}})
@@ -157,7 +158,7 @@ func TestCallerAuth_WorkflowActsOnlyAsItself(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("workflow grant: %v", err)
 	}
-	if _, err := f.reveal(f.as(t, "gateway"), &vaultv1.ActorContext{UserId: "user-dave"}); err != nil {
+	if _, err := f.reveal(f.as(t, "gateway"), &vaultv1.ActorContext{UserId: "user-dave", SessionRef: "web-1"}); err != nil {
 		t.Fatalf("the workflow's grant did not apply: %v", err)
 	}
 
