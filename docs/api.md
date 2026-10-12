@@ -287,6 +287,22 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 - **Type changes:** see [type-change.md](type-change.md).
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
   through `seed-catalog`.
+- **SELECT values:** a SELECT field's value must be one of its type's options. `CreateSecret`,
+  `UpdateSecret`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`,
+  `UpdateSecretFieldsForPrincipal` and `ChangeSecretTypeForPrincipal` refuse anything else with
+  `InvalidArgument` and an ErrorInfo (domain `sneakers.vault`): `FIELD_VALUE_NOT_ALLOWED`, or
+  `FIELD_VALUE_REQUIRED` for a required SELECT left empty or missing. The message names the field
+  and lists the options; the metadata carries `field` and `allowed` (the options joined by `|`).
+  Matching ignores case when exactly one option matches, and the option's own spelling is stored
+  (`ed25519` is stored as `Ed25519`); a value that could be more than one option is refused. An
+  optional SELECT may be empty. A create checks every SELECT field of the type; an update checks
+  the fields it sends, so a stored value from before this check is still read back as it is and
+  only has to change when that field is saved again. A SELECT with no options constrains nothing.
+- **Catalogue JSON:** `gen/catalogue/types.json` is the built-in catalogue and the extension packs
+  as JSON (types, fields, kinds, options), generated from `BuiltinTypes` and `ExtensionCatalog`.
+  `TestCatalogueJSONIsCurrent` fails when it is stale; regenerate it with
+  `UPDATE_CATALOGUE=1 go test ./internal/vault/grpcsvc -run TestCatalogueJSONIsCurrent`. Other
+  repos vendor it at a pinned commit.
 - **Key rotation:** `RotateKek` needs a human site admin or root (`NOT_SITE_ADMIN` otherwise),
   called through the gateway. The in-process scheduler rotates on its own and is audited as
   `system:kek-scheduler`.

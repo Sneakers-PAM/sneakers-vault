@@ -1,0 +1,959 @@
+{
+  "types": [
+    {
+      "id": "type-password",
+      "name": "Password",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "username",
+          "label": "Username",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "password",
+          "label": "Password",
+          "kind": "PASSWORD",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-secure-note",
+      "name": "Secure Note",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "note",
+          "label": "Note",
+          "kind": "MULTILINE",
+          "required": true,
+          "sensitive": true
+        }
+      ]
+    },
+    {
+      "id": "type-web-password",
+      "name": "Web Password",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "url",
+          "label": "URL",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "username",
+          "label": "Username",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "password",
+          "label": "Password",
+          "kind": "PASSWORD",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-ssh-key",
+      "name": "SSH Key",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "username",
+          "label": "Username",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "keyFormat",
+          "label": "Key Format",
+          "kind": "SELECT",
+          "required": true,
+          "options": [
+            "Ed25519",
+            "RSA 4096",
+            "RSA 2048",
+            "ECDSA P-256"
+          ],
+          "defaultValue": "Ed25519"
+        },
+        {
+          "key": "publicKey",
+          "label": "Public Key",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "privateKey",
+          "label": "Private Key",
+          "kind": "SENSITIVE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "passphrase",
+          "label": "Passphrase",
+          "kind": "SENSITIVE",
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-api-token",
+      "name": "API Token",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "scheme",
+          "label": "Scheme",
+          "kind": "SELECT",
+          "options": [
+            "Bearer",
+            "OAuth",
+            "Custom header"
+          ],
+          "defaultValue": "Bearer"
+        },
+        {
+          "key": "token",
+          "label": "Token",
+          "kind": "SENSITIVE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "endpoint",
+          "label": "Endpoint / API URL",
+          "kind": "TEXT"
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-oauth",
+      "name": "OAuth Application",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "clientId",
+          "label": "Client ID",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "clientSecret",
+          "label": "Client Secret",
+          "kind": "SENSITIVE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "redirectUrl",
+          "label": "Redirect URL",
+          "kind": "TEXT"
+        },
+        {
+          "key": "accessToken",
+          "label": "Access Token",
+          "kind": "SENSITIVE",
+          "sensitive": true
+        },
+        {
+          "key": "refreshToken",
+          "label": "Refresh Token",
+          "kind": "SENSITIVE",
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-recovery-codes",
+      "name": "Recovery / Backup Codes",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "service",
+          "label": "Service / Site",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "account",
+          "label": "Account / Username",
+          "kind": "TEXT"
+        },
+        {
+          "key": "codes",
+          "label": "Recovery / Backup Codes",
+          "kind": "MULTILINE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-database-account",
+      "name": "Database Account",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "engine",
+          "label": "Engine",
+          "kind": "SELECT",
+          "options": [
+            "PostgreSQL",
+            "MySQL / MariaDB",
+            "SQL Server",
+            "Oracle",
+            "MongoDB",
+            "Other"
+          ],
+          "defaultValue": "PostgreSQL"
+        },
+        {
+          "key": "server",
+          "label": "Server",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "port",
+          "label": "Port",
+          "kind": "TEXT"
+        },
+        {
+          "key": "database",
+          "label": "Database",
+          "kind": "TEXT"
+        },
+        {
+          "key": "username",
+          "label": "Username",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "password",
+          "label": "Password",
+          "kind": "PASSWORD",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-unix-ssh",
+      "name": "Password Account (SSH)",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "host",
+          "label": "Host",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "username",
+          "label": "Username",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "password",
+          "label": "Password",
+          "kind": "PASSWORD",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-windows-local",
+      "name": "Windows Account (Local)",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "machine",
+          "label": "Machine",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "username",
+          "label": "Username",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "password",
+          "label": "Password",
+          "kind": "PASSWORD",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-windows-domain",
+      "name": "Windows Domain Account",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "domain",
+          "label": "Domain",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "username",
+          "label": "Username",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "password",
+          "label": "Password",
+          "kind": "PASSWORD",
+          "required": true,
+          "sensitive": true
+        }
+      ]
+    },
+    {
+      "id": "type-active-directory",
+      "name": "Active Directory Account",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "domain",
+          "label": "Domain (FQDN)",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "netbios",
+          "label": "NetBIOS domain",
+          "kind": "TEXT"
+        },
+        {
+          "key": "logonFormat",
+          "label": "Logon format",
+          "kind": "SELECT",
+          "options": [
+            "NETBIOS",
+            "UPN"
+          ]
+        },
+        {
+          "key": "upnSuffix",
+          "label": "UPN suffix",
+          "kind": "TEXT"
+        },
+        {
+          "key": "username",
+          "label": "Account Name",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "password",
+          "label": "Password",
+          "kind": "PASSWORD",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "serviceAccount",
+          "label": "Service account",
+          "kind": "BOOLEAN"
+        },
+        {
+          "key": "gmsa",
+          "label": "gMSA account",
+          "kind": "BOOLEAN"
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-bank-account",
+      "name": "Bank Account",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "bank",
+          "label": "Bank name",
+          "kind": "TEXT"
+        },
+        {
+          "key": "accountNumber",
+          "label": "Account number",
+          "kind": "SENSITIVE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "routingNumber",
+          "label": "Routing number",
+          "kind": "SENSITIVE",
+          "sensitive": true
+        },
+        {
+          "key": "onlineUsername",
+          "label": "Online username",
+          "kind": "TEXT"
+        },
+        {
+          "key": "onlinePassword",
+          "label": "Online password",
+          "kind": "SENSITIVE",
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-credit-card",
+      "name": "Credit Card",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "cardholder",
+          "label": "Cardholder",
+          "kind": "TEXT"
+        },
+        {
+          "key": "number",
+          "label": "Card number",
+          "kind": "SENSITIVE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "expiry",
+          "label": "Expiry (MM/YY or MM/YYYY)",
+          "kind": "TEXT"
+        },
+        {
+          "key": "cvv",
+          "label": "CVV",
+          "kind": "SENSITIVE",
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-license-key",
+      "name": "License Key",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "product",
+          "label": "Product",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "licenseKey",
+          "label": "License key",
+          "kind": "SENSITIVE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-combination-lock",
+      "name": "Combination Lock",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "location",
+          "label": "Location",
+          "kind": "TEXT"
+        },
+        {
+          "key": "combination",
+          "label": "Combination",
+          "kind": "SENSITIVE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-pin",
+      "name": "PIN",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "pin",
+          "label": "PIN",
+          "kind": "SENSITIVE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-ssn",
+      "name": "Social Security Number",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "holderName",
+          "label": "Holder name",
+          "kind": "TEXT"
+        },
+        {
+          "key": "ssn",
+          "label": "SSN",
+          "kind": "SENSITIVE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-contact",
+      "name": "Contact",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "fullName",
+          "label": "Full name",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "kind": "SENSITIVE",
+          "sensitive": true
+        },
+        {
+          "key": "phone",
+          "label": "Phone",
+          "kind": "SENSITIVE",
+          "sensitive": true
+        },
+        {
+          "key": "addressLine1",
+          "label": "Address line 1",
+          "kind": "TEXT"
+        },
+        {
+          "key": "addressLine2",
+          "label": "Address line 2 (apt/unit)",
+          "kind": "TEXT"
+        },
+        {
+          "key": "city",
+          "label": "City",
+          "kind": "TEXT"
+        },
+        {
+          "key": "state",
+          "label": "State",
+          "kind": "TEXT"
+        },
+        {
+          "key": "zip",
+          "label": "ZIP",
+          "kind": "TEXT"
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-anthropic-token",
+      "name": "Anthropic Token",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "token",
+          "label": "Token",
+          "kind": "SENSITIVE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "type-ssl-cert",
+      "name": "SSL/PKI Certificate",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "certificate",
+          "label": "Certificate",
+          "kind": "MULTILINE",
+          "required": true
+        },
+        {
+          "key": "privateKey",
+          "label": "Private Key",
+          "kind": "SENSITIVE",
+          "sensitive": true
+        },
+        {
+          "key": "chain",
+          "label": "Chain",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "subject",
+          "label": "Subject",
+          "kind": "TEXT"
+        },
+        {
+          "key": "issuer",
+          "label": "Issuer",
+          "kind": "TEXT"
+        },
+        {
+          "key": "sans",
+          "label": "Subject Alternative Names",
+          "kind": "TEXT"
+        },
+        {
+          "key": "serialNumber",
+          "label": "Serial Number",
+          "kind": "TEXT"
+        },
+        {
+          "key": "fingerprintSha256",
+          "label": "Fingerprint (SHA-256)",
+          "kind": "TEXT"
+        },
+        {
+          "key": "notBefore",
+          "label": "Not Before",
+          "kind": "TEXT"
+        },
+        {
+          "key": "notAfter",
+          "label": "Not After",
+          "kind": "TEXT"
+        },
+        {
+          "key": "keyAlgorithm",
+          "label": "Key Algorithm",
+          "kind": "TEXT"
+        },
+        {
+          "key": "keyBits",
+          "label": "Key Size (bits)",
+          "kind": "TEXT"
+        },
+        {
+          "key": "hasPrivateKey",
+          "label": "Private Key Present",
+          "kind": "BOOLEAN"
+        },
+        {
+          "key": "isCA",
+          "label": "CA Certificate",
+          "kind": "BOOLEAN"
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
+      "id": "ext-aws-iam-key",
+      "name": "Amazon IAM Access Key",
+      "origin": "EXTENSION",
+      "fields": [
+        {
+          "key": "accountId",
+          "label": "Account ID",
+          "kind": "TEXT"
+        },
+        {
+          "key": "accessKeyId",
+          "label": "Access Key ID",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "secretAccessKey",
+          "label": "Secret Access Key",
+          "kind": "PASSWORD",
+          "required": true,
+          "sensitive": true
+        }
+      ]
+    },
+    {
+      "id": "ext-azure-ad",
+      "name": "Microsoft Azure AD Account",
+      "origin": "EXTENSION",
+      "fields": [
+        {
+          "key": "tenantId",
+          "label": "Tenant ID",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "appId",
+          "label": "Application (client) ID",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "clientSecret",
+          "label": "Client secret",
+          "kind": "PASSWORD",
+          "required": true,
+          "sensitive": true
+        }
+      ]
+    },
+    {
+      "id": "ext-gcp-sa-key",
+      "name": "Google Cloud Service Account Key",
+      "origin": "EXTENSION",
+      "fields": [
+        {
+          "key": "project",
+          "label": "Project ID",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "clientEmail",
+          "label": "Service account email",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "keyJson",
+          "label": "Key (JSON)",
+          "kind": "PASSWORD",
+          "required": true,
+          "sensitive": true
+        }
+      ]
+    },
+    {
+      "id": "type-docusign-ssh-keys",
+      "name": "Docusign App SSH Keys",
+      "origin": "EXTENSION",
+      "fields": [
+        {
+          "key": "integrationKey",
+          "label": "Integration Key (Client ID)",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "userId",
+          "label": "User ID (Impersonated user GUID)",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "apiAccountId",
+          "label": "API Account ID",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "baseUri",
+          "label": "Base URI",
+          "kind": "TEXT",
+          "defaultValue": "account-d.docusign.com"
+        },
+        {
+          "key": "privateKey",
+          "label": "RSA Private Key",
+          "kind": "SENSITIVE",
+          "required": true,
+          "sensitive": true
+        }
+      ]
+    }
+  ]
+}

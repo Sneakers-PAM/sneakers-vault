@@ -33,6 +33,8 @@ or values.
   `internal/server/workloadauth.go` sets the Sneakers audience and caller-name prefix and builds
   the interceptors. See docs/workload-auth.md.
 - `proto/` - both APIs; `gen/go/` - the generated Go (committed, checked current in CI).
+- `gen/catalogue/types.json` - the built-in catalogue as JSON, checked current by a test (see
+  docs/api.md, "Catalogue JSON").
 - `migrations/vault/`, `migrations/workflow/` - each service's Postgres schema, forward only.
 - `docs/` - configuration, API, runbook, worker identity and type changes.
 
