@@ -240,6 +240,10 @@ func (s *Server) UpdateSecretFieldsForPrincipal(ctx context.Context, req *vaultv
 			return nil, err
 		}
 	}
+	patch, err = checkSelectFieldsInPatch(st, patch)
+	if err != nil {
+		return nil, err
+	}
 	cur := map[string]string{}
 	if rec, ok := s.records[sec.GetId()]; ok {
 		opened, err := s.crypt.OpenAll(rec)

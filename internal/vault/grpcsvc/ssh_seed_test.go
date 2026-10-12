@@ -92,6 +92,7 @@ func createScheduledSSHSecret(t *testing.T, s *Server) (actor *vaultv1.ActorCont
 		Actor: actor, Name: "deploy key", FolderId: fid, TypeId: "type-ssh-key", TargetId: tgt,
 		Fields: map[string]string{
 			"username":   "svc-deploy",
+			"keyFormat":  "Ed25519",
 			"privateKey": "-----BEGIN OPENSSH PRIVATE KEY-----\nSYNTHETIC\n-----END OPENSSH PRIVATE KEY-----", // gitleaks:allow -- a synthetic placeholder, not a key
 			"passphrase": "",
 		},

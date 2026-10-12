@@ -113,6 +113,11 @@ type newSecretSpec struct {
 // heartbeat/rotation via ensureLifecycle (the exact block CreateSecret runs).
 // Caller holds s.mu (write lock) and has already gated canManage/typeId.
 func (s *Server) buildAndStoreSecret(ctx context.Context, actor *vaultv1.ActorContext, spec newSecretSpec, fields map[string]string) (*vaultv1.Secret, error) {
+	fields, err := checkSelectFieldsForCreate(s.findType(spec.typeID), fields)
+	if err != nil {
+		s.lg(ctx).Info("principal create refused: select field value", log.F("type_id", spec.typeID), log.F("error", err.Error()))
+		return nil, err
+	}
 	// Authoritative server-side check that a submitted SSH private/public
 	// key pair actually correspond, before anything is sealed and stored.
 	if err := verifyKeyPairFields(fields); err != nil {

@@ -388,6 +388,11 @@ func retypeFields(st, nt *vaultv1.SecretType, cur, mapping, extra map[string]str
 			}
 			continue
 		}
+		c, err := checkSelectValue(f, v)
+		if err != nil {
+			return retypeResult{}, err
+		}
+		out[f.GetKey()] = c
 		if ml := f.GetMaxLength(); ml > 0 && utf8.RuneCountInString(v) > int(ml) {
 			return retypeResult{}, status.Errorf(codes.InvalidArgument, "value for field %q exceeds the new type's max length", f.GetKey())
 		}

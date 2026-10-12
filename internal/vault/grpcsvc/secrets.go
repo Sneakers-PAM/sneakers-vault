@@ -79,15 +79,21 @@ func (s *Server) CreateSecret(ctx context.Context, req *vaultv1.CreateSecretRequ
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.findType(req.GetTypeId()) == nil {
+	st := s.findType(req.GetTypeId())
+	if st == nil {
 		return nil, errNotFound("secret type")
 	}
 	if !s.canManage(req.GetActor(), req.GetFolderId()) {
 		return nil, status.Error(codes.PermissionDenied, "not permitted to create a secret in this folder")
 	}
+	fields, err := checkSelectFieldsForCreate(st, req.GetFields())
+	if err != nil {
+		s.lg(ctx).Info("create refused: select field value", log.F("type_id", st.GetId()), log.F("error", err.Error()))
+		return nil, err
+	}
 	// Authoritative server-side check that a submitted SSH private/public
 	// key pair actually correspond, before anything is sealed and stored.
-	if err := verifyKeyPairFields(req.GetFields()); err != nil {
+	if err := verifyKeyPairFields(fields); err != nil {
 		return nil, err
 	}
 	sec := &vaultv1.Secret{
@@ -95,7 +101,7 @@ func (s *Server) CreateSecret(ctx context.Context, req *vaultv1.CreateSecretRequ
 		TypeId: req.GetTypeId(), TargetId: req.GetTargetId(), ExpiresAt: req.GetExpiresAt(),
 		Position: s.nextPosition(req.GetFolderId()),
 	}
-	rec, err := s.crypt.Seal(req.GetFields())
+	rec, err := s.crypt.Seal(fields)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "seal fields: %v", err)
 	}
@@ -182,6 +188,13 @@ func (s *Server) UpdateSecret(ctx context.Context, req *vaultv1.UpdateSecretRequ
 	if !s.canManageOrOwnSecret(req.GetActor(), sec) {
 		return nil, status.Error(codes.PermissionDenied, "not permitted to edit this secret")
 	}
+	// Checked before anything changes, so a refused save leaves the secret as
+	// it was. Only the sent fields are checked: the editor sends every field.
+	patch, err := checkSelectFieldsInPatch(s.findType(sec.GetTypeId()), req.GetFields())
+	if err != nil {
+		s.lg(ctx).Info("update refused: select field value", log.F("secret_id", sec.GetId()), log.F("error", err.Error()))
+		return nil, err
+	}
 	oldName := sec.Name
 	var changes []fieldChange
 	var sensitiveChanged []string
@@ -232,7 +245,7 @@ func (s *Server) UpdateSecret(ctx context.Context, req *vaultv1.UpdateSecretRequ
 	// editor re-sends every non-sensitive field on each save, so without this a
 	// no-op save (e.g. a folder move, or an edit that touched nothing) would mint
 	// a redundant version. Unchanged values collapse into the existing version.
-	if patch := req.GetFields(); len(patch) > 0 {
+	if len(patch) > 0 {
 		cur := map[string]string{}
 		if rec, ok := s.records[sec.Id]; ok {
 			opened, err := s.crypt.OpenAll(rec)
