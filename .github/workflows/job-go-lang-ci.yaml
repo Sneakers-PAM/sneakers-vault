@@ -17,7 +17,7 @@ jobs:
   build-test:
     name: 🧪 Build & Test
     if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # The Postgres integration tests run only when TEST_DATABASE_DSN (vault)
     # and WORKFLOW_PG_DSN (workflow) are set. Each service gets its own
@@ -41,11 +41,11 @@ jobs:
       WORKFLOW_PG_DSN: postgres://postgres@localhost:5432/workflow_test?sslmode=disable
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version-file: go.mod
       - name: Create the workflow test database
@@ -92,12 +92,12 @@ jobs:
   images:
     name: 🐳 Images
     if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     # Builds every image target; nothing is pushed.
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Build the images
         run: |
           for target in vault workflow seed-catalog seed; do
@@ -106,19 +106,19 @@ jobs:
   lint:
     name: 🧹 GolangCI
     if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version-file: go.mod
       - name: GolangCI
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a  # v9.3.0
         with:
           version: v2.12.2
           # Build from source with the job's Go, so a newer go.mod never
