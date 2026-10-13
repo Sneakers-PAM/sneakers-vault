@@ -30,7 +30,7 @@ jobs:
   autolabel:
     name: 🏷️ Autolabel
     if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       # Map the conventional-commit prefix in the PR title to a categorizing
@@ -69,7 +69,7 @@ jobs:
     # Run even if autolabel was skipped/failed; the label may already be present
     # from the PR title. Drafts are still skipped.
     if: always() && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       pull-requests: read
