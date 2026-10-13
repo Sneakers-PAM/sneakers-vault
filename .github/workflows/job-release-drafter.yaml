@@ -23,6 +23,7 @@ jobs:
         uses: Bugs5382/release-drafter-action@de0c4559d69039b8b371ef951b62a2532ad3593f  # v1.0.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          extends: Sneakers-PAM/.github@d3d39e704d26b3c2d199b1caf5ac80c97c17490c
           first-version: 0.1.0
           prerelease: true
           prerelease-identifier: rc
