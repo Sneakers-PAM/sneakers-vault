@@ -188,6 +188,31 @@ func TestUserTokenCannotBreakGlass(t *testing.T) {
 	}
 }
 
+// TestHumanOpensASecretTheirOwnPersonalTokenCreated reproduces #321: a
+// secret an MCP personal token creates in the caller's own personal folder
+// must still open for that same person signed in directly (a human actor),
+// not come back NotFound.
+func TestHumanOpensASecretTheirOwnPersonalTokenCreated(t *testing.T) {
+	s := newServer(t)
+	seedPersonalFolder(s, "user-admin")
+	created, err := s.CreateSecretForPrincipal(context.Background(), &vaultv1.CreateSecretForPrincipalRequest{
+		Actor: tokenActor("user-admin", false), FolderId: "folder-personal-admin", TypeId: "type-unix-ssh",
+		Name: "my-box", Fields: map[string]string{"host": "h", "username": "u"},
+	})
+	if err != nil {
+		t.Fatalf("CreateSecretForPrincipal: %v", err)
+	}
+	id := created.GetSecret().GetId()
+	human := &vaultv1.ActorContext{UserId: "user-admin"}
+	got, err := s.GetSecret(context.Background(), &vaultv1.GetSecretRequest{Actor: human, Id: id})
+	if err != nil {
+		t.Fatalf("GetSecret as the owning human: %v", err)
+	}
+	if got.GetSecret().GetId() != id {
+		t.Fatalf("got secret %q, want %q", got.GetSecret().GetId(), id)
+	}
+}
+
 func TestUserTokenIsAuditedAsTheUserWithTheToken(t *testing.T) {
 	s := newServer(t)
 	ca := &capAudit{}
