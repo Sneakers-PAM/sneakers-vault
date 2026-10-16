@@ -22,6 +22,15 @@ const (
 	GrantBlank Grant = ""      // no opinion — fall through
 	GrantAllow Grant = "allow" // explicitly allowed
 	GrantDeny  Grant = "deny"  // explicitly denied
+	// GrantOwn is valid only on the Read (C) cell: the subject may read/reveal
+	// only an instance it owns (the secret's creator principal, or an explicit
+	// owner principal) — never a blanket read of the category. Combined with an
+	// Author (R) allow it is the "contribute, own reveal" grant: create and
+	// update anywhere in the folder, reveal only what's its own. The ownership
+	// check itself is instance data the authz package doesn't hold, so
+	// decideAction only flags the match (RuleDecision.OwnOnly); the caller
+	// (grpcsvc) applies the actual ownership test.
+	GrantOwn Grant = "own"
 )
 
 // SubjectKind identifies what a rule targets.

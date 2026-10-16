@@ -80,6 +80,9 @@ func (s *Server) SetFolderRuleset(ctx context.Context, req *vaultv1.SetFolderRul
 		!everyoneRulesUnchanged(s.raciRulesFor(f.GetId()), req.GetRules()) {
 		return nil, status.Error(codes.PermissionDenied, "only admins can set everyone rules")
 	}
+	if err := validateRaciGrants(req.GetRules()); err != nil {
+		return nil, err
+	}
 	// Drop the folder's existing rules, then append the new ordered set.
 	kept := s.raciRules[:0]
 	for _, r := range s.raciRules {
@@ -133,6 +136,9 @@ func (s *Server) SetTargetRuleset(ctx context.Context, req *vaultv1.SetTargetRul
 	if !isHumanAdmin(req.GetActor()) &&
 		!everyoneRulesUnchanged(s.targetRulesets[t.GetId()], req.GetRuleset()) {
 		return nil, status.Error(codes.PermissionDenied, "only admins can set everyone rules")
+	}
+	if err := validateRaciGrants(req.GetRuleset()); err != nil {
+		return nil, err
 	}
 	rules := make([]*vaultv1.RaciRule, 0, len(req.GetRuleset()))
 	for i, in := range req.GetRuleset() {
@@ -200,6 +206,9 @@ func (s *Server) SetSecretRuleset(ctx context.Context, req *vaultv1.SetSecretRul
 		!everyoneRulesUnchanged(sec.GetRuleset(), req.GetRules()) {
 		return nil, status.Error(codes.PermissionDenied, "only admins can set everyone rules")
 	}
+	if err := validateRaciGrants(req.GetRules()); err != nil {
+		return nil, err
+	}
 	rules := make([]*vaultv1.RaciRule, 0, len(req.GetRules()))
 	for i, in := range req.GetRules() {
 		rules = append(rules, s.newRaciRule(in, i))
@@ -232,6 +241,23 @@ func (s *Server) GetMySecretAccess(_ context.Context, req *vaultv1.GetMySecretAc
 		Informed:      res.Ack.Allowed,
 		ManageRuleset: manageRuleset,
 	}}, nil
+}
+
+// validateRaciGrants refuses a submitted ruleset carrying authz.GrantOwn
+// ("own") on any cell but ActRead (C): the own-reveal level is meaningless
+// for manage/approve/informed, and a stray "own" there would silently fall
+// through authz.decideAction's switch as an unmatched value (no allow, no
+// deny, no own-handling for that action) — refusing it at save time is
+// clearer than a grant that quietly does nothing.
+func validateRaciGrants(rules []*vaultv1.RaciRule) error {
+	for i, r := range rules {
+		for action, grant := range r.GetGrants() {
+			if authz.Grant(grant) == authz.GrantOwn && authz.Action(action) != authz.ActRead {
+				return status.Errorf(codes.InvalidArgument, "rule #%d: \"own\" is only valid on the C (read) cell", i+1)
+			}
+		}
+	}
+	return nil
 }
 
 // newRaciRule stores one submitted rule at position order. A GROUP rule keeps

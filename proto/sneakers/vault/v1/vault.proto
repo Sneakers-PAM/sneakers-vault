@@ -168,6 +168,11 @@ message InheritedFolderRule {
 // keys are "C" (read+reveal), "R" (manage/create/edit/rotate), "A" (approve
 // access requests), "I" (informed / metadata-only); values "allow"|"deny";
 // a missing key = blank (fall through). Mirrors the authz engine's Rule.
+// The "C" cell also accepts "own": contribute, own reveal — the subject may
+// create/update anywhere "R" allows, but reveals only a secret whose
+// creator_principal_id is its own. Never valid on "R"/"A"/"I". Combine with
+// "R": "allow" for the full "contribute, own reveal" grant the server
+// validates on save (own on any cell but C is refused).
 message RaciRule {
   string id = 1;
   string folder_id = 2;
@@ -324,6 +329,16 @@ message Secret {
   // already running, when it's switched off on purpose (heartbeat_opt_out),
   // or when the type isn't heartbeat-capable at all.
   string heartbeat_blocked_reason = 34;
+  // The principal that created this secret (a human user id or a non-human
+  // principal id) — set once, at creation, never on edit/move/retype. Used by
+  // a folder grant's "own reveal" cell (RaciRule's C=own) to decide whether
+  // THIS secret, specifically, is readable: own-reveal checks this against
+  // the caller's principal id, never a blanket folder read. Empty on a
+  // secret created before this field existed; such a secret is readable
+  // under an own-reveal grant only once explicitly reassigned (not yet
+  // built — today it simply stays unreadable under that grant, the same as
+  // any other secret the caller didn't create).
+  string creator_principal_id = 35;
 }
 
 // ---- Request/response messages ----------------------------------------------

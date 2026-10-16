@@ -99,7 +99,7 @@ func (s *Server) CreateSecret(ctx context.Context, req *vaultv1.CreateSecretRequ
 	sec := &vaultv1.Secret{
 		Id: s.nextID("secret"), Name: req.GetName(), FolderId: req.GetFolderId(),
 		TypeId: req.GetTypeId(), TargetId: req.GetTargetId(), ExpiresAt: req.GetExpiresAt(),
-		Position: s.nextPosition(req.GetFolderId()),
+		Position: s.nextPosition(req.GetFolderId()), CreatorPrincipalId: req.GetActor().GetUserId(),
 	}
 	rec, err := s.crypt.Seal(fields)
 	if err != nil {

@@ -81,6 +81,17 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   I informed) on folders, secrets and targets, evaluated target first and then up the folder
   chain. Folder owners get read, approve and author. Site admins and root read everything but are
   never automatic approvers or authors.
+- **Contribute, own reveal:** the C cell also accepts `own` (`RaciRule.grants["C"] = "own"`), never
+  valid on R/A/I. Combined with `R: "allow"` it is a grant for a machine principal: create and
+  update anywhere `R` allows in the folder, but reveal only a secret whose `creator_principal_id`
+  is its own — through every read path (reveal, copy, export, version history, break-glass, the
+  sshbroker's fetch), never a blanket folder read. A secret not its own stays refused
+  (`PermissionDenied`, reason `NO_ACCESS`) and fully hidden from listing (`ListSecretsForPrincipal`,
+  `GetSecretForPrincipal`), the same treatment a secret a plain deny covers already gets. Saving a
+  ruleset with `own` on any cell but C is refused, `InvalidArgument`. `creator_principal_id` is set
+  once, at creation, by `CreateSecret`/`CreateSecretForPrincipal`/`GenerateSecretForPrincipal`;
+  empty on a secret created before this field existed, so it stays unreadable under an own-reveal
+  grant until explicitly reassigned (not yet built).
 - **Seeing secrets:** `ListSecretsInFolder` and `GetSecret` show a secret's metadata to anyone who
   can see its folder, even without read, so people can find a secret and request access. Each
   secret carries `can_read`, false when the caller can't read it. A secret an explicit deny

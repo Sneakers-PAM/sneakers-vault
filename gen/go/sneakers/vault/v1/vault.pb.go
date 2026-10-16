@@ -1284,6 +1284,11 @@ func (x *InheritedFolderRule) GetFromFolderName() string {
 // keys are "C" (read+reveal), "R" (manage/create/edit/rotate), "A" (approve
 // access requests), "I" (informed / metadata-only); values "allow"|"deny";
 // a missing key = blank (fall through). Mirrors the authz engine's Rule.
+// The "C" cell also accepts "own": contribute, own reveal — the subject may
+// create/update anywhere "R" allows, but reveals only a secret whose
+// creator_principal_id is its own. Never valid on "R"/"A"/"I". Combine with
+// "R": "allow" for the full "contribute, own reveal" grant the server
+// validates on save (own on any cell but C is refused).
 type RaciRule struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -2261,8 +2266,18 @@ type Secret struct {
 	// already running, when it's switched off on purpose (heartbeat_opt_out),
 	// or when the type isn't heartbeat-capable at all.
 	HeartbeatBlockedReason string `protobuf:"bytes,34,opt,name=heartbeat_blocked_reason,json=heartbeatBlockedReason,proto3" json:"heartbeat_blocked_reason,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// The principal that created this secret (a human user id or a non-human
+	// principal id) — set once, at creation, never on edit/move/retype. Used by
+	// a folder grant's "own reveal" cell (RaciRule's C=own) to decide whether
+	// THIS secret, specifically, is readable: own-reveal checks this against
+	// the caller's principal id, never a blanket folder read. Empty on a
+	// secret created before this field existed; such a secret is readable
+	// under an own-reveal grant only once explicitly reassigned (not yet
+	// built — today it simply stays unreadable under that grant, the same as
+	// any other secret the caller didn't create).
+	CreatorPrincipalId string `protobuf:"bytes,35,opt,name=creator_principal_id,json=creatorPrincipalId,proto3" json:"creator_principal_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Secret) Reset() {
@@ -2529,6 +2544,13 @@ func (x *Secret) GetPosition() int32 {
 func (x *Secret) GetHeartbeatBlockedReason() string {
 	if x != nil {
 		return x.HeartbeatBlockedReason
+	}
+	return ""
+}
+
+func (x *Secret) GetCreatorPrincipalId() string {
+	if x != nil {
+		return x.CreatorPrincipalId
 	}
 	return ""
 }
@@ -15802,7 +15824,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"draftRules\x12\"\n" +
 	"\rsim_group_ids\x18\b \x03(\tR\vsimGroupIds\"U\n" +
 	"\x16SimulateSecretResponse\x12;\n" +
-	"\bdecision\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.RaciDecisionR\bdecision\"\xa1\v\n" +
+	"\bdecision\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.RaciDecisionR\bdecision\"\xd3\v\n" +
 	"\x06Secret\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
@@ -15844,7 +15866,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x11heartbeat_enabled\x18\x1c \x01(\bR\x10heartbeatEnabled\x126\n" +
 	"\x17always_require_approval\x18  \x01(\bR\x15alwaysRequireApproval\x12\x1a\n" +
 	"\bposition\x18! \x01(\x05R\bposition\x128\n" +
-	"\x18heartbeat_blocked_reason\x18\" \x01(\tR\x16heartbeatBlockedReason\"\x9c\x03\n" +
+	"\x18heartbeat_blocked_reason\x18\" \x01(\tR\x16heartbeatBlockedReason\x120\n" +
+	"\x14creator_principal_id\x18# \x01(\tR\x12creatorPrincipalId\"\x9c\x03\n" +
 	"\fActorContext\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\"\n" +
 	"\ris_site_admin\x18\x02 \x01(\bR\visSiteAdmin\x12\x17\n" +
