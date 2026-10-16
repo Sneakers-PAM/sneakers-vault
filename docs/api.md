@@ -282,8 +282,12 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   They are public keys, not secrets. `SaveTarget` replaces the whole list: each entry must parse,
   carry no options, and be neither a private key nor a certificate (else `InvalidArgument`, naming
   the entry by position only); repeats of one key are dropped; at most 16 per target. Only a human
-  site admin may add, change or clear them (`PermissionDenied` otherwise); anyone who may edit the
-  target can save it with the pins it already has. A change is audited as
+  site admin may add, change or clear them — no token may, not even one whose user is a site
+  admin: pinning decides which server a credential may be sent to, so it stays with a person, in
+  the admin app, on purpose. The refusal (`PermissionDenied`, ErrorInfo reason
+  `HOST_KEYS_PERSON_ONLY`) says that plainly ("pinned by a person in the admin app ... an agent's
+  token can't change them, even an admin's") rather than reading as a missing role. Anyone who may
+  edit the target can save it with the pins it already has. A change is audited as
   `target.host_keys.change` with the SHA256 fingerprints `added` and `removed`, never the keys.
   `ListTargets` returns them. An empty list means the target isn't pinned, and the broker refuses
   to connect to it. They're stored in `target_ssh_host_keys` with their fingerprints.

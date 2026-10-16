@@ -113,7 +113,12 @@ func applyHostKeys(actor *vaultv1.ActorContext, before, requested []string) ([]s
 		return keys, nil, nil
 	}
 	if !isHumanAdmin(actor) {
-		return nil, nil, status.Error(codes.PermissionDenied, "SSH host keys are set by a site admin")
+		// Not "you're missing a role": even an admin's token can't do this —
+		// pinning decides which server a credential may be sent to, so it
+		// stays with a person, in the admin app, on purpose (#164).
+		return nil, nil, refuse(ReasonHostKeysPersonOnly,
+			"SSH host keys are pinned by a person in the admin app (Targets → Scan and pin). "+
+				"An agent's token can't change them, even an admin's.")
 	}
 	return keys, map[string]string{
 		"added":   strings.Join(added, ","),

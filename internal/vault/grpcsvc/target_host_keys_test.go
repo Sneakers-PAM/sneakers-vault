@@ -16,7 +16,9 @@ import (
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"golang.org/x/crypto/ssh"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var hostKeyAdmin = &vaultv1.ActorContext{
@@ -261,5 +263,43 @@ func TestSaveTargetHostKeysAdminOnly(t *testing.T) {
 	}
 	if got := listedTarget(t, s, owner, id).GetSshHostKeys(); len(got) != 1 || got[0] != key {
 		t.Fatalf("pins after refused edit = %q", got)
+	}
+}
+
+// #164: the refusal must read as "a person has to do this", not "you're
+// missing a role" — a token whose user IS the box's site admin is refused
+// with the same reason as anyone else, because no token can pin host keys,
+// admin's included. A human admin still can.
+func TestSaveTargetHostKeysRefusalNamesThePersonOnlyRule(t *testing.T) {
+	s := newServer(t)
+	ctx := context.Background()
+	key, _ := genHostKey(t)
+	adminToken := tokenActor("user-admin", true)
+
+	_, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: adminToken, Target: &vaultv1.Target{
+		Name: "lab02", Hostname: "lab02.example.org", ConnectionId: "conn-ssh-default", SshHostKeys: []string{key},
+	}})
+	if code(err) != codes.PermissionDenied {
+		t.Fatalf("admin token pin: code = %v, want PermissionDenied", code(err))
+	}
+	if !strings.Contains(err.Error(), "admin's") || strings.Contains(err.Error(), "site admin") {
+		t.Fatalf("message must say a person must do this, not that the caller lacks a role: %v", err)
+	}
+	st, _ := status.FromError(err)
+	var info *errdetails.ErrorInfo
+	for _, d := range st.Details() {
+		if i, ok := d.(*errdetails.ErrorInfo); ok {
+			info = i
+		}
+	}
+	if info == nil || info.GetReason() != ReasonHostKeysPersonOnly {
+		t.Fatalf("error info = %v, want reason %s", info, ReasonHostKeysPersonOnly)
+	}
+
+	// A human admin still pins.
+	if _, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: hostKeyAdmin, Target: &vaultv1.Target{
+		Name: "lab03", Hostname: "lab03.example.org", ConnectionId: "conn-ssh-default", SshHostKeys: []string{key},
+	}}); err != nil {
+		t.Fatalf("human admin pin: %v", err)
 	}
 }

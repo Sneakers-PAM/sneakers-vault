@@ -20,6 +20,9 @@ const errorDomain = "sneakers.vault"
 const (
 	ReasonNotSiteAdmin   = "NOT_SITE_ADMIN"
 	ReasonNotFolderOwner = "NOT_FOLDER_OWNER"
+	// ReasonHostKeysPersonOnly: no token — not even an admin's — may pin or
+	// unpin a target's SSH host keys; only a human in the admin app can.
+	ReasonHostKeysPersonOnly = "HOST_KEYS_PERSON_ONLY"
 )
 
 // refuse builds a PermissionDenied status carrying an ErrorInfo for reason.
