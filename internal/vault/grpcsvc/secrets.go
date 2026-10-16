@@ -145,8 +145,8 @@ func (s *Server) ensureHeartbeatScheduled(ctx context.Context, sec *vaultv1.Secr
 		return
 	}
 	l := s.lg(ctx)
-	if !s.rotationReachable(sec) {
-		l.Info("heartbeat not scheduled: secret has no target with a connection", log.F("secret_id", sec.GetId()), log.F("target_id", sec.GetTargetId()))
+	if !s.heartbeatReachable(sec) {
+		l.Info("heartbeat not scheduled", log.F("secret_id", sec.GetId()), log.F("target_id", sec.GetTargetId()), log.F("reason", s.heartbeatUnreadyReason(sec)))
 		return
 	}
 	if err := s.hb.Ensure(ctx, sec.GetId(), int(sec.GetHeartbeatIntervalSeconds())); err != nil {
@@ -369,7 +369,9 @@ func (s *Server) applyAutomation(ctx context.Context, sec *vaultv1.Secret, disab
 		s.setRotationOptOut(ctx, sec, disableRotation, audit)
 	}
 	if disableHeartbeat != sec.GetHeartbeatOptOut() {
-		s.setHeartbeatOptOut(ctx, sec, disableHeartbeat, audit)
+		if err := s.setHeartbeatOptOut(ctx, sec, disableHeartbeat, audit); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -391,21 +393,34 @@ func (s *Server) setRotationOptOut(ctx context.Context, sec *vaultv1.Secret, opt
 	audit("secret.rotation.disable")
 }
 
-func (s *Server) setHeartbeatOptOut(ctx context.Context, sec *vaultv1.Secret, optOut bool, audit func(action string)) {
+// setHeartbeatOptOut applies the opt-out flag. Switching heartbeat ON is
+// refused, naming what's missing, when the secret isn't heartbeatReachable —
+// unlike ensureHeartbeatScheduled's silent no-op at create/update time, an
+// explicit request to switch it on is a request the caller expects to take
+// effect, so a silent no-op would read as success. Caller holds s.mu (write).
+func (s *Server) setHeartbeatOptOut(ctx context.Context, sec *vaultv1.Secret, optOut bool, audit func(action string)) error {
 	l := s.lg(ctx)
-	sec.HeartbeatOptOut = optOut
-	l.Info("secret heartbeat automation changed", log.F("secret_id", sec.GetId()), log.F("heartbeat_opt_out", optOut))
 	if !optOut {
+		if why := s.heartbeatUnreadyReason(sec); why != "" {
+			l.Info("heartbeat enable refused", log.F("secret_id", sec.GetId()), log.F("reason", why))
+			audit("secret.heartbeat.enable.refused")
+			return status.Errorf(codes.FailedPrecondition, "heartbeat can't be switched on: %s", why)
+		}
+		sec.HeartbeatOptOut = false
+		l.Info("secret heartbeat automation changed", log.F("secret_id", sec.GetId()), log.F("heartbeat_opt_out", false))
 		s.ensureHeartbeatScheduled(ctx, sec)
 		audit("secret.heartbeat.enable")
-		return
+		return nil
 	}
+	sec.HeartbeatOptOut = true
+	l.Info("secret heartbeat automation changed", log.F("secret_id", sec.GetId()), log.F("heartbeat_opt_out", true))
 	if s.hb != nil {
 		if err := s.hb.Remove(ctx, sec.GetId()); err != nil {
 			l.Error(err, "remove heartbeat schedule on opt-out failed", log.F("secret_id", sec.GetId()))
 		}
 	}
 	audit("secret.heartbeat.disable")
+	return nil
 }
 
 // GetSecretFields returns only the NON-sensitive field values (safe without an

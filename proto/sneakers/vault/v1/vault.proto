@@ -316,6 +316,14 @@ message Secret {
   // close the gap. ReorderSecrets sets the whole order. ListSecretsInFolder
   // returns secrets in this order.
   int32 position = 33;
+  // Output only, on the *ForPrincipal responses (computed, never stored;
+  // empty elsewhere, same convention as heartbeat_enabled): why heartbeat
+  // can't be switched on right now, for a heartbeat-capable type whose
+  // heartbeat isn't running — "no target", "no connection" or, for an SSH
+  // Key secret, "no pinned host key" on the target. Empty when heartbeat is
+  // already running, when it's switched off on purpose (heartbeat_opt_out),
+  // or when the type isn't heartbeat-capable at all.
+  string heartbeat_blocked_reason = 34;
 }
 
 // ---- Request/response messages ----------------------------------------------

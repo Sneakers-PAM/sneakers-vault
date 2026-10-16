@@ -232,6 +232,16 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   into a lockout. It resumes, due at once, when a person changes the value, a rotation commits, or
   `RequestHeartbeatForPrincipal` is called (at most once a minute). Without a worker-identity
   verifier no connector can claim checks, so that request answers `FailedPrecondition`.
+- **When a heartbeat starts:** a new or updated secret's heartbeat schedule row is only created
+  once it's actually reachable: a target whose connection exists, and — for an SSH Key secret
+  only, since the broker needs to trust the host before it sends a credential — at least one
+  pinned host key on that target. A heartbeat-capable secret that isn't reachable yet comes up
+  with heartbeat off rather than failing checks from the first poll; its principal view
+  (`heartbeat_blocked_reason`, `*ForPrincipal` responses only) names what's still missing ("no
+  target", "no connection" or "no pinned host key") so a caller knows it can switch heartbeat on
+  once that's fixed. `SetSecretAutomation(ForPrincipal)` opting a secret OUT of heartbeat always
+  succeeds; opting back IN is refused with the same reason (`FailedPrecondition`) when the secret
+  still isn't reachable, rather than silently doing nothing.
 - **Heartbeat audit rollup:** a successful check with the same result as the secret's last one
   doesn't write its own audit record. It folds into a pending `heartbeat_audit_summary` row (one
   per secret) that counts the checks and spans their first/last time, and is emitted as a single

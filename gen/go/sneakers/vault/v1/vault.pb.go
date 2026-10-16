@@ -2252,9 +2252,17 @@ type Secret struct {
 	// moved-in or restored secret goes last, and retire, delete and move-out
 	// close the gap. ReorderSecrets sets the whole order. ListSecretsInFolder
 	// returns secrets in this order.
-	Position      int32 `protobuf:"varint,33,opt,name=position,proto3" json:"position,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Position int32 `protobuf:"varint,33,opt,name=position,proto3" json:"position,omitempty"`
+	// Output only, on the *ForPrincipal responses (computed, never stored;
+	// empty elsewhere, same convention as heartbeat_enabled): why heartbeat
+	// can't be switched on right now, for a heartbeat-capable type whose
+	// heartbeat isn't running — "no target", "no connection" or, for an SSH
+	// Key secret, "no pinned host key" on the target. Empty when heartbeat is
+	// already running, when it's switched off on purpose (heartbeat_opt_out),
+	// or when the type isn't heartbeat-capable at all.
+	HeartbeatBlockedReason string `protobuf:"bytes,34,opt,name=heartbeat_blocked_reason,json=heartbeatBlockedReason,proto3" json:"heartbeat_blocked_reason,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Secret) Reset() {
@@ -2516,6 +2524,13 @@ func (x *Secret) GetPosition() int32 {
 		return x.Position
 	}
 	return 0
+}
+
+func (x *Secret) GetHeartbeatBlockedReason() string {
+	if x != nil {
+		return x.HeartbeatBlockedReason
+	}
+	return ""
 }
 
 type ActorContext struct {
@@ -15761,8 +15776,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"draftRules\x12\"\n" +
 	"\rsim_group_ids\x18\b \x03(\tR\vsimGroupIds\"U\n" +
 	"\x16SimulateSecretResponse\x12;\n" +
-	"\bdecision\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.RaciDecisionR\bdecision\"\xe7\n" +
-	"\n" +
+	"\bdecision\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.RaciDecisionR\bdecision\"\xa1\v\n" +
 	"\x06Secret\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
@@ -15803,7 +15817,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x12rotates_on_checkin\x18\x1b \x01(\bR\x10rotatesOnCheckin\x12+\n" +
 	"\x11heartbeat_enabled\x18\x1c \x01(\bR\x10heartbeatEnabled\x126\n" +
 	"\x17always_require_approval\x18  \x01(\bR\x15alwaysRequireApproval\x12\x1a\n" +
-	"\bposition\x18! \x01(\x05R\bposition\"\x9c\x03\n" +
+	"\bposition\x18! \x01(\x05R\bposition\x128\n" +
+	"\x18heartbeat_blocked_reason\x18\" \x01(\tR\x16heartbeatBlockedReason\"\x9c\x03\n" +
 	"\fActorContext\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\"\n" +
 	"\ris_site_admin\x18\x02 \x01(\bR\visSiteAdmin\x12\x17\n" +

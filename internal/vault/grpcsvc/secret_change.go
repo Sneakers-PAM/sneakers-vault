@@ -44,6 +44,9 @@ func (s *Server) principalSecretView(sec *vaultv1.Secret) *vaultv1.Secret {
 	out.RotationEnabled = s.rotationEligible(sec)
 	out.RotatesOnCheckin = out.GetRotationEnabled() && s.findType(sec.GetTypeId()).GetCheckout()
 	out.HeartbeatEnabled = s.secretHeartbeatEnabled(sec)
+	if !sec.GetHeartbeatOptOut() {
+		out.HeartbeatBlockedReason = s.heartbeatUnreadyReason(sec)
+	}
 	return out
 }
 

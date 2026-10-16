@@ -141,14 +141,15 @@ func (s *Server) ClaimDueHeartbeats(ctx context.Context, req *vaultv1.ClaimDueHe
 		if sec == nil || sec.GetRetired() {
 			continue
 		}
-		conn, tgt := s.connTargetFor(sec)
-		if conn == nil {
-			// The connector can only report UNREACHABLE here, which alerts.
-			// Dropping the row stops the re-claim; attaching a target
-			// schedules it again.
+		if !s.heartbeatReachable(sec) {
+			// The connector can only report UNREACHABLE (or, for SSH, refuse
+			// the host key) here, which alerts. Dropping the row stops the
+			// re-claim; attaching a target or pinning a host key schedules it
+			// again.
 			s.dropUnreachableHeartbeat(ctx, sec)
 			continue
 		}
+		conn, tgt := s.connTargetFor(sec)
 		jobs = append(jobs, &vaultv1.HeartbeatJob{
 			SecretId: id, SecretName: sec.GetName(),
 			Username:   s.nonSensitiveField(id, "username"),
@@ -430,6 +431,50 @@ func (s *Server) connTargetFor(sec *vaultv1.Secret) (*vaultv1.HeartbeatConn, *va
 	return &vaultv1.HeartbeatConn{
 		Protocol: conn.GetProtocol(), Host: tgt.GetHostname(), Port: conn.GetPort(), UseTls: conn.GetUseTls(),
 	}, target
+}
+
+// typeNeedsHostKeyPin reports whether a secret's type binds over SSH, so its
+// target's host identity must be pinned before the broker will send a
+// credential to it. Only SSH Key secrets need this; an AD or local Windows
+// account's heartbeat binds over LDAP/SMB, which this vault doesn't pin a
+// host key for.
+func typeNeedsHostKeyPin(typeID string) bool { return typeID == "type-ssh-key" }
+
+// heartbeatReachable reports whether a secret has everything its heartbeat
+// needs to actually run: a target whose connection exists (rotationReachable
+// covers both), and — for an SSH Key secret only — at least one pinned host
+// key on that target, since the broker refuses to send a credential to an
+// unpinned host. Caller holds at least s.mu.RLock.
+func (s *Server) heartbeatReachable(sec *vaultv1.Secret) bool {
+	if !s.rotationReachable(sec) {
+		return false
+	}
+	if !typeNeedsHostKeyPin(sec.GetTypeId()) {
+		return true
+	}
+	tgt := findByID(s.targets, sec.GetTargetId())
+	return tgt != nil && len(tgt.GetSshHostKeys()) > 0
+}
+
+// heartbeatUnreadyReason names what's missing for sec's heartbeat to run, for
+// a heartbeat-capable secret that isn't heartbeatReachable — "" if it is (or
+// the type isn't heartbeat-capable at all). Caller holds at least
+// s.mu.RLock.
+func (s *Server) heartbeatUnreadyReason(sec *vaultv1.Secret) string {
+	if !s.typeHasHeartbeat(sec.GetTypeId()) {
+		return ""
+	}
+	tgt := findByID(s.targets, sec.GetTargetId())
+	switch {
+	case sec.GetTargetId() == "" || tgt == nil:
+		return "no target"
+	case findByID(s.connections, tgt.GetConnectionId()) == nil:
+		return "no connection"
+	case typeNeedsHostKeyPin(sec.GetTypeId()) && len(tgt.GetSshHostKeys()) == 0:
+		return "no pinned host key"
+	default:
+		return ""
+	}
 }
 
 // nonSensitiveField reads one non-sensitive field's plaintext value for a

@@ -236,7 +236,7 @@ func (s *Server) retypeHeartbeat(ctx context.Context, sec *vaultv1.Secret, st, n
 	case !nt.GetHeartbeat():
 	case sec.GetHeartbeatOptOut():
 		outcome = "opted_out"
-	case !s.rotationReachable(sec):
+	case !s.heartbeatReachable(sec):
 		outcome = "no_target"
 	default:
 		outcome = "scheduled"
