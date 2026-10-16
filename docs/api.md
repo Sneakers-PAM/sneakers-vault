@@ -53,7 +53,7 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 | Secret types | `ListSecretTypes`, `CreateSecretType`, `UpdateSecretType`, `DeleteSecretType`, `CloneSecretType`, `ListAvailableExtensions`, `ImportExtension`, `ImportExtensionFromJson` |
 | Folders | `ListFolders`, `CreateFolder`, `RenameFolder`, `MoveFolder`, `DeleteFolder`, `ReorderFolders` |
 | Access rules | `GetFolderRuleset`, `SetFolderRuleset`, `GetMyAccess`, `SimulateFolder`, `SimulateSecret`, `GetSecretRuleset`, `SetSecretRuleset`, `GetMySecretAccess`, `GetTargetRuleset`, `SetTargetRuleset`; the older `ListFolderRules`, `GetInheritedFolderRules`, `AddFolderRule`, `RemoveFolderRule` |
-| Secrets | `ListSecretsInFolder`, `ReorderSecrets`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
+| Secrets | `ListSecretsInFolder`, `ListSecretsByTarget`, `ReorderSecrets`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
 | Break-glass browse | `OpenBreakGlassSession`, `GetBreakGlassSession`, `ListBreakGlassItems`, `CloseBreakGlassSession`, `ListBreakGlassSessions` |
 | Dashboard | `GetSecretStats`, `GetTopAccessedSecrets`, `ListSecretsByStatus`, `FindSecretsByPublicKey` |
 | Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `GetSecretForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
@@ -118,7 +118,9 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   succeeds, otherwise DEGRADED/FAILED — while `target_rotation_outcomes`/`target_heartbeat_outcomes`
   keep the per-target breakdown. A rotation already committed to the vault is never rolled back
   just because one target hasn't caught up: "done" only waits on every target getting there, or the
-  failures being shown.
+  failures being shown. `ListSecretsByTarget` lists every secret attached to a target (the
+  target's own page: "every secret attached to this target"), following the same visibility as
+  `ListSecretsInFolder` below — locked but listed, hidden on an explicit deny.
 - **Seeing secrets:** `ListSecretsInFolder` and `GetSecret` show a secret's metadata to anyone who
   can see its folder, even without read, so people can find a secret and request access. Each
   secret carries `can_read`, false when the caller can't read it. A secret an explicit deny

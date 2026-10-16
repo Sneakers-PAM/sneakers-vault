@@ -1212,6 +1212,14 @@ message GetTargetRulesetResponse { repeated RaciRule ruleset = 1; }
 message SetTargetRulesetRequest { ActorContext actor = 1; string target_id = 2; repeated RaciRule ruleset = 3; }
 message SetTargetRulesetResponse {}
 
+// ListSecretsByTarget lists every secret attached to target_id (#168's
+// "every secret attached to this target", for the target's page) — the
+// same can_read/locked-but-visible shape as ListSecretsInFolder, filtered
+// by target membership (secret.target_ids) instead of folder. A retired
+// secret is excluded, same default as ListSecretsInFolder.
+message ListSecretsByTargetRequest { ActorContext actor = 1; string target_id = 2; }
+message ListSecretsByTargetResponse { repeated Secret secrets = 1; }
+
 // ---- Connector / heartbeat ----
 // WorkerIdentity is the connector's platform identity (dev seam token now;
 // SPIFFE SVID later). The vault verifies it before releasing anything.
@@ -1555,6 +1563,9 @@ service VaultService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc SetTargetRuleset(SetTargetRulesetRequest) returns (SetTargetRulesetResponse);
+  rpc ListSecretsByTarget(ListSecretsByTargetRequest) returns (ListSecretsByTargetResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Certificates: import a certificate file into a secret, export a
   // certificate secret's material back out as a file, or replace a secret's
