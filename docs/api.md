@@ -308,17 +308,20 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 - **Type changes:** see [type-change.md](type-change.md).
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
   through `seed-catalog`.
-- **SELECT values:** a SELECT field's value must be one of its type's options. `CreateSecret`,
-  `UpdateSecret`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`,
-  `UpdateSecretFieldsForPrincipal` and `ChangeSecretTypeForPrincipal` refuse anything else with
-  `InvalidArgument` and an ErrorInfo (domain `sneakers.vault`): `FIELD_VALUE_NOT_ALLOWED`, or
-  `FIELD_VALUE_REQUIRED` for a required SELECT left empty or missing. The message names the field
-  and lists the options; the metadata carries `field` and `allowed` (the options joined by `|`).
-  Matching ignores case when exactly one option matches, and the option's own spelling is stored
-  (`ed25519` is stored as `Ed25519`); a value that could be more than one option is refused. An
-  optional SELECT may be empty. A create checks every SELECT field of the type; an update checks
-  the fields it sends, so a stored value from before this check is still read back as it is and
-  only has to change when that field is saved again. A SELECT with no options constrains nothing.
+- **Required fields:** a field a type marks `required` (any kind — TEXT, PASSWORD, MULTILINE,
+  SELECT and so on) may not be saved empty. `CreateSecret`, `UpdateSecret`,
+  `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `UpdateSecretFieldsForPrincipal` and
+  `ChangeSecretTypeForPrincipal` refuse an empty or missing value for one with `InvalidArgument`
+  and an ErrorInfo (domain `sneakers.vault`, reason `FIELD_VALUE_REQUIRED`, metadata `field`),
+  naming the field; a SELECT's refusal also lists its options (metadata `allowed`, the options
+  joined by `|`). An optional field may be empty. A create checks every field of the type, sent or
+  not; an update checks only the fields it sends, so a stored value from before this check existed
+  is still read, revealed and rotated as it is, and only has to change when that field is saved
+  again — the next save that touches it is what completes it.
+- **SELECT values:** a SELECT field's value must also be one of its type's options, refused the
+  same way (`FIELD_VALUE_NOT_ALLOWED`). Matching ignores case when exactly one option matches, and
+  the option's own spelling is stored (`ed25519` is stored as `Ed25519`); a value that could be
+  more than one option is refused. A SELECT with no options constrains nothing beyond required.
 - **Catalogue JSON:** `gen/catalogue/types.json` is the built-in catalogue and the extension packs
   as JSON (types, fields, kinds, options), generated from `BuiltinTypes` and `ExtensionCatalog`.
   `TestCatalogueJSONIsCurrent` fails when it is stale; regenerate it with

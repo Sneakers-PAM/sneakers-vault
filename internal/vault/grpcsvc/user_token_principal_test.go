@@ -111,7 +111,7 @@ func TestUserTokenReachesItsOwnersPersonalFolder(t *testing.T) {
 	admin := tokenActor("user-admin", true)
 
 	created, err := s.CreateSecretForPrincipal(context.Background(), &vaultv1.CreateSecretForPrincipalRequest{
-		Actor: admin, FolderId: own, TypeId: "type-password", Name: "my-login", Fields: map[string]string{"password": "x"},
+		Actor: admin, FolderId: own, TypeId: "type-password", Name: "my-login", Fields: map[string]string{"username": "my-login-u", "password": "x"},
 	})
 	if err != nil {
 		t.Fatalf("create in own personal folder: %v", err)
@@ -197,7 +197,7 @@ func TestHumanOpensASecretTheirOwnPersonalTokenCreated(t *testing.T) {
 	seedPersonalFolder(s, "user-admin")
 	created, err := s.CreateSecretForPrincipal(context.Background(), &vaultv1.CreateSecretForPrincipalRequest{
 		Actor: tokenActor("user-admin", false), FolderId: "folder-personal-admin", TypeId: "type-unix-ssh",
-		Name: "my-box", Fields: map[string]string{"host": "h", "username": "u"},
+		Name: "my-box", Fields: map[string]string{"host": "h", "username": "u", "password": "p"},
 	})
 	if err != nil {
 		t.Fatalf("CreateSecretForPrincipal: %v", err)
@@ -219,7 +219,7 @@ func TestUserTokenIsAuditedAsTheUserWithTheToken(t *testing.T) {
 	s.audit = ca
 	seedPersonalFolder(s, "user-ada")
 	if _, err := s.CreateSecretForPrincipal(context.Background(), &vaultv1.CreateSecretForPrincipalRequest{
-		Actor: tokenActor("user-ada", false), FolderId: "folder-personal-ada", TypeId: "type-password", Name: "n", Fields: map[string]string{"password": "x"},
+		Actor: tokenActor("user-ada", false), FolderId: "folder-personal-ada", TypeId: "type-password", Name: "n", Fields: map[string]string{"username": "n-u", "password": "x"},
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -57,18 +57,41 @@ func selectRefusal(f *vaultv1.SecretFieldDef, reason string) error {
 	return st.Err()
 }
 
-// checkSelectValue checks one SELECT field's value and returns it in the
-// option's canonical case. An empty value passes unless the field is
-// required. A SELECT with no options declared constrains nothing.
-func checkSelectValue(f *vaultv1.SecretFieldDef, v string) (string, error) {
-	if f.GetKind() != vaultv1.FieldKind_FIELD_KIND_SELECT || len(f.GetOptions()) == 0 {
-		return v, nil
+// requiredRefusal refuses an empty value for a required field, named the same
+// way selectRefusal names a bad SELECT value: for a SELECT with options
+// declared, the message also lists them (selectRefusal's existing
+// ReasonFieldValueRequired wording); for every other kind — TEXT, PASSWORD,
+// MULTILINE and so on — there's nothing to list, so it just says the field is
+// required.
+func requiredRefusal(f *vaultv1.SecretFieldDef) error {
+	if f.GetKind() == vaultv1.FieldKind_FIELD_KIND_SELECT && len(f.GetOptions()) > 0 {
+		return selectRefusal(f, ReasonFieldValueRequired)
 	}
+	msg := "field " + strconv.Quote(f.GetKey()) + " is required"
+	st := status.New(codes.InvalidArgument, msg)
+	if d, err := st.WithDetails(&errdetails.ErrorInfo{
+		Domain: errorDomain, Reason: ReasonFieldValueRequired,
+		Metadata: map[string]string{"field": f.GetKey()},
+	}); err == nil {
+		return d.Err()
+	}
+	return st.Err()
+}
+
+// checkSelectValue checks one field's value: required first (every kind, not
+// only SELECT — #163), then, for a SELECT with options declared, that the
+// value is one of them. Returns it in the option's canonical case for a
+// SELECT, else unchanged. An empty value passes unless the field is
+// required; a SELECT with no options declared constrains nothing beyond that.
+func checkSelectValue(f *vaultv1.SecretFieldDef, v string) (string, error) {
 	if v == "" {
 		if f.GetRequired() {
-			return "", selectRefusal(f, ReasonFieldValueRequired)
+			return "", requiredRefusal(f)
 		}
 		return "", nil
+	}
+	if f.GetKind() != vaultv1.FieldKind_FIELD_KIND_SELECT || len(f.GetOptions()) == 0 {
+		return v, nil
 	}
 	o, ok := matchOption(f.GetOptions(), v)
 	if !ok {
@@ -77,9 +100,10 @@ func checkSelectValue(f *vaultv1.SecretFieldDef, v string) (string, error) {
 	return o, nil
 }
 
-// checkSelectFieldsForCreate checks every SELECT field of st against fields,
-// a missing required one included. It returns a copy with case variants
-// replaced by the canonical option; fields itself is never changed.
+// checkSelectFieldsForCreate checks every field of st against fields — a
+// missing or empty required one included, whatever its kind, plus a SELECT's
+// options. It returns a copy with SELECT case variants replaced by the
+// canonical option; fields itself is never changed.
 func checkSelectFieldsForCreate(st *vaultv1.SecretType, fields map[string]string) (map[string]string, error) {
 	out := make(map[string]string, len(fields))
 	for k, v := range fields {
@@ -97,9 +121,12 @@ func checkSelectFieldsForCreate(st *vaultv1.SecretType, fields map[string]string
 	return out, nil
 }
 
-// checkSelectFieldsInPatch checks only the SELECT fields present in patch, so
-// a stored value that predates the check never blocks a change to another
-// field. It returns a canonical copy of patch.
+// checkSelectFieldsInPatch checks only the fields present in patch, so a
+// stored value that predates the check (a required field already empty, or a
+// SELECT value outside today's options) never blocks a change to another
+// field — it only refuses a NEW empty value for a required field, or a NEW
+// SELECT value outside the options, in the fields this save actually sends.
+// It returns a canonical copy of patch.
 func checkSelectFieldsInPatch(st *vaultv1.SecretType, patch map[string]string) (map[string]string, error) {
 	out := make(map[string]string, len(patch))
 	for _, k := range sortedKeys(patch) {
