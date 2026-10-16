@@ -106,13 +106,13 @@ func TestDeleteSecretRemovesItsVersionHistory(t *testing.T) {
 	fid := newSharedFolder(t, s)
 	carol := &vaultv1.ActorContext{UserId: "user-carol"}
 	keep, err := s.CreateSecret(ctx, &vaultv1.CreateSecretRequest{
-		Actor: carol, Name: "keep", FolderId: fid, TypeId: "type-password", Fields: map[string]string{"password": "k"},
+		Actor: carol, Name: "keep", FolderId: fid, TypeId: "type-password", Fields: map[string]string{"username": "keep-u", "password": "k"},
 	})
 	if err != nil {
 		t.Fatalf("CreateSecret keep: %v", err)
 	}
 	gone, err := s.CreateSecret(ctx, &vaultv1.CreateSecretRequest{
-		Actor: carol, Name: "gone", FolderId: fid, TypeId: "type-password", Fields: map[string]string{"password": "old"},
+		Actor: carol, Name: "gone", FolderId: fid, TypeId: "type-password", Fields: map[string]string{"username": "gone-u", "password": "old"},
 	})
 	if err != nil {
 		t.Fatalf("CreateSecret gone: %v", err)

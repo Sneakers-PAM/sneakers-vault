@@ -2252,9 +2252,17 @@ type Secret struct {
 	// moved-in or restored secret goes last, and retire, delete and move-out
 	// close the gap. ReorderSecrets sets the whole order. ListSecretsInFolder
 	// returns secrets in this order.
-	Position      int32 `protobuf:"varint,33,opt,name=position,proto3" json:"position,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Position int32 `protobuf:"varint,33,opt,name=position,proto3" json:"position,omitempty"`
+	// Output only, on the *ForPrincipal responses (computed, never stored;
+	// empty elsewhere, same convention as heartbeat_enabled): why heartbeat
+	// can't be switched on right now, for a heartbeat-capable type whose
+	// heartbeat isn't running — "no target", "no connection" or, for an SSH
+	// Key secret, "no pinned host key" on the target. Empty when heartbeat is
+	// already running, when it's switched off on purpose (heartbeat_opt_out),
+	// or when the type isn't heartbeat-capable at all.
+	HeartbeatBlockedReason string `protobuf:"bytes,34,opt,name=heartbeat_blocked_reason,json=heartbeatBlockedReason,proto3" json:"heartbeat_blocked_reason,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Secret) Reset() {
@@ -2516,6 +2524,13 @@ func (x *Secret) GetPosition() int32 {
 		return x.Position
 	}
 	return 0
+}
+
+func (x *Secret) GetHeartbeatBlockedReason() string {
+	if x != nil {
+		return x.HeartbeatBlockedReason
+	}
+	return ""
 }
 
 type ActorContext struct {
@@ -6152,8 +6167,13 @@ type ChangeSecretTypeForPrincipalResponse struct {
 	FieldKeys        []string               `protobuf:"bytes,2,rep,name=field_keys,json=fieldKeys,proto3" json:"field_keys,omitempty"`                          // field keys populated under the new type (never values)
 	MovedToNotesKeys []string               `protobuf:"bytes,3,rep,name=moved_to_notes_keys,json=movedToNotesKeys,proto3" json:"moved_to_notes_keys,omitempty"` // old keys appended to the notes field (never values)
 	NotesFieldKey    string                 `protobuf:"bytes,4,opt,name=notes_field_key,json=notesFieldKey,proto3" json:"notes_field_key,omitempty"`            // the notes field used, when moved_to_notes_keys is non-empty
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Describes the change itself (old type name -> new type name, fields
+	// added, renamed and carried over), the same text recorded on the new
+	// version (SecretVersion.change_label) — #165, so a type change never
+	// reads in history as just "Changed: <field>".
+	ChangeLabel   string `protobuf:"bytes,5,opt,name=change_label,json=changeLabel,proto3" json:"change_label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChangeSecretTypeForPrincipalResponse) Reset() {
@@ -6210,6 +6230,13 @@ func (x *ChangeSecretTypeForPrincipalResponse) GetMovedToNotesKeys() []string {
 func (x *ChangeSecretTypeForPrincipalResponse) GetNotesFieldKey() string {
 	if x != nil {
 		return x.NotesFieldKey
+	}
+	return ""
+}
+
+func (x *ChangeSecretTypeForPrincipalResponse) GetChangeLabel() string {
+	if x != nil {
+		return x.ChangeLabel
 	}
 	return ""
 }
@@ -7283,8 +7310,15 @@ type SecretVersion struct {
 	// versions counts as changed. Computed server-side by comparing value hashes,
 	// so still NEVER exposes any value. Empty means a re-save with no value change.
 	ChangedFieldKeys []string `protobuf:"bytes,6,rep,name=changed_field_keys,json=changedFieldKeys,proto3" json:"changed_field_keys,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Set only for a version a type change produced (#165): describes the
+	// change itself ("Type changed: Password -> Password Account (SSH); added
+	// host; fields carried over: username, password"), naming any field added,
+	// renamed (via field_mapping) or dropped by the mapping. Empty for every
+	// other version, which renders from changed_field_keys as before
+	// ("Changed: <field>, <field>").
+	ChangeLabel   string `protobuf:"bytes,7,opt,name=change_label,json=changeLabel,proto3" json:"change_label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SecretVersion) Reset() {
@@ -7357,6 +7391,13 @@ func (x *SecretVersion) GetChangedFieldKeys() []string {
 		return x.ChangedFieldKeys
 	}
 	return nil
+}
+
+func (x *SecretVersion) GetChangeLabel() string {
+	if x != nil {
+		return x.ChangeLabel
+	}
+	return ""
 }
 
 // List a secret's versions (newest version_no first). Metadata only; gated by
@@ -15761,8 +15802,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"draftRules\x12\"\n" +
 	"\rsim_group_ids\x18\b \x03(\tR\vsimGroupIds\"U\n" +
 	"\x16SimulateSecretResponse\x12;\n" +
-	"\bdecision\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.RaciDecisionR\bdecision\"\xe7\n" +
-	"\n" +
+	"\bdecision\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.RaciDecisionR\bdecision\"\xa1\v\n" +
 	"\x06Secret\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
@@ -15803,7 +15843,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x12rotates_on_checkin\x18\x1b \x01(\bR\x10rotatesOnCheckin\x12+\n" +
 	"\x11heartbeat_enabled\x18\x1c \x01(\bR\x10heartbeatEnabled\x126\n" +
 	"\x17always_require_approval\x18  \x01(\bR\x15alwaysRequireApproval\x12\x1a\n" +
-	"\bposition\x18! \x01(\x05R\bposition\"\x9c\x03\n" +
+	"\bposition\x18! \x01(\x05R\bposition\x128\n" +
+	"\x18heartbeat_blocked_reason\x18\" \x01(\tR\x16heartbeatBlockedReason\"\x9c\x03\n" +
 	"\fActorContext\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\"\n" +
 	"\ris_site_admin\x18\x02 \x01(\bR\visSiteAdmin\x12\x17\n" +
@@ -16047,13 +16088,14 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
 	"\vFieldsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xcf\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf2\x01\n" +
 	"$ChangeSecretTypeForPrincipalResponse\x121\n" +
 	"\x06secret\x18\x01 \x01(\v2\x19.sneakers.vault.v1.SecretR\x06secret\x12\x1d\n" +
 	"\n" +
 	"field_keys\x18\x02 \x03(\tR\tfieldKeys\x12-\n" +
 	"\x13moved_to_notes_keys\x18\x03 \x03(\tR\x10movedToNotesKeys\x12&\n" +
-	"\x0fnotes_field_key\x18\x04 \x01(\tR\rnotesFieldKey\"|\n" +
+	"\x0fnotes_field_key\x18\x04 \x01(\tR\rnotesFieldKey\x12!\n" +
+	"\fchange_label\x18\x05 \x01(\tR\vchangeLabel\"|\n" +
 	"\x1fRenameSecretForPrincipalRequest\x125\n" +
 	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n" +
@@ -16119,7 +16161,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"1\n" +
 	"\x15SealForImportResponse\x12\x18\n" +
-	"\arecords\x18\x01 \x03(\fR\arecords\"\xd1\x01\n" +
+	"\arecords\x18\x01 \x03(\fR\arecords\"\xf4\x01\n" +
 	"\rSecretVersion\x12\x1d\n" +
 	"\n" +
 	"version_no\x18\x01 \x01(\x05R\tversionNo\x12\x1d\n" +
@@ -16130,7 +16172,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x06active\x18\x04 \x01(\bR\x06active\x12\x1d\n" +
 	"\n" +
 	"field_keys\x18\x05 \x03(\tR\tfieldKeys\x12,\n" +
-	"\x12changed_field_keys\x18\x06 \x03(\tR\x10changedFieldKeys\"o\n" +
+	"\x12changed_field_keys\x18\x06 \x03(\tR\x10changedFieldKeys\x12!\n" +
+	"\fchange_label\x18\a \x01(\tR\vchangeLabel\"o\n" +
 	"\x19ListSecretVersionsRequest\x125\n" +
 	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12\x1b\n" +
 	"\tsecret_id\x18\x02 \x01(\tR\bsecretId\"Z\n" +

@@ -109,19 +109,27 @@ func TestHeartbeatSchedule_CreatedWhenTargetAttachedByPrincipal(t *testing.T) {
 	}
 }
 
+// #162: opting out still always succeeds; opting back IN without a reachable
+// target is now refused (naming what's missing) instead of silently
+// no-opting, since an explicit "switch it on" request that silently does
+// nothing reads as success to the caller.
 func TestHeartbeatSchedule_NotCreatedOnOptBackInWithoutTarget(t *testing.T) {
 	fx := newNoTargetFixture(t)
 	id := fx.createHuman(t, "")
 	ctx := context.Background()
-	for _, off := range []bool{true, false} {
-		if _, err := fx.s.SetSecretAutomation(ctx, &vaultv1.SetSecretAutomationRequest{
-			Actor: orgCarol, SecretId: id, DisableHeartbeat: off,
-		}); err != nil {
-			t.Fatalf("SetSecretAutomation(%v): %v", off, err)
-		}
+	if _, err := fx.s.SetSecretAutomation(ctx, &vaultv1.SetSecretAutomationRequest{
+		Actor: orgCarol, SecretId: id, DisableHeartbeat: true,
+	}); err != nil {
+		t.Fatalf("SetSecretAutomation(disable): %v", err)
+	}
+	_, err := fx.s.SetSecretAutomation(ctx, &vaultv1.SetSecretAutomationRequest{
+		Actor: orgCarol, SecretId: id, DisableHeartbeat: false,
+	})
+	if code(err) != codes.FailedPrecondition || !strings.Contains(err.Error(), "no target") {
+		t.Fatalf("opting back in without a target: want FailedPrecondition naming the target, got %v", err)
 	}
 	if fx.hasHBRow(t, id) {
-		t.Fatal("opting back in without a reachable target must not create the heartbeat_schedule row")
+		t.Fatal("a refused opt-in must not create the heartbeat_schedule row")
 	}
 }
 

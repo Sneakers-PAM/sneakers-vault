@@ -316,6 +316,14 @@ message Secret {
   // close the gap. ReorderSecrets sets the whole order. ListSecretsInFolder
   // returns secrets in this order.
   int32 position = 33;
+  // Output only, on the *ForPrincipal responses (computed, never stored;
+  // empty elsewhere, same convention as heartbeat_enabled): why heartbeat
+  // can't be switched on right now, for a heartbeat-capable type whose
+  // heartbeat isn't running — "no target", "no connection" or, for an SSH
+  // Key secret, "no pinned host key" on the target. Empty when heartbeat is
+  // already running, when it's switched off on purpose (heartbeat_opt_out),
+  // or when the type isn't heartbeat-capable at all.
+  string heartbeat_blocked_reason = 34;
 }
 
 // ---- Request/response messages ----------------------------------------------
@@ -630,6 +638,11 @@ message ChangeSecretTypeForPrincipalResponse {
   repeated string field_keys = 2; // field keys populated under the new type (never values)
   repeated string moved_to_notes_keys = 3; // old keys appended to the notes field (never values)
   string notes_field_key = 4;     // the notes field used, when moved_to_notes_keys is non-empty
+  // Describes the change itself (old type name -> new type name, fields
+  // added, renamed and carried over), the same text recorded on the new
+  // version (SecretVersion.change_label) — #165, so a type change never
+  // reads in history as just "Changed: <field>".
+  string change_label = 5;
 }
 
 // ---- Organize verbs for non-human principals --------------------------------
@@ -804,6 +817,13 @@ message SecretVersion {
   // versions counts as changed. Computed server-side by comparing value hashes,
   // so still NEVER exposes any value. Empty means a re-save with no value change.
   repeated string changed_field_keys = 6;
+  // Set only for a version a type change produced (#165): describes the
+  // change itself ("Type changed: Password -> Password Account (SSH); added
+  // host; fields carried over: username, password"), naming any field added,
+  // renamed (via field_mapping) or dropped by the mapping. Empty for every
+  // other version, which renders from changed_field_keys as before
+  // ("Changed: <field>, <field>").
+  string change_label = 7;
 }
 
 // List a secret's versions (newest version_no first). Metadata only; gated by

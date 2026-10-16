@@ -209,7 +209,14 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   connection), `rotates_on_checkin` (that plus a check-out type) and `heartbeat_enabled`.
 - **Version history (recovery):** `ListSecretVersions` gives a human reader the change list
   (version numbers, authors, times, changed field keys), never values; machine principals are
-  refused. Revealing a field of any version (`RevealSecretVersionField`) and
+  refused. A version a type change produced also carries `change_label` — "Type changed: <old
+  type> → <new type>", naming any field added, renamed (`field_mapping`) or carried over, and any
+  moved to notes — instead of reading as only "Changed: <field>" (#165). Empty for every other
+  version, which renders from its changed field keys as before. `ChangeSecretTypeForPrincipal`'s
+  own response and the `secret.type_change.principal` audit event (`change_label` attribute) carry
+  the identical text. A target attached afterward is its own audit event
+  (`secret.target.principal`) and never touches an already-written version's label — attaching a
+  target mints no version at all. Revealing a field of any version (`RevealSecretVersionField`) and
   `RestoreSecretVersion` need read on the secret plus the recovery role (`is_recovery`; site
   admin and root don't imply it) and an MFA within `MFA_MAX_AGE`. Otherwise `PermissionDenied`
   with reason `RECOVERY_ROLE_REQUIRED` or `STEP_UP_REQUIRED`, audited as `recovery.denied`.
@@ -232,6 +239,27 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   into a lockout. It resumes, due at once, when a person changes the value, a rotation commits, or
   `RequestHeartbeatForPrincipal` is called (at most once a minute). Without a worker-identity
   verifier no connector can claim checks, so that request answers `FailedPrecondition`.
+- **When a heartbeat starts:** a new or updated secret's heartbeat schedule row is only created
+  once it's actually reachable: a target whose connection exists, and — for an SSH Key secret
+  only, since the broker needs to trust the host before it sends a credential — at least one
+  pinned host key on that target. A heartbeat-capable secret that isn't reachable yet comes up
+  with heartbeat off rather than failing checks from the first poll; its principal view
+  (`heartbeat_blocked_reason`, `*ForPrincipal` responses only) names what's still missing ("no
+  target", "no connection" or "no pinned host key") so a caller knows it can switch heartbeat on
+  once that's fixed. `SetSecretAutomation(ForPrincipal)` opting a secret OUT of heartbeat always
+  succeeds; opting back IN is refused with the same reason (`FailedPrecondition`) when the secret
+  still isn't reachable, rather than silently doing nothing.
+- **Heartbeat audit rollup:** a successful check with the same result as the secret's last one
+  doesn't write its own audit record. It folds into a pending `heartbeat_audit_summary` row (one
+  per secret) that counts the checks and spans their first/last time, and is emitted as a single
+  `heartbeat.summary` record — the only one those checks ever produce — at the first state change
+  (a failure, a host-key refusal, or a recovery into OK) or when the day closes, whichever comes
+  first. A day rollover with the result staying OK flushes the same way but starts the next day's
+  rollup silently, with no individual record of its own. Every failure, host-key refusal and state
+  change is still audited on its own, exactly as before: `heartbeat.report` for a failure or
+  recovery, `secret.heartbeat.host_key` for a host-key refusal, `secret.heartbeat.pause` /
+  `secret.heartbeat.resume` for the pause lifecycle. Person and agent actions on a secret are
+  never rolled up.
 - **Built-in Administrator:** an Active Directory account the connector reports as RID 500 is
   never rotated (heartbeat still runs). Manual rotation and turning rotation back on answer
   `FailedPrecondition`; check-in and break-glass rotations are skipped so the lease still closes.
@@ -261,8 +289,12 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   They are public keys, not secrets. `SaveTarget` replaces the whole list: each entry must parse,
   carry no options, and be neither a private key nor a certificate (else `InvalidArgument`, naming
   the entry by position only); repeats of one key are dropped; at most 16 per target. Only a human
-  site admin may add, change or clear them (`PermissionDenied` otherwise); anyone who may edit the
-  target can save it with the pins it already has. A change is audited as
+  site admin may add, change or clear them — no token may, not even one whose user is a site
+  admin: pinning decides which server a credential may be sent to, so it stays with a person, in
+  the admin app, on purpose. The refusal (`PermissionDenied`, ErrorInfo reason
+  `HOST_KEYS_PERSON_ONLY`) says that plainly ("pinned by a person in the admin app ... an agent's
+  token can't change them, even an admin's") rather than reading as a missing role. Anyone who may
+  edit the target can save it with the pins it already has. A change is audited as
   `target.host_keys.change` with the SHA256 fingerprints `added` and `removed`, never the keys.
   `ListTargets` returns them. An empty list means the target isn't pinned, and the broker refuses
   to connect to it. They're stored in `target_ssh_host_keys` with their fingerprints.
@@ -287,17 +319,20 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 - **Type changes:** see [type-change.md](type-change.md).
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
   through `seed-catalog`.
-- **SELECT values:** a SELECT field's value must be one of its type's options. `CreateSecret`,
-  `UpdateSecret`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`,
-  `UpdateSecretFieldsForPrincipal` and `ChangeSecretTypeForPrincipal` refuse anything else with
-  `InvalidArgument` and an ErrorInfo (domain `sneakers.vault`): `FIELD_VALUE_NOT_ALLOWED`, or
-  `FIELD_VALUE_REQUIRED` for a required SELECT left empty or missing. The message names the field
-  and lists the options; the metadata carries `field` and `allowed` (the options joined by `|`).
-  Matching ignores case when exactly one option matches, and the option's own spelling is stored
-  (`ed25519` is stored as `Ed25519`); a value that could be more than one option is refused. An
-  optional SELECT may be empty. A create checks every SELECT field of the type; an update checks
-  the fields it sends, so a stored value from before this check is still read back as it is and
-  only has to change when that field is saved again. A SELECT with no options constrains nothing.
+- **Required fields:** a field a type marks `required` (any kind — TEXT, PASSWORD, MULTILINE,
+  SELECT and so on) may not be saved empty. `CreateSecret`, `UpdateSecret`,
+  `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `UpdateSecretFieldsForPrincipal` and
+  `ChangeSecretTypeForPrincipal` refuse an empty or missing value for one with `InvalidArgument`
+  and an ErrorInfo (domain `sneakers.vault`, reason `FIELD_VALUE_REQUIRED`, metadata `field`),
+  naming the field; a SELECT's refusal also lists its options (metadata `allowed`, the options
+  joined by `|`). An optional field may be empty. A create checks every field of the type, sent or
+  not; an update checks only the fields it sends, so a stored value from before this check existed
+  is still read, revealed and rotated as it is, and only has to change when that field is saved
+  again — the next save that touches it is what completes it.
+- **SELECT values:** a SELECT field's value must also be one of its type's options, refused the
+  same way (`FIELD_VALUE_NOT_ALLOWED`). Matching ignores case when exactly one option matches, and
+  the option's own spelling is stored (`ed25519` is stored as `Ed25519`); a value that could be
+  more than one option is refused. A SELECT with no options constrains nothing beyond required.
 - **Catalogue JSON:** `gen/catalogue/types.json` is the built-in catalogue and the extension packs
   as JSON (types, fields, kinds, options), generated from `BuiltinTypes` and `ExtensionCatalog`.
   `TestCatalogueJSONIsCurrent` fails when it is stale; regenerate it with

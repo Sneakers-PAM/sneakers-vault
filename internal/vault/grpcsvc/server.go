@@ -81,12 +81,13 @@ type Server struct {
 	extCatalog     []*vaultv1.SecretType    // installable extension packs (not yet installed)
 	records        map[string]crypto.Record // secretID -> encrypted field set
 
-	crypt    *crypto.Envelope
-	audit    Auditor
-	notifier Notifier
-	store    Store
-	hb       *heartbeatStore
-	contacts *connectorStore
+	crypt     *crypto.Envelope
+	audit     Auditor
+	notifier  Notifier
+	store     Store
+	hb        *heartbeatStore
+	hbSummary *heartbeatSummaryStore
+	contacts  *connectorStore
 	// maint is the read-only maintenance switch; nil is off.
 	maint *maintenance.Mode
 	vers  *versionStore
@@ -449,6 +450,7 @@ func (s *Server) lg(ctx context.Context) log.Logger {
 // verifier (called from cmd/vault after the pool is opened).
 func (s *Server) SetHeartbeat(db *postgres.DB, wid workloadid.WorkloadIdentityVerifier) {
 	s.hb = newHeartbeatStore(db.Querier())
+	s.hbSummary = newHeartbeatSummaryStore(db.Querier())
 	s.contacts = newConnectorStore(db.Querier())
 	s.wid = wid
 }

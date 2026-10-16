@@ -236,7 +236,7 @@ func (s *Server) retypeHeartbeat(ctx context.Context, sec *vaultv1.Secret, st, n
 	case !nt.GetHeartbeat():
 	case sec.GetHeartbeatOptOut():
 		outcome = "opted_out"
-	case !s.rotationReachable(sec):
+	case !s.heartbeatReachable(sec):
 		outcome = "no_target"
 	default:
 		outcome = "scheduled"
@@ -541,9 +541,10 @@ func (s *Server) ChangeSecretTypeForPrincipal(ctx context.Context, req *vaultv1.
 	s.records[sec.GetId()] = rec
 	sec.TypeId = nt.GetId()
 	sec.ExpiresAt = expiresAt
+	label := typeChangeLabel(st, nt, req.GetFieldMapping(), next, rt.moved)
 	var ledgerNo int
 	if s.vers != nil {
-		ledgerNo, _ = s.vers.AppendActive(ctx, sec.GetId(), rec, principalActorID(actor))
+		ledgerNo, _ = s.vers.AppendActiveWithNote(ctx, sec.GetId(), rec, principalActorID(actor), label)
 	}
 	s.markValueChanged(ctx, sec, ledgerNo)
 	auto := s.applyRetypeAutomation(ctx, sec, st, nt)
@@ -560,10 +561,11 @@ func (s *Server) ChangeSecretTypeForPrincipal(ctx context.Context, req *vaultv1.
 		"target":              auto.target,
 		"from_target_id":      auto.fromTargetID,
 		"target_id":           sec.GetTargetId(),
+		"change_label":        label,
 	}))
 	s.notifyInformed(ctx, principalActorID(actor), "secret.type_change.principal", "secret", sec.GetId(), sec.GetName(), s.secretChain(sec))
 	return &vaultv1.ChangeSecretTypeForPrincipalResponse{
-		Secret: sec, FieldKeys: keys, MovedToNotesKeys: rt.moved, NotesFieldKey: rt.notesKey,
+		Secret: sec, FieldKeys: keys, MovedToNotesKeys: rt.moved, NotesFieldKey: rt.notesKey, ChangeLabel: label,
 	}, nil
 }
 

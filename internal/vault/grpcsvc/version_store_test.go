@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS secret_versions (
   staged      BOOLEAN     NOT NULL DEFAULT false,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_by  TEXT        NOT NULL DEFAULT '',
+  change_note TEXT,
   PRIMARY KEY (secret_id, version_no)
 );
 CREATE INDEX IF NOT EXISTS secret_versions_active ON secret_versions (secret_id) WHERE active;
