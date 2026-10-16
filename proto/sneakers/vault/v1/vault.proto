@@ -574,6 +574,40 @@ message GenerateSecretForPrincipalResponse {
   string generated_value = 2;     // set only when return_value=true
 }
 
+// Regenerate an EXISTING secret's password-kind field under its policy and
+// store it as a new version, as a non-human principal. Requires RACI-Author
+// (R) on the secret's folder chain — the same grant CreateSecretForPrincipal/
+// GenerateSecretForPrincipal require — never RACI-C: a principal that may
+// only reveal, not author, may not rotate. Refused (audited) while a
+// scheduled rotation of the secret is queued or running (mirrors
+// RestoreSecretVersion's ROTATION_IN_PROGRESS guard). Unlike
+// GenerateSecretForPrincipal's generated_value, the new value is always
+// returned: the caller's whole reason to rotate (e.g. a local-admin-password
+// broker) is to push it to the target next, store-then-set.
+message RotateSecretForPrincipalRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  string policy_id = 3; // optional password policy override; else the field's/default
+}
+message RotateSecretForPrincipalResponse {
+  Secret secret = 1;
+  string new_value = 2;
+}
+
+// Make a prior version current again, as a non-human principal. Requires
+// RACI-Author (R) on the secret's folder chain (never the human-only
+// recovery role RestoreSecretVersion needs). Refused (audited) while a
+// scheduled rotation is queued or running. Only the vault's copy changes —
+// never pushed to a target — mirroring RestoreSecretVersion.
+message RestoreSecretVersionForPrincipalRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  int32 version_no = 3;
+}
+message RestoreSecretVersionForPrincipalResponse {
+  Secret secret = 1;
+}
+
 // Move a secret to another folder as a non-human principal. Same rule as the
 // human UpdateSecret dest_folder_id move: RACI-Author (R) on the secret's
 // current location AND on the destination folder chain. A move into a personal
@@ -1520,6 +1554,9 @@ service VaultService {
   }
   rpc CreateSecretForPrincipal(CreateSecretForPrincipalRequest) returns (CreateSecretForPrincipalResponse);
   rpc GenerateSecretForPrincipal(GenerateSecretForPrincipalRequest) returns (GenerateSecretForPrincipalResponse);
+  // Rotate/restore for non-human principals: RACI-Author, never RACI-C.
+  rpc RotateSecretForPrincipal(RotateSecretForPrincipalRequest) returns (RotateSecretForPrincipalResponse);
+  rpc RestoreSecretVersionForPrincipal(RestoreSecretVersionForPrincipalRequest) returns (RestoreSecretVersionForPrincipalResponse);
   rpc MoveSecretForPrincipal(MoveSecretForPrincipalRequest) returns (MoveSecretForPrincipalResponse);
   rpc ChangeSecretTypeForPrincipal(ChangeSecretTypeForPrincipalRequest) returns (ChangeSecretTypeForPrincipalResponse);
   // Organize verbs for non-human principals: rename/update a secret and

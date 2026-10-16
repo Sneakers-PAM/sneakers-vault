@@ -22,114 +22,116 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	VaultService_ListConnections_FullMethodName                 = "/sneakers.vault.v1.VaultService/ListConnections"
-	VaultService_SaveConnection_FullMethodName                  = "/sneakers.vault.v1.VaultService/SaveConnection"
-	VaultService_DeleteConnection_FullMethodName                = "/sneakers.vault.v1.VaultService/DeleteConnection"
-	VaultService_ListTargets_FullMethodName                     = "/sneakers.vault.v1.VaultService/ListTargets"
-	VaultService_SaveTarget_FullMethodName                      = "/sneakers.vault.v1.VaultService/SaveTarget"
-	VaultService_DeleteTarget_FullMethodName                    = "/sneakers.vault.v1.VaultService/DeleteTarget"
-	VaultService_GetTargetRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/GetTargetRuleset"
-	VaultService_SetTargetRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/SetTargetRuleset"
-	VaultService_ImportCertificate_FullMethodName               = "/sneakers.vault.v1.VaultService/ImportCertificate"
-	VaultService_ExportCertificate_FullMethodName               = "/sneakers.vault.v1.VaultService/ExportCertificate"
-	VaultService_ReplaceCertificate_FullMethodName              = "/sneakers.vault.v1.VaultService/ReplaceCertificate"
-	VaultService_ListSecretTypes_FullMethodName                 = "/sneakers.vault.v1.VaultService/ListSecretTypes"
-	VaultService_CreateSecretType_FullMethodName                = "/sneakers.vault.v1.VaultService/CreateSecretType"
-	VaultService_UpdateSecretType_FullMethodName                = "/sneakers.vault.v1.VaultService/UpdateSecretType"
-	VaultService_DeleteSecretType_FullMethodName                = "/sneakers.vault.v1.VaultService/DeleteSecretType"
-	VaultService_CloneSecretType_FullMethodName                 = "/sneakers.vault.v1.VaultService/CloneSecretType"
-	VaultService_ListAvailableExtensions_FullMethodName         = "/sneakers.vault.v1.VaultService/ListAvailableExtensions"
-	VaultService_ImportExtension_FullMethodName                 = "/sneakers.vault.v1.VaultService/ImportExtension"
-	VaultService_ImportExtensionFromJson_FullMethodName         = "/sneakers.vault.v1.VaultService/ImportExtensionFromJson"
-	VaultService_ListFolders_FullMethodName                     = "/sneakers.vault.v1.VaultService/ListFolders"
-	VaultService_CreateFolder_FullMethodName                    = "/sneakers.vault.v1.VaultService/CreateFolder"
-	VaultService_RenameFolder_FullMethodName                    = "/sneakers.vault.v1.VaultService/RenameFolder"
-	VaultService_MoveFolder_FullMethodName                      = "/sneakers.vault.v1.VaultService/MoveFolder"
-	VaultService_DeleteFolder_FullMethodName                    = "/sneakers.vault.v1.VaultService/DeleteFolder"
-	VaultService_ReorderFolders_FullMethodName                  = "/sneakers.vault.v1.VaultService/ReorderFolders"
-	VaultService_ListFolderRules_FullMethodName                 = "/sneakers.vault.v1.VaultService/ListFolderRules"
-	VaultService_GetInheritedFolderRules_FullMethodName         = "/sneakers.vault.v1.VaultService/GetInheritedFolderRules"
-	VaultService_AddFolderRule_FullMethodName                   = "/sneakers.vault.v1.VaultService/AddFolderRule"
-	VaultService_RemoveFolderRule_FullMethodName                = "/sneakers.vault.v1.VaultService/RemoveFolderRule"
-	VaultService_GetFolderRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/GetFolderRuleset"
-	VaultService_SetFolderRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/SetFolderRuleset"
-	VaultService_SetFolderRevealStepUp_FullMethodName           = "/sneakers.vault.v1.VaultService/SetFolderRevealStepUp"
-	VaultService_GetMyAccess_FullMethodName                     = "/sneakers.vault.v1.VaultService/GetMyAccess"
-	VaultService_SimulateFolder_FullMethodName                  = "/sneakers.vault.v1.VaultService/SimulateFolder"
-	VaultService_SimulateSecret_FullMethodName                  = "/sneakers.vault.v1.VaultService/SimulateSecret"
-	VaultService_ListSecretsInFolder_FullMethodName             = "/sneakers.vault.v1.VaultService/ListSecretsInFolder"
-	VaultService_ReorderSecrets_FullMethodName                  = "/sneakers.vault.v1.VaultService/ReorderSecrets"
-	VaultService_GetSecret_FullMethodName                       = "/sneakers.vault.v1.VaultService/GetSecret"
-	VaultService_CreateSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/CreateSecret"
-	VaultService_UpdateSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/UpdateSecret"
-	VaultService_SetSecretAutomation_FullMethodName             = "/sneakers.vault.v1.VaultService/SetSecretAutomation"
-	VaultService_GetSecretFields_FullMethodName                 = "/sneakers.vault.v1.VaultService/GetSecretFields"
-	VaultService_RevealSecretField_FullMethodName               = "/sneakers.vault.v1.VaultService/RevealSecretField"
-	VaultService_RevealSecretFieldForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/RevealSecretFieldForPrincipal"
-	VaultService_ListSecretsForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/ListSecretsForPrincipal"
-	VaultService_GetSecretForPrincipal_FullMethodName           = "/sneakers.vault.v1.VaultService/GetSecretForPrincipal"
-	VaultService_CreateSecretForPrincipal_FullMethodName        = "/sneakers.vault.v1.VaultService/CreateSecretForPrincipal"
-	VaultService_GenerateSecretForPrincipal_FullMethodName      = "/sneakers.vault.v1.VaultService/GenerateSecretForPrincipal"
-	VaultService_MoveSecretForPrincipal_FullMethodName          = "/sneakers.vault.v1.VaultService/MoveSecretForPrincipal"
-	VaultService_ChangeSecretTypeForPrincipal_FullMethodName    = "/sneakers.vault.v1.VaultService/ChangeSecretTypeForPrincipal"
-	VaultService_RenameSecretForPrincipal_FullMethodName        = "/sneakers.vault.v1.VaultService/RenameSecretForPrincipal"
-	VaultService_UpdateSecretFieldsForPrincipal_FullMethodName  = "/sneakers.vault.v1.VaultService/UpdateSecretFieldsForPrincipal"
-	VaultService_ListFoldersForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/ListFoldersForPrincipal"
-	VaultService_CreateFolderForPrincipal_FullMethodName        = "/sneakers.vault.v1.VaultService/CreateFolderForPrincipal"
-	VaultService_RenameFolderForPrincipal_FullMethodName        = "/sneakers.vault.v1.VaultService/RenameFolderForPrincipal"
-	VaultService_MoveFolderForPrincipal_FullMethodName          = "/sneakers.vault.v1.VaultService/MoveFolderForPrincipal"
-	VaultService_ListSecretVersions_FullMethodName              = "/sneakers.vault.v1.VaultService/ListSecretVersions"
-	VaultService_RevealSecretVersionField_FullMethodName        = "/sneakers.vault.v1.VaultService/RevealSecretVersionField"
-	VaultService_RestoreSecretVersion_FullMethodName            = "/sneakers.vault.v1.VaultService/RestoreSecretVersion"
-	VaultService_BreakGlassSecret_FullMethodName                = "/sneakers.vault.v1.VaultService/BreakGlassSecret"
-	VaultService_OpenBreakGlassSession_FullMethodName           = "/sneakers.vault.v1.VaultService/OpenBreakGlassSession"
-	VaultService_GetBreakGlassSession_FullMethodName            = "/sneakers.vault.v1.VaultService/GetBreakGlassSession"
-	VaultService_ListBreakGlassItems_FullMethodName             = "/sneakers.vault.v1.VaultService/ListBreakGlassItems"
-	VaultService_CloseBreakGlassSession_FullMethodName          = "/sneakers.vault.v1.VaultService/CloseBreakGlassSession"
-	VaultService_ListBreakGlassSessions_FullMethodName          = "/sneakers.vault.v1.VaultService/ListBreakGlassSessions"
-	VaultService_CopySecret_FullMethodName                      = "/sneakers.vault.v1.VaultService/CopySecret"
-	VaultService_RetireSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/RetireSecret"
-	VaultService_RestoreSecret_FullMethodName                   = "/sneakers.vault.v1.VaultService/RestoreSecret"
-	VaultService_DeleteSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/DeleteSecret"
-	VaultService_GetSecretStats_FullMethodName                  = "/sneakers.vault.v1.VaultService/GetSecretStats"
-	VaultService_GetTopAccessedSecrets_FullMethodName           = "/sneakers.vault.v1.VaultService/GetTopAccessedSecrets"
-	VaultService_ListSecretsByStatus_FullMethodName             = "/sneakers.vault.v1.VaultService/ListSecretsByStatus"
-	VaultService_FindSecretsByPublicKey_FullMethodName          = "/sneakers.vault.v1.VaultService/FindSecretsByPublicKey"
-	VaultService_GetSecretRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/GetSecretRuleset"
-	VaultService_SetSecretRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/SetSecretRuleset"
-	VaultService_GetMySecretAccess_FullMethodName               = "/sneakers.vault.v1.VaultService/GetMySecretAccess"
-	VaultService_ClaimDueHeartbeats_FullMethodName              = "/sneakers.vault.v1.VaultService/ClaimDueHeartbeats"
-	VaultService_RevealForHeartbeat_FullMethodName              = "/sneakers.vault.v1.VaultService/RevealForHeartbeat"
-	VaultService_ReportHeartbeat_FullMethodName                 = "/sneakers.vault.v1.VaultService/ReportHeartbeat"
-	VaultService_EnqueueRotation_FullMethodName                 = "/sneakers.vault.v1.VaultService/EnqueueRotation"
-	VaultService_ClaimDueRotations_FullMethodName               = "/sneakers.vault.v1.VaultService/ClaimDueRotations"
-	VaultService_RevealForRotation_FullMethodName               = "/sneakers.vault.v1.VaultService/RevealForRotation"
-	VaultService_ReportRotation_FullMethodName                  = "/sneakers.vault.v1.VaultService/ReportRotation"
-	VaultService_ListConnectors_FullMethodName                  = "/sneakers.vault.v1.VaultService/ListConnectors"
-	VaultService_ListPasswordPolicies_FullMethodName            = "/sneakers.vault.v1.VaultService/ListPasswordPolicies"
-	VaultService_SavePasswordPolicy_FullMethodName              = "/sneakers.vault.v1.VaultService/SavePasswordPolicy"
-	VaultService_DeletePasswordPolicy_FullMethodName            = "/sneakers.vault.v1.VaultService/DeletePasswordPolicy"
-	VaultService_GetSecuritySettings_FullMethodName             = "/sneakers.vault.v1.VaultService/GetSecuritySettings"
-	VaultService_UpdateSecuritySettings_FullMethodName          = "/sneakers.vault.v1.VaultService/UpdateSecuritySettings"
-	VaultService_SeedBuiltins_FullMethodName                    = "/sneakers.vault.v1.VaultService/SeedBuiltins"
-	VaultService_GenerateKeyPair_FullMethodName                 = "/sneakers.vault.v1.VaultService/GenerateKeyPair"
-	VaultService_RotateKek_FullMethodName                       = "/sneakers.vault.v1.VaultService/RotateKek"
-	VaultService_SealForImport_FullMethodName                   = "/sneakers.vault.v1.VaultService/SealForImport"
-	VaultService_PrepareSecretUse_FullMethodName                = "/sneakers.vault.v1.VaultService/PrepareSecretUse"
-	VaultService_GetSecretUse_FullMethodName                    = "/sneakers.vault.v1.VaultService/GetSecretUse"
-	VaultService_ListPendingSecretUses_FullMethodName           = "/sneakers.vault.v1.VaultService/ListPendingSecretUses"
-	VaultService_DecideSecretUse_FullMethodName                 = "/sneakers.vault.v1.VaultService/DecideSecretUse"
-	VaultService_ConfirmSecretUse_FullMethodName                = "/sneakers.vault.v1.VaultService/ConfirmSecretUse"
-	VaultService_ListSecretUsesToDecide_FullMethodName          = "/sneakers.vault.v1.VaultService/ListSecretUsesToDecide"
-	VaultService_RedeemSecretUse_FullMethodName                 = "/sneakers.vault.v1.VaultService/RedeemSecretUse"
-	VaultService_CreateUseGrant_FullMethodName                  = "/sneakers.vault.v1.VaultService/CreateUseGrant"
-	VaultService_ListUseGrants_FullMethodName                   = "/sneakers.vault.v1.VaultService/ListUseGrants"
-	VaultService_RevokeUseGrant_FullMethodName                  = "/sneakers.vault.v1.VaultService/RevokeUseGrant"
-	VaultService_SetSecretTokenApproval_FullMethodName          = "/sneakers.vault.v1.VaultService/SetSecretTokenApproval"
-	VaultService_SetSecretTargetForPrincipal_FullMethodName     = "/sneakers.vault.v1.VaultService/SetSecretTargetForPrincipal"
-	VaultService_SetSecretAutomationForPrincipal_FullMethodName = "/sneakers.vault.v1.VaultService/SetSecretAutomationForPrincipal"
-	VaultService_RequestHeartbeatForPrincipal_FullMethodName    = "/sneakers.vault.v1.VaultService/RequestHeartbeatForPrincipal"
-	VaultService_GetHeartbeatStatusForPrincipal_FullMethodName  = "/sneakers.vault.v1.VaultService/GetHeartbeatStatusForPrincipal"
+	VaultService_ListConnections_FullMethodName                  = "/sneakers.vault.v1.VaultService/ListConnections"
+	VaultService_SaveConnection_FullMethodName                   = "/sneakers.vault.v1.VaultService/SaveConnection"
+	VaultService_DeleteConnection_FullMethodName                 = "/sneakers.vault.v1.VaultService/DeleteConnection"
+	VaultService_ListTargets_FullMethodName                      = "/sneakers.vault.v1.VaultService/ListTargets"
+	VaultService_SaveTarget_FullMethodName                       = "/sneakers.vault.v1.VaultService/SaveTarget"
+	VaultService_DeleteTarget_FullMethodName                     = "/sneakers.vault.v1.VaultService/DeleteTarget"
+	VaultService_GetTargetRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/GetTargetRuleset"
+	VaultService_SetTargetRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/SetTargetRuleset"
+	VaultService_ImportCertificate_FullMethodName                = "/sneakers.vault.v1.VaultService/ImportCertificate"
+	VaultService_ExportCertificate_FullMethodName                = "/sneakers.vault.v1.VaultService/ExportCertificate"
+	VaultService_ReplaceCertificate_FullMethodName               = "/sneakers.vault.v1.VaultService/ReplaceCertificate"
+	VaultService_ListSecretTypes_FullMethodName                  = "/sneakers.vault.v1.VaultService/ListSecretTypes"
+	VaultService_CreateSecretType_FullMethodName                 = "/sneakers.vault.v1.VaultService/CreateSecretType"
+	VaultService_UpdateSecretType_FullMethodName                 = "/sneakers.vault.v1.VaultService/UpdateSecretType"
+	VaultService_DeleteSecretType_FullMethodName                 = "/sneakers.vault.v1.VaultService/DeleteSecretType"
+	VaultService_CloneSecretType_FullMethodName                  = "/sneakers.vault.v1.VaultService/CloneSecretType"
+	VaultService_ListAvailableExtensions_FullMethodName          = "/sneakers.vault.v1.VaultService/ListAvailableExtensions"
+	VaultService_ImportExtension_FullMethodName                  = "/sneakers.vault.v1.VaultService/ImportExtension"
+	VaultService_ImportExtensionFromJson_FullMethodName          = "/sneakers.vault.v1.VaultService/ImportExtensionFromJson"
+	VaultService_ListFolders_FullMethodName                      = "/sneakers.vault.v1.VaultService/ListFolders"
+	VaultService_CreateFolder_FullMethodName                     = "/sneakers.vault.v1.VaultService/CreateFolder"
+	VaultService_RenameFolder_FullMethodName                     = "/sneakers.vault.v1.VaultService/RenameFolder"
+	VaultService_MoveFolder_FullMethodName                       = "/sneakers.vault.v1.VaultService/MoveFolder"
+	VaultService_DeleteFolder_FullMethodName                     = "/sneakers.vault.v1.VaultService/DeleteFolder"
+	VaultService_ReorderFolders_FullMethodName                   = "/sneakers.vault.v1.VaultService/ReorderFolders"
+	VaultService_ListFolderRules_FullMethodName                  = "/sneakers.vault.v1.VaultService/ListFolderRules"
+	VaultService_GetInheritedFolderRules_FullMethodName          = "/sneakers.vault.v1.VaultService/GetInheritedFolderRules"
+	VaultService_AddFolderRule_FullMethodName                    = "/sneakers.vault.v1.VaultService/AddFolderRule"
+	VaultService_RemoveFolderRule_FullMethodName                 = "/sneakers.vault.v1.VaultService/RemoveFolderRule"
+	VaultService_GetFolderRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/GetFolderRuleset"
+	VaultService_SetFolderRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/SetFolderRuleset"
+	VaultService_SetFolderRevealStepUp_FullMethodName            = "/sneakers.vault.v1.VaultService/SetFolderRevealStepUp"
+	VaultService_GetMyAccess_FullMethodName                      = "/sneakers.vault.v1.VaultService/GetMyAccess"
+	VaultService_SimulateFolder_FullMethodName                   = "/sneakers.vault.v1.VaultService/SimulateFolder"
+	VaultService_SimulateSecret_FullMethodName                   = "/sneakers.vault.v1.VaultService/SimulateSecret"
+	VaultService_ListSecretsInFolder_FullMethodName              = "/sneakers.vault.v1.VaultService/ListSecretsInFolder"
+	VaultService_ReorderSecrets_FullMethodName                   = "/sneakers.vault.v1.VaultService/ReorderSecrets"
+	VaultService_GetSecret_FullMethodName                        = "/sneakers.vault.v1.VaultService/GetSecret"
+	VaultService_CreateSecret_FullMethodName                     = "/sneakers.vault.v1.VaultService/CreateSecret"
+	VaultService_UpdateSecret_FullMethodName                     = "/sneakers.vault.v1.VaultService/UpdateSecret"
+	VaultService_SetSecretAutomation_FullMethodName              = "/sneakers.vault.v1.VaultService/SetSecretAutomation"
+	VaultService_GetSecretFields_FullMethodName                  = "/sneakers.vault.v1.VaultService/GetSecretFields"
+	VaultService_RevealSecretField_FullMethodName                = "/sneakers.vault.v1.VaultService/RevealSecretField"
+	VaultService_RevealSecretFieldForPrincipal_FullMethodName    = "/sneakers.vault.v1.VaultService/RevealSecretFieldForPrincipal"
+	VaultService_ListSecretsForPrincipal_FullMethodName          = "/sneakers.vault.v1.VaultService/ListSecretsForPrincipal"
+	VaultService_GetSecretForPrincipal_FullMethodName            = "/sneakers.vault.v1.VaultService/GetSecretForPrincipal"
+	VaultService_CreateSecretForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/CreateSecretForPrincipal"
+	VaultService_GenerateSecretForPrincipal_FullMethodName       = "/sneakers.vault.v1.VaultService/GenerateSecretForPrincipal"
+	VaultService_RotateSecretForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/RotateSecretForPrincipal"
+	VaultService_RestoreSecretVersionForPrincipal_FullMethodName = "/sneakers.vault.v1.VaultService/RestoreSecretVersionForPrincipal"
+	VaultService_MoveSecretForPrincipal_FullMethodName           = "/sneakers.vault.v1.VaultService/MoveSecretForPrincipal"
+	VaultService_ChangeSecretTypeForPrincipal_FullMethodName     = "/sneakers.vault.v1.VaultService/ChangeSecretTypeForPrincipal"
+	VaultService_RenameSecretForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/RenameSecretForPrincipal"
+	VaultService_UpdateSecretFieldsForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/UpdateSecretFieldsForPrincipal"
+	VaultService_ListFoldersForPrincipal_FullMethodName          = "/sneakers.vault.v1.VaultService/ListFoldersForPrincipal"
+	VaultService_CreateFolderForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/CreateFolderForPrincipal"
+	VaultService_RenameFolderForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/RenameFolderForPrincipal"
+	VaultService_MoveFolderForPrincipal_FullMethodName           = "/sneakers.vault.v1.VaultService/MoveFolderForPrincipal"
+	VaultService_ListSecretVersions_FullMethodName               = "/sneakers.vault.v1.VaultService/ListSecretVersions"
+	VaultService_RevealSecretVersionField_FullMethodName         = "/sneakers.vault.v1.VaultService/RevealSecretVersionField"
+	VaultService_RestoreSecretVersion_FullMethodName             = "/sneakers.vault.v1.VaultService/RestoreSecretVersion"
+	VaultService_BreakGlassSecret_FullMethodName                 = "/sneakers.vault.v1.VaultService/BreakGlassSecret"
+	VaultService_OpenBreakGlassSession_FullMethodName            = "/sneakers.vault.v1.VaultService/OpenBreakGlassSession"
+	VaultService_GetBreakGlassSession_FullMethodName             = "/sneakers.vault.v1.VaultService/GetBreakGlassSession"
+	VaultService_ListBreakGlassItems_FullMethodName              = "/sneakers.vault.v1.VaultService/ListBreakGlassItems"
+	VaultService_CloseBreakGlassSession_FullMethodName           = "/sneakers.vault.v1.VaultService/CloseBreakGlassSession"
+	VaultService_ListBreakGlassSessions_FullMethodName           = "/sneakers.vault.v1.VaultService/ListBreakGlassSessions"
+	VaultService_CopySecret_FullMethodName                       = "/sneakers.vault.v1.VaultService/CopySecret"
+	VaultService_RetireSecret_FullMethodName                     = "/sneakers.vault.v1.VaultService/RetireSecret"
+	VaultService_RestoreSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/RestoreSecret"
+	VaultService_DeleteSecret_FullMethodName                     = "/sneakers.vault.v1.VaultService/DeleteSecret"
+	VaultService_GetSecretStats_FullMethodName                   = "/sneakers.vault.v1.VaultService/GetSecretStats"
+	VaultService_GetTopAccessedSecrets_FullMethodName            = "/sneakers.vault.v1.VaultService/GetTopAccessedSecrets"
+	VaultService_ListSecretsByStatus_FullMethodName              = "/sneakers.vault.v1.VaultService/ListSecretsByStatus"
+	VaultService_FindSecretsByPublicKey_FullMethodName           = "/sneakers.vault.v1.VaultService/FindSecretsByPublicKey"
+	VaultService_GetSecretRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/GetSecretRuleset"
+	VaultService_SetSecretRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/SetSecretRuleset"
+	VaultService_GetMySecretAccess_FullMethodName                = "/sneakers.vault.v1.VaultService/GetMySecretAccess"
+	VaultService_ClaimDueHeartbeats_FullMethodName               = "/sneakers.vault.v1.VaultService/ClaimDueHeartbeats"
+	VaultService_RevealForHeartbeat_FullMethodName               = "/sneakers.vault.v1.VaultService/RevealForHeartbeat"
+	VaultService_ReportHeartbeat_FullMethodName                  = "/sneakers.vault.v1.VaultService/ReportHeartbeat"
+	VaultService_EnqueueRotation_FullMethodName                  = "/sneakers.vault.v1.VaultService/EnqueueRotation"
+	VaultService_ClaimDueRotations_FullMethodName                = "/sneakers.vault.v1.VaultService/ClaimDueRotations"
+	VaultService_RevealForRotation_FullMethodName                = "/sneakers.vault.v1.VaultService/RevealForRotation"
+	VaultService_ReportRotation_FullMethodName                   = "/sneakers.vault.v1.VaultService/ReportRotation"
+	VaultService_ListConnectors_FullMethodName                   = "/sneakers.vault.v1.VaultService/ListConnectors"
+	VaultService_ListPasswordPolicies_FullMethodName             = "/sneakers.vault.v1.VaultService/ListPasswordPolicies"
+	VaultService_SavePasswordPolicy_FullMethodName               = "/sneakers.vault.v1.VaultService/SavePasswordPolicy"
+	VaultService_DeletePasswordPolicy_FullMethodName             = "/sneakers.vault.v1.VaultService/DeletePasswordPolicy"
+	VaultService_GetSecuritySettings_FullMethodName              = "/sneakers.vault.v1.VaultService/GetSecuritySettings"
+	VaultService_UpdateSecuritySettings_FullMethodName           = "/sneakers.vault.v1.VaultService/UpdateSecuritySettings"
+	VaultService_SeedBuiltins_FullMethodName                     = "/sneakers.vault.v1.VaultService/SeedBuiltins"
+	VaultService_GenerateKeyPair_FullMethodName                  = "/sneakers.vault.v1.VaultService/GenerateKeyPair"
+	VaultService_RotateKek_FullMethodName                        = "/sneakers.vault.v1.VaultService/RotateKek"
+	VaultService_SealForImport_FullMethodName                    = "/sneakers.vault.v1.VaultService/SealForImport"
+	VaultService_PrepareSecretUse_FullMethodName                 = "/sneakers.vault.v1.VaultService/PrepareSecretUse"
+	VaultService_GetSecretUse_FullMethodName                     = "/sneakers.vault.v1.VaultService/GetSecretUse"
+	VaultService_ListPendingSecretUses_FullMethodName            = "/sneakers.vault.v1.VaultService/ListPendingSecretUses"
+	VaultService_DecideSecretUse_FullMethodName                  = "/sneakers.vault.v1.VaultService/DecideSecretUse"
+	VaultService_ConfirmSecretUse_FullMethodName                 = "/sneakers.vault.v1.VaultService/ConfirmSecretUse"
+	VaultService_ListSecretUsesToDecide_FullMethodName           = "/sneakers.vault.v1.VaultService/ListSecretUsesToDecide"
+	VaultService_RedeemSecretUse_FullMethodName                  = "/sneakers.vault.v1.VaultService/RedeemSecretUse"
+	VaultService_CreateUseGrant_FullMethodName                   = "/sneakers.vault.v1.VaultService/CreateUseGrant"
+	VaultService_ListUseGrants_FullMethodName                    = "/sneakers.vault.v1.VaultService/ListUseGrants"
+	VaultService_RevokeUseGrant_FullMethodName                   = "/sneakers.vault.v1.VaultService/RevokeUseGrant"
+	VaultService_SetSecretTokenApproval_FullMethodName           = "/sneakers.vault.v1.VaultService/SetSecretTokenApproval"
+	VaultService_SetSecretTargetForPrincipal_FullMethodName      = "/sneakers.vault.v1.VaultService/SetSecretTargetForPrincipal"
+	VaultService_SetSecretAutomationForPrincipal_FullMethodName  = "/sneakers.vault.v1.VaultService/SetSecretAutomationForPrincipal"
+	VaultService_RequestHeartbeatForPrincipal_FullMethodName     = "/sneakers.vault.v1.VaultService/RequestHeartbeatForPrincipal"
+	VaultService_GetHeartbeatStatusForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/GetHeartbeatStatusForPrincipal"
 )
 
 // VaultServiceClient is the client API for VaultService service.
@@ -199,6 +201,9 @@ type VaultServiceClient interface {
 	GetSecretForPrincipal(ctx context.Context, in *GetSecretForPrincipalRequest, opts ...grpc.CallOption) (*GetSecretForPrincipalResponse, error)
 	CreateSecretForPrincipal(ctx context.Context, in *CreateSecretForPrincipalRequest, opts ...grpc.CallOption) (*CreateSecretForPrincipalResponse, error)
 	GenerateSecretForPrincipal(ctx context.Context, in *GenerateSecretForPrincipalRequest, opts ...grpc.CallOption) (*GenerateSecretForPrincipalResponse, error)
+	// Rotate/restore for non-human principals: RACI-Author, never RACI-C.
+	RotateSecretForPrincipal(ctx context.Context, in *RotateSecretForPrincipalRequest, opts ...grpc.CallOption) (*RotateSecretForPrincipalResponse, error)
+	RestoreSecretVersionForPrincipal(ctx context.Context, in *RestoreSecretVersionForPrincipalRequest, opts ...grpc.CallOption) (*RestoreSecretVersionForPrincipalResponse, error)
 	MoveSecretForPrincipal(ctx context.Context, in *MoveSecretForPrincipalRequest, opts ...grpc.CallOption) (*MoveSecretForPrincipalResponse, error)
 	ChangeSecretTypeForPrincipal(ctx context.Context, in *ChangeSecretTypeForPrincipalRequest, opts ...grpc.CallOption) (*ChangeSecretTypeForPrincipalResponse, error)
 	// Organize verbs for non-human principals: rename/update a secret and
@@ -771,6 +776,26 @@ func (c *vaultServiceClient) GenerateSecretForPrincipal(ctx context.Context, in 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GenerateSecretForPrincipalResponse)
 	err := c.cc.Invoke(ctx, VaultService_GenerateSecretForPrincipal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) RotateSecretForPrincipal(ctx context.Context, in *RotateSecretForPrincipalRequest, opts ...grpc.CallOption) (*RotateSecretForPrincipalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RotateSecretForPrincipalResponse)
+	err := c.cc.Invoke(ctx, VaultService_RotateSecretForPrincipal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) RestoreSecretVersionForPrincipal(ctx context.Context, in *RestoreSecretVersionForPrincipalRequest, opts ...grpc.CallOption) (*RestoreSecretVersionForPrincipalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RestoreSecretVersionForPrincipalResponse)
+	err := c.cc.Invoke(ctx, VaultService_RestoreSecretVersionForPrincipal_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1444,6 +1469,9 @@ type VaultServiceServer interface {
 	GetSecretForPrincipal(context.Context, *GetSecretForPrincipalRequest) (*GetSecretForPrincipalResponse, error)
 	CreateSecretForPrincipal(context.Context, *CreateSecretForPrincipalRequest) (*CreateSecretForPrincipalResponse, error)
 	GenerateSecretForPrincipal(context.Context, *GenerateSecretForPrincipalRequest) (*GenerateSecretForPrincipalResponse, error)
+	// Rotate/restore for non-human principals: RACI-Author, never RACI-C.
+	RotateSecretForPrincipal(context.Context, *RotateSecretForPrincipalRequest) (*RotateSecretForPrincipalResponse, error)
+	RestoreSecretVersionForPrincipal(context.Context, *RestoreSecretVersionForPrincipalRequest) (*RestoreSecretVersionForPrincipalResponse, error)
 	MoveSecretForPrincipal(context.Context, *MoveSecretForPrincipalRequest) (*MoveSecretForPrincipalResponse, error)
 	ChangeSecretTypeForPrincipal(context.Context, *ChangeSecretTypeForPrincipalRequest) (*ChangeSecretTypeForPrincipalResponse, error)
 	// Organize verbs for non-human principals: rename/update a secret and
@@ -1685,6 +1713,12 @@ func (UnimplementedVaultServiceServer) CreateSecretForPrincipal(context.Context,
 }
 func (UnimplementedVaultServiceServer) GenerateSecretForPrincipal(context.Context, *GenerateSecretForPrincipalRequest) (*GenerateSecretForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GenerateSecretForPrincipal not implemented")
+}
+func (UnimplementedVaultServiceServer) RotateSecretForPrincipal(context.Context, *RotateSecretForPrincipalRequest) (*RotateSecretForPrincipalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RotateSecretForPrincipal not implemented")
+}
+func (UnimplementedVaultServiceServer) RestoreSecretVersionForPrincipal(context.Context, *RestoreSecretVersionForPrincipalRequest) (*RestoreSecretVersionForPrincipalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RestoreSecretVersionForPrincipal not implemented")
 }
 func (UnimplementedVaultServiceServer) MoveSecretForPrincipal(context.Context, *MoveSecretForPrincipalRequest) (*MoveSecretForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MoveSecretForPrincipal not implemented")
@@ -2747,6 +2781,42 @@ func _VaultService_GenerateSecretForPrincipal_Handler(srv interface{}, ctx conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VaultServiceServer).GenerateSecretForPrincipal(ctx, req.(*GenerateSecretForPrincipalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_RotateSecretForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RotateSecretForPrincipalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).RotateSecretForPrincipal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_RotateSecretForPrincipal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).RotateSecretForPrincipal(ctx, req.(*RotateSecretForPrincipalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_RestoreSecretVersionForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestoreSecretVersionForPrincipalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).RestoreSecretVersionForPrincipal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_RestoreSecretVersionForPrincipal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).RestoreSecretVersionForPrincipal(ctx, req.(*RestoreSecretVersionForPrincipalRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4029,6 +4099,14 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GenerateSecretForPrincipal",
 			Handler:    _VaultService_GenerateSecretForPrincipal_Handler,
+		},
+		{
+			MethodName: "RotateSecretForPrincipal",
+			Handler:    _VaultService_RotateSecretForPrincipal_Handler,
+		},
+		{
+			MethodName: "RestoreSecretVersionForPrincipal",
+			Handler:    _VaultService_RestoreSecretVersionForPrincipal_Handler,
 		},
 		{
 			MethodName: "MoveSecretForPrincipal",

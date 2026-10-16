@@ -92,6 +92,16 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   once, at creation, by `CreateSecret`/`CreateSecretForPrincipal`/`GenerateSecretForPrincipal`;
   empty on a secret created before this field existed, so it stays unreadable under an own-reveal
   grant until explicitly reassigned (not yet built).
+- **Rotate/restore for a machine principal:** `RotateSecretForPrincipal` regenerates the type's
+  password field under its policy and stores it as a new version, always returning the new value
+  once — the caller (e.g. a local-admin-password broker) stores it, then sets it on the host.
+  `RestoreSecretVersionForPrincipal` makes a prior version current again, as a new version, never a
+  history rewrite. Both need RACI Author (never C) on the secret's folder chain — the same grant
+  `CreateSecretForPrincipal` needs — are refused (`PermissionDenied`, audited) without it, are
+  refused (`FailedPrecondition`, reason `ROTATION_IN_PROGRESS`) while a scheduled rotation is
+  queued or running, and are HUMAN-never: a `PRINCIPAL_KIND_HUMAN` actor gets `PermissionDenied`
+  (use `RestoreSecretVersion`, which needs the recovery role, instead). Neither ever changes a
+  target's pinned SSH host keys.
 - **Seeing secrets:** `ListSecretsInFolder` and `GetSecret` show a secret's metadata to anyone who
   can see its folder, even without read, so people can find a secret and request access. Each
   secret carries `can_read`, false when the caller can't read it. A secret an explicit deny
