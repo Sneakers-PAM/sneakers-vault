@@ -27,6 +27,7 @@ var maintenanceGolden = map[maintenance.Class][]string{
 		"ListFolders", "ListFolderRules", "GetInheritedFolderRules", "GetFolderRuleset", "GetMyAccess",
 		"SimulateFolder", "SimulateSecret", "ListSecretsInFolder", "GetSecret", "GetSecretFields",
 		"ListSecretsForPrincipal", "GetSecretForPrincipal", "ListFoldersForPrincipal", "ListSecretVersions", "GetSecretStats",
+		"ListSecretsByTarget",
 		"GetTopAccessedSecrets", "ListSecretsByStatus", "FindSecretsByPublicKey", "GetSecretRuleset",
 		"GetMySecretAccess", "ListConnectors", "ListPasswordPolicies", "GetSecuritySettings",
 		"GenerateKeyPair", "GetSecretUse", "ListPendingSecretUses", "ListSecretUsesToDecide", "ListUseGrants",

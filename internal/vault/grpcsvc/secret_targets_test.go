@@ -227,3 +227,105 @@ func TestAttachSecretTargetForPrincipal_RefusedForAnotherUsersPersonalTarget(t *
 		t.Fatalf("want PermissionDenied for another user's personal target, got %v", err)
 	}
 }
+
+// listedByTarget calls ListSecretsByTarget and returns id -> can_read, the
+// same shape listed() uses for ListSecretsInFolder, so the two can be
+// compared directly.
+func listedByTarget(t *testing.T, s *Server, a *vaultv1.ActorContext, targetID string) map[string]bool {
+	t.Helper()
+	resp, err := s.ListSecretsByTarget(context.Background(), &vaultv1.ListSecretsByTargetRequest{Actor: a, TargetId: targetID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]bool{}
+	for _, sec := range resp.GetSecrets() {
+		out[sec.GetId()] = sec.GetCanRead()
+	}
+	return out
+}
+
+// TestListSecretsByTarget_OnlyListsSecretsAttachedToThatTarget is #168's
+// target page: "every secret attached to this target" — a secret attached
+// to several targets shows up for each of them, a secret attached to a
+// different target never does, and detaching removes it from the listing.
+func TestListSecretsByTarget_OnlyListsSecretsAttachedToThatTarget(t *testing.T) {
+	s := newServer(t)
+	ctx := context.Background()
+	carol := &vaultv1.ActorContext{UserId: "user-carol"}
+	fid := newSharedFolder(t, s)
+	tgtA := saveTestTarget(t, s, "host-a", "host-a.example.org")
+	tgtB := saveTestTarget(t, s, "host-b", "host-b.example.org")
+
+	onA, err := s.CreateSecret(ctx, &vaultv1.CreateSecretRequest{
+		Actor: carol, Name: "on a", FolderId: fid, TypeId: "type-password", TargetId: tgtA,
+		Fields: map[string]string{"username": "u", "password": "p"},
+	})
+	if err != nil {
+		t.Fatalf("CreateSecret(on a): %v", err)
+	}
+	onB, err := s.CreateSecret(ctx, &vaultv1.CreateSecretRequest{
+		Actor: carol, Name: "on b", FolderId: fid, TypeId: "type-password", TargetId: tgtB,
+		Fields: map[string]string{"username": "u", "password": "p"},
+	})
+	if err != nil {
+		t.Fatalf("CreateSecret(on b): %v", err)
+	}
+	onBoth, err := s.CreateSecret(ctx, &vaultv1.CreateSecretRequest{
+		Actor: carol, Name: "on both", FolderId: fid, TypeId: "type-password", TargetId: tgtA,
+		Fields: map[string]string{"username": "u", "password": "p"},
+	})
+	if err != nil {
+		t.Fatalf("CreateSecret(on both): %v", err)
+	}
+	if _, err := s.AttachSecretTarget(ctx, &vaultv1.AttachSecretTargetRequest{Actor: carol, SecretId: onBoth.GetSecret().GetId(), TargetId: tgtB}); err != nil {
+		t.Fatalf("AttachSecretTarget: %v", err)
+	}
+
+	gotA := listedByTarget(t, s, carol, tgtA)
+	if len(gotA) != 2 || !gotA[onA.GetSecret().GetId()] || !gotA[onBoth.GetSecret().GetId()] {
+		t.Fatalf("target A: got %v, want on-a and on-both only", gotA)
+	}
+	gotB := listedByTarget(t, s, carol, tgtB)
+	if len(gotB) != 2 || !gotB[onB.GetSecret().GetId()] || !gotB[onBoth.GetSecret().GetId()] {
+		t.Fatalf("target B: got %v, want on-b and on-both only", gotB)
+	}
+
+	if _, err := s.DetachSecretTarget(ctx, &vaultv1.DetachSecretTargetRequest{Actor: carol, SecretId: onBoth.GetSecret().GetId(), TargetId: tgtA}); err != nil {
+		t.Fatalf("DetachSecretTarget: %v", err)
+	}
+	gotA = listedByTarget(t, s, carol, tgtA)
+	if len(gotA) != 1 || !gotA[onA.GetSecret().GetId()] {
+		t.Fatalf("after detach, target A: got %v, want on-a only", gotA)
+	}
+}
+
+// TestListSecretsByTarget_FollowsSecretVisibility proves ListSecretsByTarget
+// uses the same visibility rule as ListSecretsInFolder: a secret the caller
+// can see but not read is listed locked, and one an explicit deny covers is
+// hidden entirely.
+func TestListSecretsByTarget_FollowsSecretVisibility(t *testing.T) {
+	fx := newListFixture(t)
+	ctx := context.Background()
+	carol := &vaultv1.ActorContext{UserId: "user-carol"}
+	tgt := saveTestTarget(t, fx.s, "shared-host", "shared-host.example.org")
+	if _, err := fx.s.AttachSecretTarget(ctx, &vaultv1.AttachSecretTargetRequest{Actor: carol, SecretId: fx.open, TargetId: tgt}); err != nil {
+		t.Fatalf("attach open: %v", err)
+	}
+	if _, err := fx.s.AttachSecretTarget(ctx, &vaultv1.AttachSecretTargetRequest{Actor: carol, SecretId: fx.denied, TargetId: tgt}); err != nil {
+		t.Fatalf("attach denied: %v", err)
+	}
+
+	bob := &vaultv1.ActorContext{UserId: "user-bob"}
+	got := listedByTarget(t, fx.s, bob, tgt)
+	if canRead, ok := got[fx.open]; !ok || canRead {
+		t.Fatalf("bob: open secret listed=%v can_read=%v, want listed and locked", ok, canRead)
+	}
+	if _, ok := got[fx.denied]; ok {
+		t.Fatal("bob: a secret denied to him was listed")
+	}
+
+	carolSees := listedByTarget(t, fx.s, carol, tgt)
+	if !carolSees[fx.open] || !carolSees[fx.denied] {
+		t.Fatalf("owner: %v, want both readable", carolSees)
+	}
+}

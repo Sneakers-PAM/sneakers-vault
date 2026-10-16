@@ -30,6 +30,7 @@ const (
 	VaultService_DeleteTarget_FullMethodName                     = "/sneakers.vault.v1.VaultService/DeleteTarget"
 	VaultService_GetTargetRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/GetTargetRuleset"
 	VaultService_SetTargetRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/SetTargetRuleset"
+	VaultService_ListSecretsByTarget_FullMethodName              = "/sneakers.vault.v1.VaultService/ListSecretsByTarget"
 	VaultService_ImportCertificate_FullMethodName                = "/sneakers.vault.v1.VaultService/ImportCertificate"
 	VaultService_ExportCertificate_FullMethodName                = "/sneakers.vault.v1.VaultService/ExportCertificate"
 	VaultService_ReplaceCertificate_FullMethodName               = "/sneakers.vault.v1.VaultService/ReplaceCertificate"
@@ -150,6 +151,7 @@ type VaultServiceClient interface {
 	DeleteTarget(ctx context.Context, in *DeleteTargetRequest, opts ...grpc.CallOption) (*DeleteTargetResponse, error)
 	GetTargetRuleset(ctx context.Context, in *GetTargetRulesetRequest, opts ...grpc.CallOption) (*GetTargetRulesetResponse, error)
 	SetTargetRuleset(ctx context.Context, in *SetTargetRulesetRequest, opts ...grpc.CallOption) (*SetTargetRulesetResponse, error)
+	ListSecretsByTarget(ctx context.Context, in *ListSecretsByTargetRequest, opts ...grpc.CallOption) (*ListSecretsByTargetResponse, error)
 	// Certificates: import a certificate file into a secret, export a
 	// certificate secret's material back out as a file, or replace a secret's
 	// certificate material in place (rotation, e.g. after a CA re-issue).
@@ -386,6 +388,16 @@ func (c *vaultServiceClient) SetTargetRuleset(ctx context.Context, in *SetTarget
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetTargetRulesetResponse)
 	err := c.cc.Invoke(ctx, VaultService_SetTargetRuleset_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) ListSecretsByTarget(ctx context.Context, in *ListSecretsByTargetRequest, opts ...grpc.CallOption) (*ListSecretsByTargetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSecretsByTargetResponse)
+	err := c.cc.Invoke(ctx, VaultService_ListSecretsByTarget_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1464,6 +1476,7 @@ type VaultServiceServer interface {
 	DeleteTarget(context.Context, *DeleteTargetRequest) (*DeleteTargetResponse, error)
 	GetTargetRuleset(context.Context, *GetTargetRulesetRequest) (*GetTargetRulesetResponse, error)
 	SetTargetRuleset(context.Context, *SetTargetRulesetRequest) (*SetTargetRulesetResponse, error)
+	ListSecretsByTarget(context.Context, *ListSecretsByTargetRequest) (*ListSecretsByTargetResponse, error)
 	// Certificates: import a certificate file into a secret, export a
 	// certificate secret's material back out as a file, or replace a secret's
 	// certificate material in place (rotation, e.g. after a CA re-issue).
@@ -1649,6 +1662,9 @@ func (UnimplementedVaultServiceServer) GetTargetRuleset(context.Context, *GetTar
 }
 func (UnimplementedVaultServiceServer) SetTargetRuleset(context.Context, *SetTargetRulesetRequest) (*SetTargetRulesetResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetTargetRuleset not implemented")
+}
+func (UnimplementedVaultServiceServer) ListSecretsByTarget(context.Context, *ListSecretsByTargetRequest) (*ListSecretsByTargetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSecretsByTarget not implemented")
 }
 func (UnimplementedVaultServiceServer) ImportCertificate(context.Context, *ImportCertificateRequest) (*ImportCertificateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ImportCertificate not implemented")
@@ -2129,6 +2145,24 @@ func _VaultService_SetTargetRuleset_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VaultServiceServer).SetTargetRuleset(ctx, req.(*SetTargetRulesetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_ListSecretsByTarget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSecretsByTargetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ListSecretsByTarget(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ListSecretsByTarget_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ListSecretsByTarget(ctx, req.(*ListSecretsByTargetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4079,6 +4113,10 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetTargetRuleset",
 			Handler:    _VaultService_SetTargetRuleset_Handler,
+		},
+		{
+			MethodName: "ListSecretsByTarget",
+			Handler:    _VaultService_ListSecretsByTarget_Handler,
 		},
 		{
 			MethodName: "ImportCertificate",

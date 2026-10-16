@@ -91,6 +91,29 @@ func (s *Server) detachTarget(sec *vaultv1.Secret, targetID string) {
 	setSecretTargets(sec, out)
 }
 
+// ListSecretsByTarget lists every secret attached to target_id — the
+// target's page "every secret attached to this target" (#168) — following
+// the same visibility rule as ListSecretsInFolder (secretVisibility):
+// locked-but-listed when the caller can see the secret's folder but can't
+// read it, hidden on an explicit deny.
+func (s *Server) ListSecretsByTarget(_ context.Context, req *vaultv1.ListSecretsByTargetRequest) (*vaultv1.ListSecretsByTargetResponse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var out []*vaultv1.Secret
+	for _, sec := range s.secrets {
+		if sec.GetRetired() || !hasTarget(sec, req.GetTargetId()) {
+			continue
+		}
+		visible, canRead := s.secretVisibility(req.GetActor(), sec)
+		if !visible {
+			continue
+		}
+		out = append(out, withCanRead(sec, canRead))
+	}
+	sortForListing(out)
+	return &vaultv1.ListSecretsByTargetResponse{Secrets: out}, nil
+}
+
 // AttachSecretTarget attaches one target to a secret as a human, without
 // touching its other targets. Gated like UpdateSecret (canManageOrOwnSecret).
 func (s *Server) AttachSecretTarget(ctx context.Context, req *vaultv1.AttachSecretTargetRequest) (*vaultv1.AttachSecretTargetResponse, error) {
