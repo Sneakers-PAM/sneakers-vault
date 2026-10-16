@@ -232,6 +232,17 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   into a lockout. It resumes, due at once, when a person changes the value, a rotation commits, or
   `RequestHeartbeatForPrincipal` is called (at most once a minute). Without a worker-identity
   verifier no connector can claim checks, so that request answers `FailedPrecondition`.
+- **Heartbeat audit rollup:** a successful check with the same result as the secret's last one
+  doesn't write its own audit record. It folds into a pending `heartbeat_audit_summary` row (one
+  per secret) that counts the checks and spans their first/last time, and is emitted as a single
+  `heartbeat.summary` record — the only one those checks ever produce — at the first state change
+  (a failure, a host-key refusal, or a recovery into OK) or when the day closes, whichever comes
+  first. A day rollover with the result staying OK flushes the same way but starts the next day's
+  rollup silently, with no individual record of its own. Every failure, host-key refusal and state
+  change is still audited on its own, exactly as before: `heartbeat.report` for a failure or
+  recovery, `secret.heartbeat.host_key` for a host-key refusal, `secret.heartbeat.pause` /
+  `secret.heartbeat.resume` for the pause lifecycle. Person and agent actions on a secret are
+  never rolled up.
 - **Built-in Administrator:** an Active Directory account the connector reports as RID 500 is
   never rotated (heartbeat still runs). Manual rotation and turning rotation back on answer
   `FailedPrecondition`; check-in and break-glass rotations are skipped so the lease still closes.

@@ -17,6 +17,7 @@ func newHeartbeatTestServer(t *testing.T) (*Server, *capAudit, string) {
 	t.Helper()
 	s, ca, secID := newRotationServer(t)
 	s.hb = newHeartbeatStore(s.rot.db)
+	s.hbSummary = newHeartbeatSummaryStore(s.rot.db)
 	if _, err := s.rot.db.Exec(context.Background(), "TRUNCATE heartbeat_schedule"); err != nil {
 		t.Fatal(err)
 	}
