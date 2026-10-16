@@ -300,6 +300,9 @@ func (s *Server) hydrate(st *state) {
 var mutatingMethods = map[string]bool{
 	"CreateSecret": true, "UpdateSecret": true, "SetSecretAutomation": true, "SetSecretTokenApproval": true,
 	"SetSecretTargetForPrincipal": true, "SetSecretAutomationForPrincipal": true,
+	// Attach/detach one target without replacing the list (#168).
+	"AttachSecretTarget": true, "DetachSecretTarget": true,
+	"AttachSecretTargetForPrincipal": true, "DetachSecretTargetForPrincipal": true,
 	// CreateSecretForPrincipal/GenerateSecretForPrincipal create a
 	// secret via the same store-mutating path as CreateSecret, for a non-human
 	// principal — must persist too.
@@ -327,7 +330,11 @@ var mutatingMethods = map[string]bool{
 	// too (same access accounting as RevealSecretField).
 	"RevealSecretVersionField": true,
 	// RestoreSecretVersion writes a new current record.
-	"RestoreSecretVersion":  true,
+	"RestoreSecretVersion": true,
+	// RotateSecretForPrincipal/RestoreSecretVersionForPrincipal write a new
+	// current record for a non-human principal, same as RestoreSecretVersion
+	// above.
+	"RotateSecretForPrincipal": true, "RestoreSecretVersionForPrincipal": true,
 	"SetFolderRevealStepUp": true,
 	// Lifecycle: retire/restore flip Secret.retired; delete hard-removes the
 	// secret (and its encrypted record) from the store slice.
@@ -840,12 +847,33 @@ func (s *Server) resolve(a *vaultv1.ActorContext, folderID string) authz.ActionR
 }
 
 // resolveSecret is the single access decision for an actor on a secret,
-// evaluating the secret's own ruleset before its folder's.
+// evaluating the secret's own ruleset before its folder's. When the matched
+// Read grant is own-only (a "contribute, own reveal" RaciRule C=own cell —
+// see authz.GrantOwn), Read is finished here against the secret's own
+// creator_principal_id: the authz package only flags the match
+// (RuleDecision.OwnOnly), since it holds no secret data to compare against.
+// Every caller of resolveSecret/canRead gets the final answer through this
+// one choke point, so a create/update-only grant never escalates to a
+// blanket read of the folder's other secrets, on any path.
 func (s *Server) resolveSecret(a *vaultv1.ActorContext, sec *vaultv1.Secret) authz.ActionResult {
 	if s.closedToToken(a, sec.GetFolderId()) {
 		return authz.ActionResult{}
 	}
-	return resolveChain(a, s.secretChain(sec))
+	res := resolveChain(a, s.secretChain(sec))
+	if res.Read.Allowed && res.Read.OwnOnly && !s.isSecretCreator(a, sec) {
+		res.Read = authz.RuleDecision{Allowed: false, Reason: "own-reveal grant: not this secret's creator"}
+	}
+	return res
+}
+
+// isSecretCreator reports whether a is the principal that created sec (its
+// creator_principal_id), the ownership test an own-reveal grant (RaciRule
+// C=own) resolves against. A secret with no recorded creator (created before
+// this field existed) matches nobody — safe-default, not a regression, since
+// the own-reveal grant level didn't exist before it either.
+func (s *Server) isSecretCreator(a *vaultv1.ActorContext, sec *vaultv1.Secret) bool {
+	id := sec.GetCreatorPrincipalId()
+	return id != "" && id == principalActorID(a)
 }
 
 // closedToToken reports a folder inside another user's personal subtree, which

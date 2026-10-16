@@ -81,6 +81,44 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   I informed) on folders, secrets and targets, evaluated target first and then up the folder
   chain. Folder owners get read, approve and author. Site admins and root read everything but are
   never automatic approvers or authors.
+- **Contribute, own reveal:** the C cell also accepts `own` (`RaciRule.grants["C"] = "own"`), never
+  valid on R/A/I. Combined with `R: "allow"` it is a grant for a machine principal: create and
+  update anywhere `R` allows in the folder, but reveal only a secret whose `creator_principal_id`
+  is its own — through every read path (reveal, copy, export, version history, break-glass, the
+  sshbroker's fetch), never a blanket folder read. A secret not its own stays refused
+  (`PermissionDenied`, reason `NO_ACCESS`) and fully hidden from listing (`ListSecretsForPrincipal`,
+  `GetSecretForPrincipal`), the same treatment a secret a plain deny covers already gets. Saving a
+  ruleset with `own` on any cell but C is refused, `InvalidArgument`. `creator_principal_id` is set
+  once, at creation, by `CreateSecret`/`CreateSecretForPrincipal`/`GenerateSecretForPrincipal`;
+  empty on a secret created before this field existed, so it stays unreadable under an own-reveal
+  grant until explicitly reassigned (not yet built).
+- **Rotate/restore for a machine principal:** `RotateSecretForPrincipal` regenerates the type's
+  password field under its policy and stores it as a new version, always returning the new value
+  once — the caller (e.g. a local-admin-password broker) stores it, then sets it on the host.
+  `RestoreSecretVersionForPrincipal` makes a prior version current again, as a new version, never a
+  history rewrite. Both need RACI Author (never C) on the secret's folder chain — the same grant
+  `CreateSecretForPrincipal` needs — are refused (`PermissionDenied`, audited) without it, are
+  refused (`FailedPrecondition`, reason `ROTATION_IN_PROGRESS`) while a scheduled rotation is
+  queued or running, and are HUMAN-never: a `PRINCIPAL_KIND_HUMAN` actor gets `PermissionDenied`
+  (use `RestoreSecretVersion`, which needs the recovery role, instead). Neither ever changes a
+  target's pinned SSH host keys.
+- **One secret, many targets:** a secret holds an ordered `target_ids` list; `target_id` (legacy,
+  singular) stays the first/primary entry, kept in sync, so a consumer that hasn't moved to the
+  list still reads a sensible single value. `UpdateSecret`/`SetSecretTargetForPrincipal`'s
+  `target_id` keeps meaning "replace the whole list with just this one". `AttachSecretTarget`/
+  `DetachSecretTarget` (and their `ForPrincipal` mirrors) add or remove one target without
+  touching the others — both idempotent: attaching an already-attached target, or detaching one
+  that isn't attached, is a no-op. Host-key pins stay per target (`Target.ssh_host_keys`), unaffected.
+  `ClaimDueRotations`/`ClaimDueHeartbeats` hand the connector every attached target
+  (`RotationJob`/`HeartbeatJob.targets`, primary first; the singular `connection`/`target` fields
+  stay the primary target's, for a connector that hasn't moved to the list) and are reachable once
+  ANY attached target is usable. `ReportRotation`/`ReportHeartbeat.target_results` (one entry per
+  target, empty means the connector hasn't moved to multi-target reporting) fold into the secret's
+  one aggregate result — `ROTATION_STATE_OK`/`HEARTBEAT_RESULT_OK` only once every attached target
+  succeeds, otherwise DEGRADED/FAILED — while `target_rotation_outcomes`/`target_heartbeat_outcomes`
+  keep the per-target breakdown. A rotation already committed to the vault is never rolled back
+  just because one target hasn't caught up: "done" only waits on every target getting there, or the
+  failures being shown.
 - **Seeing secrets:** `ListSecretsInFolder` and `GetSecret` show a secret's metadata to anyone who
   can see its folder, even without read, so people can find a secret and request access. Each
   secret carries `can_read`, false when the caller can't read it. A secret an explicit deny

@@ -157,7 +157,7 @@ func TestClaimDueHeartbeats_RemovesExistingRowWithoutTargetOrConnection(t *testi
 		"target detached": func(t *testing.T, fx *noTargetFixture) string {
 			id := fx.createHuman(t, fx.target)
 			fx.s.mu.Lock()
-			fx.s.findSecret(id).TargetId = ""
+			setSecretTargets(fx.s.findSecret(id), nil)
 			fx.s.mu.Unlock()
 			return id
 		},
