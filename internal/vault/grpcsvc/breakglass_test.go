@@ -66,7 +66,7 @@ func breakGlassRowCount(t *testing.T, s *Server, secID string) int {
 func TestBreakGlassRevealsRecordsAuditsAndRotates(t *testing.T) {
 	s, ca, _, secID := newBreakGlassServer(t)
 	ctx := context.Background()
-	carol := &vaultv1.ActorContext{UserId: "user-carol"} // RACI owner → read-eligible
+	carol := &vaultv1.ActorContext{UserId: "user-carol", SessionRef: "web-1"} // RACI owner → read-eligible
 
 	resp, err := s.BreakGlassSecret(ctx, &vaultv1.BreakGlassSecretRequest{
 		Actor: carol, SecretId: secID, Reason: "prod outage, DBA locked out",
@@ -141,7 +141,7 @@ func TestBreakGlassAuditFailClosedDeniesReveal(t *testing.T) {
 	s, _, rn, secID := newBreakGlassServer(t)
 	ctx := context.Background()
 	s.audit = failAudit{}
-	carol := &vaultv1.ActorContext{UserId: "user-carol"}
+	carol := &vaultv1.ActorContext{UserId: "user-carol", SessionRef: "web-1"}
 
 	resp, err := s.BreakGlassSecret(ctx, &vaultv1.BreakGlassSecretRequest{
 		Actor: carol, SecretId: secID, Reason: "prod outage, DBA locked out",
@@ -171,7 +171,7 @@ func TestBreakGlassAuditFailClosedDeniesReveal(t *testing.T) {
 func TestBreakGlassLedgerAndRotationBestEffort(t *testing.T) {
 	s, ca, _, secID := newBreakGlassServer(t)
 	ctx := context.Background()
-	carol := &vaultv1.ActorContext{UserId: "user-carol"}
+	carol := &vaultv1.ActorContext{UserId: "user-carol", SessionRef: "web-1"}
 
 	s.vers.db.Close() // also rot.db and bg.db: same pool (see newRotationServer)
 
@@ -192,7 +192,7 @@ func TestBreakGlassLedgerAndRotationBestEffort(t *testing.T) {
 func TestBreakGlassDeniedForNonReadActor(t *testing.T) {
 	s, ca, _, secID := newBreakGlassServer(t)
 	ctx := context.Background()
-	stranger := &vaultv1.ActorContext{UserId: "user-nobody"}
+	stranger := &vaultv1.ActorContext{UserId: "user-nobody", SessionRef: "web-1"}
 
 	resp, err := s.BreakGlassSecret(ctx, &vaultv1.BreakGlassSecretRequest{
 		Actor: stranger, SecretId: secID, Reason: "curious",
@@ -230,7 +230,7 @@ func TestBreakGlassSiteAdminIntoPersonalFolderAllowedAndNotifiesOwner(t *testing
 
 	// A site-admin (not the owner) breaks glass into the personal folder → allowed
 	// (auto-read-all), and the owner (user-turing) is notified.
-	admin := &vaultv1.ActorContext{UserId: "user-admin", IsSiteAdmin: true}
+	admin := &vaultv1.ActorContext{UserId: "user-admin", IsSiteAdmin: true, SessionRef: "web-1"}
 	resp, err := s.BreakGlassSecret(ctx, &vaultv1.BreakGlassSecretRequest{
 		Actor: admin, SecretId: secID, Reason: "offboarding audit",
 	})
@@ -267,7 +267,7 @@ func TestBreakGlassSiteAdminIntoPersonalFolderAllowedAndNotifiesOwner(t *testing
 func TestBreakGlassRetiredRejected(t *testing.T) {
 	s, _, _, secID := newBreakGlassServer(t)
 	ctx := context.Background()
-	carol := &vaultv1.ActorContext{UserId: "user-carol"}
+	carol := &vaultv1.ActorContext{UserId: "user-carol", SessionRef: "web-1"}
 
 	if _, err := s.RetireSecret(ctx, &vaultv1.RetireSecretRequest{Actor: carol, Id: secID}); err != nil {
 		t.Fatalf("RetireSecret: %v", err)

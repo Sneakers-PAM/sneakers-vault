@@ -290,7 +290,7 @@ func TestBreakGlass_NoPostRotationWithoutTarget(t *testing.T) {
 	fx := newNoTargetFixture(t)
 	id := fx.createHuman(t, "")
 	if _, err := fx.s.BreakGlassSecret(context.Background(), &vaultv1.BreakGlassSecretRequest{
-		Actor: orgCarol, SecretId: id, Reason: "outage",
+		Actor: inWebSession(orgCarol), SecretId: id, Reason: "outage",
 	}); err != nil {
 		t.Fatalf("BreakGlassSecret: %v", err)
 	}
