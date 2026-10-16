@@ -339,6 +339,38 @@ message Secret {
   // built — today it simply stays unreadable under that grant, the same as
   // any other secret the caller didn't create).
   string creator_principal_id = 35;
+  // The secret's attached targets, in attach order (#168: one secret may
+  // open sessions on several pinned targets — one SSH key rotated once,
+  // used on every host it's attached to). target_id (above) stays the
+  // first/primary entry, kept in sync, so a consumer that hasn't moved to
+  // this list still reads a sensible single value: a secret saved before
+  // this field existed is read back as a one-item list built from
+  // target_id, the same normalize-on-read AttachSecretTarget/
+  // DetachSecretTarget and the migration backfill both rely on. Replacing
+  // target_id wholesale (UpdateSecret/SetSecretTargetForPrincipal) still
+  // means "replace the whole list with just this one" — Attach/Detach are
+  // the only paths that add or remove one target without touching the
+  // others.
+  repeated string target_ids = 36;
+  // Output only: each attached target's last reported rotation/heartbeat
+  // outcome (#168's "reports which ones failed"). last_rotation_result/
+  // last_heartbeat_result (+ detail) above stay the AGGREGATE — OK only once
+  // every target succeeded — so an old reader keeps seeing a single clear
+  // status; these lists add the per-target breakdown for the secret's own
+  // page. Empty when the secret has one target (or none), or before any
+  // multi-target-aware connector report arrives.
+  repeated TargetOutcome target_rotation_outcomes = 37;
+  repeated TargetOutcome target_heartbeat_outcomes = 38;
+}
+
+// One target's last reported outcome, for a secret attached to more than
+// one (#168). Shared shape for both rotation and heartbeat reporting —
+// which list it's in says which.
+message TargetOutcome {
+  string target_id = 1;
+  bool ok = 2;
+  string detail = 3;
+  string at = 4; // RFC3339
 }
 
 // ---- Request/response messages ----------------------------------------------
@@ -493,6 +525,16 @@ message UpdateSecretRequest {
   string dest_folder_id = 7;
 }
 message UpdateSecretResponse { Secret secret = 1; }
+
+// Attach/detach one target on a secret's target_ids list (#168), never
+// touching the others — unlike UpdateSecret's target_id, which replaces the
+// whole list with just the one it names. Detaching the secret's only target
+// (or one it was never attached to) is a no-op, not an error: idempotent,
+// same convention as SetFolderRuleset-style saves.
+message AttachSecretTargetRequest { ActorContext actor = 1; string secret_id = 2; string target_id = 3; }
+message AttachSecretTargetResponse { Secret secret = 1; }
+message DetachSecretTargetRequest { ActorContext actor = 1; string secret_id = 2; string target_id = 3; }
+message DetachSecretTargetResponse { Secret secret = 1; }
 
 // Per-secret automation override. Disabling is audited and surfaced with a notice
 // in the UI (these should be rare, deliberate exceptions).
@@ -1200,14 +1242,30 @@ message LogonFormat {
   string upn_suffix = 3; // for username@upn_suffix; empty means the target's domain
 }
 
+// One of a multi-target secret's targets (#168), as much as a connector
+// needs to attempt that ONE target: its own connection (which may differ
+// per target) and host-identity context.
+message TargetJob {
+  string target_id = 1;
+  HeartbeatConn connection = 2;
+  HeartbeatTarget target = 3;
+}
+
 // One due validation job (no secret value — reveal is a separate call).
 message HeartbeatJob {
   string secret_id = 1;
   string secret_name = 2;
   string username = 3;         // non-sensitive: the account to bind AS
-  HeartbeatConn connection = 4;
-  HeartbeatTarget target = 5;
+  HeartbeatConn connection = 4; // the PRIMARY (first) target's connection — kept for a connector that hasn't moved to targets
+  HeartbeatTarget target = 5;   // the PRIMARY (first) target — same
   LogonFormat logon = 6;       // set only for a secret with any logon format field
+  // Every attached target (#168), one entry per target_id, PRIMARY included
+  // first. A connector that walks this list instead of the single
+  // connection/target above checks every target and reports each in
+  // ReportHeartbeatRequest.target_results. Empty only if the secret somehow
+  // has no reachable target at all (ClaimDueHeartbeats already excludes that
+  // case).
+  repeated TargetJob targets = 7;
 }
 
 message ClaimDueHeartbeatsRequest { WorkerIdentity identity = 1; int32 limit = 2; }
@@ -1227,13 +1285,19 @@ message RevealForHeartbeatResponse {
 message ReportHeartbeatRequest {
   WorkerIdentity identity = 1;
   string secret_id = 2;
-  HeartbeatResult result = 3;
+  HeartbeatResult result = 3;  // the PRIMARY target's result, or the aggregate when target_results is set
   string detail = 4;          // human-readable reason (audit/UX)
   // What the connector read about the AD account after a successful bind.
   // Both unset when it could not tell (not an AD target, or the bind or
   // lookup failed).
   optional bool builtin_administrator = 5;  // objectSid RID is 500
   optional bool admin_count = 6;            // adminCount=1
+  // Per-target outcomes (#168), one per entry in the claimed HeartbeatJob's
+  // targets list. Empty means the connector hasn't moved to multi-target
+  // reporting: result/detail above are trusted as the secret's only outcome,
+  // exactly as before. Non-empty: result above must be OK only if every
+  // entry here is ok — otherwise vault reports FAILED and lists which.
+  repeated TargetOutcome target_results = 7;
 }
 message ReportHeartbeatResponse { bool ok = 1; }
 
@@ -1243,9 +1307,14 @@ message RotationJob {
   string secret_id = 1;
   string secret_name = 2;
   string username = 3;         // non-sensitive: the account being rotated
-  HeartbeatConn connection = 4;
-  HeartbeatTarget target = 5;
+  HeartbeatConn connection = 4; // the PRIMARY (first) target's connection — kept for a connector that hasn't moved to targets
+  HeartbeatTarget target = 5;   // the PRIMARY (first) target — same
   LogonFormat logon = 6;       // set only for a secret with any logon format field
+  // Every attached target (#168). A multi-target-aware connector pushes the
+  // SAME new credential (from RevealForRotation) to every entry here and
+  // reports each in ReportRotationRequest.target_results — one generated
+  // value, applied everywhere it's used.
+  repeated TargetJob targets = 7;
 }
 
 message EnqueueRotationRequest { ActorContext actor = 1; string secret_id = 2; string reason = 3; }
@@ -1270,6 +1339,18 @@ message ReportRotationRequest {
   // the connector made no change (change and validate are SKIPPED). Unset
   // when the connector did not determine it.
   optional bool builtin_administrator = 7;
+  // Per-target outcomes (#168), one per entry in the claimed RotationJob's
+  // targets list (ok = the new credential is live and confirmed on that
+  // target). Empty means the connector hasn't moved to multi-target
+  // reporting: change/validate above are trusted as the secret's only
+  // outcome, exactly as before. Non-empty: the committed rotation is
+  // ROTATION_STATE_OK only once every entry here is ok; otherwise
+  // ROTATION_STATE_DEGRADED (the new value IS stored and was applied
+  // somewhere — never rolled back blindly) listing which targets still need
+  // it, same "doesn't call it done until every target has the new value"
+  // rule RestoreSecretVersionForPrincipal exists to let a caller recover
+  // from.
+  repeated TargetOutcome target_results = 8;
 }
 message ReportRotationResponse { bool ok = 1; }
 
@@ -1414,6 +1495,15 @@ message SetSecretAutomationForPrincipalResponse { Secret secret = 1; }
 message SetSecretTargetForPrincipalRequest { ActorContext actor = 1; string secret_id = 2; string target_id = 3; }
 message SetSecretTargetForPrincipalResponse { Secret secret = 1; }
 
+// Attach/detach one target for a non-human principal (#168) — the
+// ForPrincipal mirror of AttachSecretTarget/DetachSecretTarget, never
+// touching the secret's other targets. Same RACI-Author + usable-target gate
+// as SetSecretTargetForPrincipal.
+message AttachSecretTargetForPrincipalRequest { ActorContext actor = 1; string secret_id = 2; string target_id = 3; }
+message AttachSecretTargetForPrincipalResponse { Secret secret = 1; }
+message DetachSecretTargetForPrincipalRequest { ActorContext actor = 1; string secret_id = 2; string target_id = 3; }
+message DetachSecretTargetForPrincipalResponse { Secret secret = 1; }
+
 // RequestHeartbeatForPrincipal makes a secret's heartbeat due now, so the next
 // connector poll checks the stored credential against its target. Needs read
 // on the secret and a scheduled heartbeat; limited to once a minute per secret.
@@ -1538,6 +1628,10 @@ service VaultService {
   }
   rpc CreateSecret(CreateSecretRequest) returns (CreateSecretResponse);
   rpc UpdateSecret(UpdateSecretRequest) returns (UpdateSecretResponse);
+  // Attach/detach one target on a secret's list, never touching the others
+  // (#168) — UpdateSecret's target_id keeps meaning "replace with this one".
+  rpc AttachSecretTarget(AttachSecretTargetRequest) returns (AttachSecretTargetResponse);
+  rpc DetachSecretTarget(DetachSecretTargetRequest) returns (DetachSecretTargetResponse);
   rpc SetSecretAutomation(SetSecretAutomationRequest) returns (SetSecretAutomationResponse);
   rpc GetSecretFields(GetSecretFieldsRequest) returns (GetSecretFieldsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -1688,6 +1782,8 @@ service VaultService {
   rpc RevokeUseGrant(RevokeUseGrantRequest) returns (RevokeUseGrantResponse);
   rpc SetSecretTokenApproval(SetSecretTokenApprovalRequest) returns (SetSecretTokenApprovalResponse);
   rpc SetSecretTargetForPrincipal(SetSecretTargetForPrincipalRequest) returns (SetSecretTargetForPrincipalResponse);
+  rpc AttachSecretTargetForPrincipal(AttachSecretTargetForPrincipalRequest) returns (AttachSecretTargetForPrincipalResponse);
+  rpc DetachSecretTargetForPrincipal(DetachSecretTargetForPrincipalRequest) returns (DetachSecretTargetForPrincipalResponse);
   rpc SetSecretAutomationForPrincipal(SetSecretAutomationForPrincipalRequest) returns (SetSecretAutomationForPrincipalResponse);
   rpc RequestHeartbeatForPrincipal(RequestHeartbeatForPrincipalRequest) returns (RequestHeartbeatForPrincipalResponse);
   rpc GetHeartbeatStatusForPrincipal(GetHeartbeatStatusForPrincipalRequest) returns (GetHeartbeatStatusForPrincipalResponse);

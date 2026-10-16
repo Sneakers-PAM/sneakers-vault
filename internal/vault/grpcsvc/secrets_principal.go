@@ -126,9 +126,12 @@ func (s *Server) buildAndStoreSecret(ctx context.Context, actor *vaultv1.ActorCo
 	// The opt-outs are set before ensureLifecycle so an opted-out secret never
 	// gets a schedule row, not even briefly.
 	sec := &vaultv1.Secret{
-		Id: s.nextID("secret"), Name: spec.name, FolderId: spec.folderID, TypeId: spec.typeID, TargetId: spec.targetID,
+		Id: s.nextID("secret"), Name: spec.name, FolderId: spec.folderID, TypeId: spec.typeID,
 		RotationOptOut: spec.disableRotation, HeartbeatOptOut: spec.disableHeartbeat,
 		Position: s.nextPosition(spec.folderID), CreatorPrincipalId: principalActorID(actor),
+	}
+	if spec.targetID != "" {
+		setSecretTargets(sec, []string{spec.targetID})
 	}
 	rec, err := s.crypt.Seal(fields)
 	if err != nil {

@@ -300,6 +300,9 @@ func (s *Server) hydrate(st *state) {
 var mutatingMethods = map[string]bool{
 	"CreateSecret": true, "UpdateSecret": true, "SetSecretAutomation": true, "SetSecretTokenApproval": true,
 	"SetSecretTargetForPrincipal": true, "SetSecretAutomationForPrincipal": true,
+	// Attach/detach one target without replacing the list (#168).
+	"AttachSecretTarget": true, "DetachSecretTarget": true,
+	"AttachSecretTargetForPrincipal": true, "DetachSecretTargetForPrincipal": true,
 	// CreateSecretForPrincipal/GenerateSecretForPrincipal create a
 	// secret via the same store-mutating path as CreateSecret, for a non-human
 	// principal — must persist too.

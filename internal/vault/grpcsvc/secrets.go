@@ -98,8 +98,11 @@ func (s *Server) CreateSecret(ctx context.Context, req *vaultv1.CreateSecretRequ
 	}
 	sec := &vaultv1.Secret{
 		Id: s.nextID("secret"), Name: req.GetName(), FolderId: req.GetFolderId(),
-		TypeId: req.GetTypeId(), TargetId: req.GetTargetId(), ExpiresAt: req.GetExpiresAt(),
+		TypeId: req.GetTypeId(), ExpiresAt: req.GetExpiresAt(),
 		Position: s.nextPosition(req.GetFolderId()), CreatorPrincipalId: req.GetActor().GetUserId(),
+	}
+	if req.GetTargetId() != "" {
+		setSecretTargets(sec, []string{req.GetTargetId()})
 	}
 	rec, err := s.crypt.Seal(fields)
 	if err != nil {
@@ -233,7 +236,15 @@ func (s *Server) UpdateSecret(ctx context.Context, req *vaultv1.UpdateSecretRequ
 		changes = append(changes, fieldChange{Field: "name", Old: oldName, New: sec.Name})
 	}
 	oldTarget := sec.TargetId
-	sec.TargetId = req.GetTargetId()
+	// Replace semantics: the whole target_ids list becomes just this one
+	// (empty clears it), same as before this field existed — Attach/
+	// DetachSecretTarget are the only paths that add or remove one target
+	// without touching the others (#168).
+	if req.GetTargetId() != "" {
+		setSecretTargets(sec, []string{req.GetTargetId()})
+	} else {
+		setSecretTargets(sec, nil)
+	}
 	sec.ExpiresAt = req.GetExpiresAt()
 	if sec.TargetId != "" && sec.TargetId != oldTarget {
 		s.ensureRotationScheduled(ctx, sec)

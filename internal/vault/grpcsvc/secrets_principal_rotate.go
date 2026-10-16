@@ -91,18 +91,9 @@ func (s *Server) RotateSecretForPrincipal(ctx context.Context, req *vaultv1.Rota
 	s.records[sec.GetId()] = newRec
 	s.markValueChanged(ctx, sec, newNo)
 	sec.RotatedAt = time.Now().UTC().Format(time.RFC3339)
-	if sec.GetTargetId() != "" {
-		// Only the vault's copy just changed; the caller (a broker) pushes it to
-		// the target next. Mirrors RestoreSecretVersion: mark unchecked rather
-		// than claim a result the vault hasn't observed.
-		sec.LastHeartbeatResult = vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNKNOWN
-		sec.LastHeartbeatDetail = "rotated by a principal; not yet checked against the target"
-		if s.hb != nil {
-			if _, _, err := s.hb.RequestNow(ctx, sec.GetId(), 0); err != nil {
-				s.lg(ctx).Error(err, "queue heartbeat after principal rotate failed", log.F("secret_id", sec.GetId()))
-			}
-		}
-	}
+	// Only the vault's copy just changed; the caller (a broker) pushes it to
+	// the target next.
+	s.markTargetsUncheckedAfterPrincipalWrite(ctx, sec, "rotated")
 	s.emitAttrs(ctx, principalActorID(actor), "secret.rotate.principal", sec.GetId(), true, principalAttrs(actor, map[string]string{
 		"new_version_no": strconv.Itoa(newNo),
 	}))
@@ -149,15 +140,7 @@ func (s *Server) RestoreSecretVersionForPrincipal(ctx context.Context, req *vaul
 	if err != nil {
 		return nil, err
 	}
-	if sec.GetTargetId() != "" {
-		sec.LastHeartbeatResult = vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNKNOWN
-		sec.LastHeartbeatDetail = "restored by a principal; not yet checked against the target"
-		if s.hb != nil {
-			if _, _, err := s.hb.RequestNow(ctx, sec.GetId(), 0); err != nil {
-				s.lg(ctx).Error(err, "queue heartbeat after principal restore failed", log.F("secret_id", sec.GetId()))
-			}
-		}
-	}
+	s.markTargetsUncheckedAfterPrincipalWrite(ctx, sec, "restored")
 	s.emitAttrs(ctx, principalActorID(actor), "secret.version.restore.principal", sec.GetId(), true, principalAttrs(actor, map[string]string{
 		"version_no": strconv.Itoa(int(req.GetVersionNo())), "new_version_no": strconv.Itoa(newNo),
 	}))

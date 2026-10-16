@@ -53,6 +53,7 @@ var maintenanceGolden = map[maintenance.Class][]string{
 		"RotateKek", "SealForImport", "PrepareSecretUse", "DecideSecretUse", "ConfirmSecretUse", "RedeemSecretUse",
 		"CreateUseGrant", "RevokeUseGrant", "SetSecretTokenApproval", "SetSecretTargetForPrincipal",
 		"SetSecretAutomationForPrincipal", "RequestHeartbeatForPrincipal",
+		"AttachSecretTarget", "DetachSecretTarget", "AttachSecretTargetForPrincipal", "DetachSecretTargetForPrincipal",
 	},
 }
 

@@ -102,6 +102,23 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   queued or running, and are HUMAN-never: a `PRINCIPAL_KIND_HUMAN` actor gets `PermissionDenied`
   (use `RestoreSecretVersion`, which needs the recovery role, instead). Neither ever changes a
   target's pinned SSH host keys.
+- **One secret, many targets:** a secret holds an ordered `target_ids` list; `target_id` (legacy,
+  singular) stays the first/primary entry, kept in sync, so a consumer that hasn't moved to the
+  list still reads a sensible single value. `UpdateSecret`/`SetSecretTargetForPrincipal`'s
+  `target_id` keeps meaning "replace the whole list with just this one". `AttachSecretTarget`/
+  `DetachSecretTarget` (and their `ForPrincipal` mirrors) add or remove one target without
+  touching the others — both idempotent: attaching an already-attached target, or detaching one
+  that isn't attached, is a no-op. Host-key pins stay per target (`Target.ssh_host_keys`), unaffected.
+  `ClaimDueRotations`/`ClaimDueHeartbeats` hand the connector every attached target
+  (`RotationJob`/`HeartbeatJob.targets`, primary first; the singular `connection`/`target` fields
+  stay the primary target's, for a connector that hasn't moved to the list) and are reachable once
+  ANY attached target is usable. `ReportRotation`/`ReportHeartbeat.target_results` (one entry per
+  target, empty means the connector hasn't moved to multi-target reporting) fold into the secret's
+  one aggregate result — `ROTATION_STATE_OK`/`HEARTBEAT_RESULT_OK` only once every attached target
+  succeeds, otherwise DEGRADED/FAILED — while `target_rotation_outcomes`/`target_heartbeat_outcomes`
+  keep the per-target breakdown. A rotation already committed to the vault is never rolled back
+  just because one target hasn't caught up: "done" only waits on every target getting there, or the
+  failures being shown.
 - **Seeing secrets:** `ListSecretsInFolder` and `GetSecret` show a secret's metadata to anyone who
   can see its folder, even without read, so people can find a secret and request access. Each
   secret carries `can_read`, false when the caller can't read it. A secret an explicit deny

@@ -607,7 +607,14 @@ func (s *Server) SetSecretTargetForPrincipal(ctx context.Context, req *vaultv1.S
 		return nil, err
 	}
 	from := sec.GetTargetId()
-	sec.TargetId = req.GetTargetId()
+	// Replace semantics (#168): the whole target_ids list becomes just this
+	// one. AttachSecretTargetForPrincipal/DetachSecretTargetForPrincipal are
+	// the paths that add or remove one target without touching the others.
+	if req.GetTargetId() != "" {
+		setSecretTargets(sec, []string{req.GetTargetId()})
+	} else {
+		setSecretTargets(sec, nil)
+	}
 	if sec.TargetId != "" && sec.TargetId != from {
 		s.ensureRotationScheduled(ctx, sec)
 		s.ensureHeartbeatScheduled(ctx, sec)

@@ -62,6 +62,8 @@ const (
 	VaultService_GetSecret_FullMethodName                        = "/sneakers.vault.v1.VaultService/GetSecret"
 	VaultService_CreateSecret_FullMethodName                     = "/sneakers.vault.v1.VaultService/CreateSecret"
 	VaultService_UpdateSecret_FullMethodName                     = "/sneakers.vault.v1.VaultService/UpdateSecret"
+	VaultService_AttachSecretTarget_FullMethodName               = "/sneakers.vault.v1.VaultService/AttachSecretTarget"
+	VaultService_DetachSecretTarget_FullMethodName               = "/sneakers.vault.v1.VaultService/DetachSecretTarget"
 	VaultService_SetSecretAutomation_FullMethodName              = "/sneakers.vault.v1.VaultService/SetSecretAutomation"
 	VaultService_GetSecretFields_FullMethodName                  = "/sneakers.vault.v1.VaultService/GetSecretFields"
 	VaultService_RevealSecretField_FullMethodName                = "/sneakers.vault.v1.VaultService/RevealSecretField"
@@ -129,6 +131,8 @@ const (
 	VaultService_RevokeUseGrant_FullMethodName                   = "/sneakers.vault.v1.VaultService/RevokeUseGrant"
 	VaultService_SetSecretTokenApproval_FullMethodName           = "/sneakers.vault.v1.VaultService/SetSecretTokenApproval"
 	VaultService_SetSecretTargetForPrincipal_FullMethodName      = "/sneakers.vault.v1.VaultService/SetSecretTargetForPrincipal"
+	VaultService_AttachSecretTargetForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/AttachSecretTargetForPrincipal"
+	VaultService_DetachSecretTargetForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/DetachSecretTargetForPrincipal"
 	VaultService_SetSecretAutomationForPrincipal_FullMethodName  = "/sneakers.vault.v1.VaultService/SetSecretAutomationForPrincipal"
 	VaultService_RequestHeartbeatForPrincipal_FullMethodName     = "/sneakers.vault.v1.VaultService/RequestHeartbeatForPrincipal"
 	VaultService_GetHeartbeatStatusForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/GetHeartbeatStatusForPrincipal"
@@ -191,6 +195,10 @@ type VaultServiceClient interface {
 	GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error)
 	CreateSecret(ctx context.Context, in *CreateSecretRequest, opts ...grpc.CallOption) (*CreateSecretResponse, error)
 	UpdateSecret(ctx context.Context, in *UpdateSecretRequest, opts ...grpc.CallOption) (*UpdateSecretResponse, error)
+	// Attach/detach one target on a secret's list, never touching the others
+	// (#168) — UpdateSecret's target_id keeps meaning "replace with this one".
+	AttachSecretTarget(ctx context.Context, in *AttachSecretTargetRequest, opts ...grpc.CallOption) (*AttachSecretTargetResponse, error)
+	DetachSecretTarget(ctx context.Context, in *DetachSecretTargetRequest, opts ...grpc.CallOption) (*DetachSecretTargetResponse, error)
 	SetSecretAutomation(ctx context.Context, in *SetSecretAutomationRequest, opts ...grpc.CallOption) (*SetSecretAutomationResponse, error)
 	GetSecretFields(ctx context.Context, in *GetSecretFieldsRequest, opts ...grpc.CallOption) (*GetSecretFieldsResponse, error)
 	RevealSecretField(ctx context.Context, in *RevealSecretFieldRequest, opts ...grpc.CallOption) (*RevealSecretFieldResponse, error)
@@ -289,6 +297,8 @@ type VaultServiceClient interface {
 	RevokeUseGrant(ctx context.Context, in *RevokeUseGrantRequest, opts ...grpc.CallOption) (*RevokeUseGrantResponse, error)
 	SetSecretTokenApproval(ctx context.Context, in *SetSecretTokenApprovalRequest, opts ...grpc.CallOption) (*SetSecretTokenApprovalResponse, error)
 	SetSecretTargetForPrincipal(ctx context.Context, in *SetSecretTargetForPrincipalRequest, opts ...grpc.CallOption) (*SetSecretTargetForPrincipalResponse, error)
+	AttachSecretTargetForPrincipal(ctx context.Context, in *AttachSecretTargetForPrincipalRequest, opts ...grpc.CallOption) (*AttachSecretTargetForPrincipalResponse, error)
+	DetachSecretTargetForPrincipal(ctx context.Context, in *DetachSecretTargetForPrincipalRequest, opts ...grpc.CallOption) (*DetachSecretTargetForPrincipalResponse, error)
 	SetSecretAutomationForPrincipal(ctx context.Context, in *SetSecretAutomationForPrincipalRequest, opts ...grpc.CallOption) (*SetSecretAutomationForPrincipalResponse, error)
 	RequestHeartbeatForPrincipal(ctx context.Context, in *RequestHeartbeatForPrincipalRequest, opts ...grpc.CallOption) (*RequestHeartbeatForPrincipalResponse, error)
 	GetHeartbeatStatusForPrincipal(ctx context.Context, in *GetHeartbeatStatusForPrincipalRequest, opts ...grpc.CallOption) (*GetHeartbeatStatusForPrincipalResponse, error)
@@ -696,6 +706,26 @@ func (c *vaultServiceClient) UpdateSecret(ctx context.Context, in *UpdateSecretR
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UpdateSecretResponse)
 	err := c.cc.Invoke(ctx, VaultService_UpdateSecret_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) AttachSecretTarget(ctx context.Context, in *AttachSecretTargetRequest, opts ...grpc.CallOption) (*AttachSecretTargetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AttachSecretTargetResponse)
+	err := c.cc.Invoke(ctx, VaultService_AttachSecretTarget_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) DetachSecretTarget(ctx context.Context, in *DetachSecretTargetRequest, opts ...grpc.CallOption) (*DetachSecretTargetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DetachSecretTargetResponse)
+	err := c.cc.Invoke(ctx, VaultService_DetachSecretTarget_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1372,6 +1402,26 @@ func (c *vaultServiceClient) SetSecretTargetForPrincipal(ctx context.Context, in
 	return out, nil
 }
 
+func (c *vaultServiceClient) AttachSecretTargetForPrincipal(ctx context.Context, in *AttachSecretTargetForPrincipalRequest, opts ...grpc.CallOption) (*AttachSecretTargetForPrincipalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AttachSecretTargetForPrincipalResponse)
+	err := c.cc.Invoke(ctx, VaultService_AttachSecretTargetForPrincipal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) DetachSecretTargetForPrincipal(ctx context.Context, in *DetachSecretTargetForPrincipalRequest, opts ...grpc.CallOption) (*DetachSecretTargetForPrincipalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DetachSecretTargetForPrincipalResponse)
+	err := c.cc.Invoke(ctx, VaultService_DetachSecretTargetForPrincipal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vaultServiceClient) SetSecretAutomationForPrincipal(ctx context.Context, in *SetSecretAutomationForPrincipalRequest, opts ...grpc.CallOption) (*SetSecretAutomationForPrincipalResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetSecretAutomationForPrincipalResponse)
@@ -1459,6 +1509,10 @@ type VaultServiceServer interface {
 	GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error)
 	CreateSecret(context.Context, *CreateSecretRequest) (*CreateSecretResponse, error)
 	UpdateSecret(context.Context, *UpdateSecretRequest) (*UpdateSecretResponse, error)
+	// Attach/detach one target on a secret's list, never touching the others
+	// (#168) — UpdateSecret's target_id keeps meaning "replace with this one".
+	AttachSecretTarget(context.Context, *AttachSecretTargetRequest) (*AttachSecretTargetResponse, error)
+	DetachSecretTarget(context.Context, *DetachSecretTargetRequest) (*DetachSecretTargetResponse, error)
 	SetSecretAutomation(context.Context, *SetSecretAutomationRequest) (*SetSecretAutomationResponse, error)
 	GetSecretFields(context.Context, *GetSecretFieldsRequest) (*GetSecretFieldsResponse, error)
 	RevealSecretField(context.Context, *RevealSecretFieldRequest) (*RevealSecretFieldResponse, error)
@@ -1557,6 +1611,8 @@ type VaultServiceServer interface {
 	RevokeUseGrant(context.Context, *RevokeUseGrantRequest) (*RevokeUseGrantResponse, error)
 	SetSecretTokenApproval(context.Context, *SetSecretTokenApprovalRequest) (*SetSecretTokenApprovalResponse, error)
 	SetSecretTargetForPrincipal(context.Context, *SetSecretTargetForPrincipalRequest) (*SetSecretTargetForPrincipalResponse, error)
+	AttachSecretTargetForPrincipal(context.Context, *AttachSecretTargetForPrincipalRequest) (*AttachSecretTargetForPrincipalResponse, error)
+	DetachSecretTargetForPrincipal(context.Context, *DetachSecretTargetForPrincipalRequest) (*DetachSecretTargetForPrincipalResponse, error)
 	SetSecretAutomationForPrincipal(context.Context, *SetSecretAutomationForPrincipalRequest) (*SetSecretAutomationForPrincipalResponse, error)
 	RequestHeartbeatForPrincipal(context.Context, *RequestHeartbeatForPrincipalRequest) (*RequestHeartbeatForPrincipalResponse, error)
 	GetHeartbeatStatusForPrincipal(context.Context, *GetHeartbeatStatusForPrincipalRequest) (*GetHeartbeatStatusForPrincipalResponse, error)
@@ -1689,6 +1745,12 @@ func (UnimplementedVaultServiceServer) CreateSecret(context.Context, *CreateSecr
 }
 func (UnimplementedVaultServiceServer) UpdateSecret(context.Context, *UpdateSecretRequest) (*UpdateSecretResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateSecret not implemented")
+}
+func (UnimplementedVaultServiceServer) AttachSecretTarget(context.Context, *AttachSecretTargetRequest) (*AttachSecretTargetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AttachSecretTarget not implemented")
+}
+func (UnimplementedVaultServiceServer) DetachSecretTarget(context.Context, *DetachSecretTargetRequest) (*DetachSecretTargetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DetachSecretTarget not implemented")
 }
 func (UnimplementedVaultServiceServer) SetSecretAutomation(context.Context, *SetSecretAutomationRequest) (*SetSecretAutomationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetSecretAutomation not implemented")
@@ -1890,6 +1952,12 @@ func (UnimplementedVaultServiceServer) SetSecretTokenApproval(context.Context, *
 }
 func (UnimplementedVaultServiceServer) SetSecretTargetForPrincipal(context.Context, *SetSecretTargetForPrincipalRequest) (*SetSecretTargetForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetSecretTargetForPrincipal not implemented")
+}
+func (UnimplementedVaultServiceServer) AttachSecretTargetForPrincipal(context.Context, *AttachSecretTargetForPrincipalRequest) (*AttachSecretTargetForPrincipalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AttachSecretTargetForPrincipal not implemented")
+}
+func (UnimplementedVaultServiceServer) DetachSecretTargetForPrincipal(context.Context, *DetachSecretTargetForPrincipalRequest) (*DetachSecretTargetForPrincipalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DetachSecretTargetForPrincipal not implemented")
 }
 func (UnimplementedVaultServiceServer) SetSecretAutomationForPrincipal(context.Context, *SetSecretAutomationForPrincipalRequest) (*SetSecretAutomationForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetSecretAutomationForPrincipal not implemented")
@@ -2637,6 +2705,42 @@ func _VaultService_UpdateSecret_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VaultServiceServer).UpdateSecret(ctx, req.(*UpdateSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_AttachSecretTarget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AttachSecretTargetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).AttachSecretTarget(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_AttachSecretTarget_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).AttachSecretTarget(ctx, req.(*AttachSecretTargetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_DetachSecretTarget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DetachSecretTargetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).DetachSecretTarget(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_DetachSecretTarget_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).DetachSecretTarget(ctx, req.(*DetachSecretTargetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3847,6 +3951,42 @@ func _VaultService_SetSecretTargetForPrincipal_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VaultService_AttachSecretTargetForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AttachSecretTargetForPrincipalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).AttachSecretTargetForPrincipal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_AttachSecretTargetForPrincipal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).AttachSecretTargetForPrincipal(ctx, req.(*AttachSecretTargetForPrincipalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_DetachSecretTargetForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DetachSecretTargetForPrincipalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).DetachSecretTargetForPrincipal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_DetachSecretTargetForPrincipal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).DetachSecretTargetForPrincipal(ctx, req.(*DetachSecretTargetForPrincipalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VaultService_SetSecretAutomationForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetSecretAutomationForPrincipalRequest)
 	if err := dec(in); err != nil {
@@ -4067,6 +4207,14 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateSecret",
 			Handler:    _VaultService_UpdateSecret_Handler,
+		},
+		{
+			MethodName: "AttachSecretTarget",
+			Handler:    _VaultService_AttachSecretTarget_Handler,
+		},
+		{
+			MethodName: "DetachSecretTarget",
+			Handler:    _VaultService_DetachSecretTarget_Handler,
 		},
 		{
 			MethodName: "SetSecretAutomation",
@@ -4335,6 +4483,14 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetSecretTargetForPrincipal",
 			Handler:    _VaultService_SetSecretTargetForPrincipal_Handler,
+		},
+		{
+			MethodName: "AttachSecretTargetForPrincipal",
+			Handler:    _VaultService_AttachSecretTargetForPrincipal_Handler,
+		},
+		{
+			MethodName: "DetachSecretTargetForPrincipal",
+			Handler:    _VaultService_DetachSecretTargetForPrincipal_Handler,
 		},
 		{
 			MethodName: "SetSecretAutomationForPrincipal",
