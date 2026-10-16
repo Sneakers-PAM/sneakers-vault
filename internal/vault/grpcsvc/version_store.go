@@ -35,6 +35,9 @@ type VersionMeta struct {
 	// version by version_no. The oldest version reports all its keys. Empty means
 	// this version changed no field values (e.g. a re-save of identical values).
 	ChangedFieldKeys []string
+	// ChangeLabel describes a type change this version is (#165); empty for
+	// every other version, which renders from ChangedFieldKeys instead.
+	ChangeLabel string
 }
 
 // versionStore is the append-only secret version ledger (secret_versions). It
@@ -54,19 +57,27 @@ func newVersionStore(db *postgres.DB) *versionStore { return &versionStore{db: d
 // AppendActive writes the next version_no as the active record, demoting any
 // prior active row, in one transaction. Returns the new version_no.
 func (v *versionStore) AppendActive(ctx context.Context, secretID string, rec crypto.Record, by string) (int, error) {
-	return v.append(ctx, secretID, rec, by, true, false)
+	return v.append(ctx, secretID, rec, by, true, false, "")
+}
+
+// AppendActiveWithNote is AppendActive plus a change_note describing the
+// change itself (#165: a type change's "Type changed: ..." label), rather
+// than leaving the version to render from its changed field keys alone.
+func (v *versionStore) AppendActiveWithNote(ctx context.Context, secretID string, rec crypto.Record, by, note string) (int, error) {
+	return v.append(ctx, secretID, rec, by, true, false, note)
 }
 
 // Stage writes the next version_no as a staged (active=false, staged=true)
 // version, leaving the current active row untouched. Returns its version_no.
 func (v *versionStore) Stage(ctx context.Context, secretID string, rec crypto.Record, by string) (int, error) {
-	return v.append(ctx, secretID, rec, by, false, true)
+	return v.append(ctx, secretID, rec, by, false, true, "")
 }
 
-// append inserts the next version_no with the given active/staged flags. When
-// active it first demotes the prior active row (single-active invariant), all in
-// one transaction so a reader never sees zero or two active rows.
-func (v *versionStore) append(ctx context.Context, secretID string, rec crypto.Record, by string, active, staged bool) (int, error) {
+// append inserts the next version_no with the given active/staged flags and
+// change note. When active it first demotes the prior active row (single
+// -active invariant), all in one transaction so a reader never sees zero or
+// two active rows.
+func (v *versionStore) append(ctx context.Context, secretID string, rec crypto.Record, by string, active, staged bool, note string) (int, error) {
 	raw, err := json.Marshal(rec)
 	if err != nil {
 		return 0, err
@@ -84,9 +95,9 @@ func (v *versionStore) append(ctx context.Context, secretID string, rec crypto.R
 			return err
 		}
 		_, err := tx.Exec(ctx,
-			`INSERT INTO secret_versions (secret_id, version_no, record, active, staged, created_by)
-			 VALUES ($1,$2,$3,$4,$5,$6)`,
-			secretID, next, raw, active, staged, by)
+			`INSERT INTO secret_versions (secret_id, version_no, record, active, staged, created_by, change_note)
+			 VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+			secretID, next, raw, active, staged, by, nullableString(note))
 		return err
 	})
 	if err != nil {
@@ -244,7 +255,7 @@ func (v *versionStore) ActiveRecord(ctx context.Context, secretID string) (crypt
 // envelope) the change set falls back to the full key set.
 func (v *versionStore) List(ctx context.Context, secretID string, crypt *crypto.Envelope) ([]VersionMeta, error) {
 	rows, err := v.db.Querier().Query(ctx,
-		`SELECT version_no, created_by, created_at, active, record
+		`SELECT version_no, created_by, created_at, active, record, change_note
 		   FROM secret_versions WHERE secret_id=$1 ORDER BY version_no DESC`, secretID)
 	if err != nil {
 		return nil, err
@@ -257,8 +268,12 @@ func (v *versionStore) List(ctx context.Context, secretID string, crypt *crypto.
 	for rows.Next() {
 		var m VersionMeta
 		var raw []byte
-		if err := rows.Scan(&m.VersionNo, &m.CreatedBy, &m.CreatedAt, &m.Active, &raw); err != nil {
+		var note *string
+		if err := rows.Scan(&m.VersionNo, &m.CreatedBy, &m.CreatedAt, &m.Active, &raw, &note); err != nil {
 			return nil, err
+		}
+		if note != nil {
+			m.ChangeLabel = *note
 		}
 		var rec crypto.Record
 		if err := json.Unmarshal(raw, &rec); err != nil {

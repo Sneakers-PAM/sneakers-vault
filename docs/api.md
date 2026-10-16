@@ -209,7 +209,14 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   connection), `rotates_on_checkin` (that plus a check-out type) and `heartbeat_enabled`.
 - **Version history (recovery):** `ListSecretVersions` gives a human reader the change list
   (version numbers, authors, times, changed field keys), never values; machine principals are
-  refused. Revealing a field of any version (`RevealSecretVersionField`) and
+  refused. A version a type change produced also carries `change_label` — "Type changed: <old
+  type> → <new type>", naming any field added, renamed (`field_mapping`) or carried over, and any
+  moved to notes — instead of reading as only "Changed: <field>" (#165). Empty for every other
+  version, which renders from its changed field keys as before. `ChangeSecretTypeForPrincipal`'s
+  own response and the `secret.type_change.principal` audit event (`change_label` attribute) carry
+  the identical text. A target attached afterward is its own audit event
+  (`secret.target.principal`) and never touches an already-written version's label — attaching a
+  target mints no version at all. Revealing a field of any version (`RevealSecretVersionField`) and
   `RestoreSecretVersion` need read on the secret plus the recovery role (`is_recovery`; site
   admin and root don't imply it) and an MFA within `MFA_MAX_AGE`. Otherwise `PermissionDenied`
   with reason `RECOVERY_ROLE_REQUIRED` or `STEP_UP_REQUIRED`, audited as `recovery.denied`.

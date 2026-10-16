@@ -8,6 +8,10 @@
 - A sensitive value only moves into a sensitive field, and a super-sensitive value only into a super-sensitive field. Otherwise the call fails and names the fields.
 - The new type's required fields, patterns and max lengths apply.
 - The new values are sealed as a new active version. The previous values stay in version history.
+  That version's `change_label` describes the change itself — "Type changed: <old type> → <new
+  type>", naming any field added, renamed (`field_mapping`) or carried over, and any moved to
+  notes — so history never reads as only "Changed: <field>" (#165). The response and the audit
+  event's `change_label` attribute carry the identical text.
 - The change is audited as `secret.type_change.principal` with field keys only, never values.
 - Dropping checkout from a plain checkout type (one without rotation or heartbeat) is still human-only.
 
@@ -21,7 +25,7 @@
 | Change | Result |
 |---|---|
 | Into a rotation type | Rotation is opted out (`rotation_opt_out` true) and no rotation row exists until rotation is enabled with `SetSecretAutomation(ForPrincipal)`. |
-| Into a heartbeat type | A heartbeat row is created only when the secret has a target with a connection and isn't opted out of heartbeat. |
+| Into a heartbeat type | A heartbeat row is created only when the secret has a target with a connection (plus, for `type-ssh-key`, at least one pinned host key) and isn't opted out of heartbeat. |
 | Out of a rotation or heartbeat type | Its rotation and heartbeat rows are removed, which also drops any claim on them. |
 | Rotation in flight | While a rotation claim is live the call fails with FailedPrecondition. Retry once the rotation finishes. |
 | Target | Kept when the new type takes a target (rotation, heartbeat, `type-ssh-key`, `type-unix-ssh`), otherwise detached. |

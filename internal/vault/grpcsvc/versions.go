@@ -49,6 +49,7 @@ func (s *Server) ListSecretVersions(ctx context.Context, req *vaultv1.ListSecret
 			Active:           m.Active,
 			FieldKeys:        m.FieldKeys,
 			ChangedFieldKeys: m.ChangedFieldKeys,
+			ChangeLabel:      m.ChangeLabel,
 		})
 	}
 	return &vaultv1.ListSecretVersionsResponse{Versions: out}, nil

@@ -6,6 +6,7 @@ package grpcsvc
 import (
 	"encoding/json"
 	"sort"
+	"strings"
 
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 )
@@ -78,4 +79,49 @@ func secretUpdateAttributes(changes []fieldChange, sensitiveChanged []string) ma
 		}
 	}
 	return attrs
+}
+
+// typeChangeLabel describes a type change itself (#165), instead of leaving
+// its version to read as only "Changed: <field>" the way diffSecretFields'
+// generic changed-key list would: "Type changed: Password -> Password
+// Account (SSH); added host; renamed username to login; fields carried
+// over: password; moved to notes: legacy_note". next is the new type's final
+// plaintext field map (post-retype); mapping is the request's explicit
+// field_mapping (old key -> new key); moved is the old keys the mapping left
+// unmapped and retypeFields appended to the notes field.
+func typeChangeLabel(st, nt *vaultv1.SecretType, mapping, next map[string]string, moved []string) string {
+	renamedFrom := make(map[string]string, len(mapping))
+	for from, to := range mapping {
+		if from != to {
+			renamedFrom[to] = from
+		}
+	}
+	var added, renamed, carried []string
+	for _, key := range sortedKeys(next) {
+		if next[key] == "" {
+			continue
+		}
+		switch {
+		case renamedFrom[key] != "":
+			renamed = append(renamed, renamedFrom[key]+" to "+key)
+		case fieldDef(st, key) != nil:
+			carried = append(carried, key)
+		default:
+			added = append(added, key)
+		}
+	}
+	label := "Type changed: " + st.GetName() + " → " + nt.GetName()
+	if len(added) > 0 {
+		label += "; added " + strings.Join(added, ", ")
+	}
+	if len(renamed) > 0 {
+		label += "; renamed " + strings.Join(renamed, ", ")
+	}
+	if len(carried) > 0 {
+		label += "; fields carried over: " + strings.Join(carried, ", ")
+	}
+	if len(moved) > 0 {
+		label += "; fields moved to notes: " + strings.Join(moved, ", ")
+	}
+	return label
 }
