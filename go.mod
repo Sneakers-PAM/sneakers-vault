@@ -1,6 +1,6 @@
 module github.com/Sneakers-PAM/sneakers-vault
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/Bugs5382/go-buildinfo v1.1.0
