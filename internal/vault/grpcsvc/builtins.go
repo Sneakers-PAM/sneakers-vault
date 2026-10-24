@@ -281,6 +281,21 @@ func BuiltinTypes() []*vaultv1.SecretType {
 		// Appended (catalogue lifecycle rule: additive only, never
 		// reordered/altered above this point).
 		sslCert,
+		// The private key is MULTILINE + sensitive, not the SENSITIVE kind: the
+		// web editor renders SENSITIVE as a single-line input, which drops a
+		// PEM's line breaks. Not super-sensitive (like type-ssh-key's private
+		// key), so tokens can still read it for automation.
+		{Id: "type-github-app", Name: "GitHub App", Origin: sys, Fields: []*vaultv1.SecretFieldDef{
+			desc(),
+			{Key: "appId", Label: "App ID", Kind: text, Required: true, Pattern: `^\d+$`},
+			{Key: "clientId", Label: "Client ID", Kind: text},
+			{Key: "clientSecret", Label: "Client Secret", Kind: sens, Sensitive: true},
+			{Key: "installationId", Label: "Installation ID", Kind: text, Pattern: `^\d+$`},
+			{Key: "privateKey", Label: "Private Key (PEM)", Kind: multi, Required: true, Sensitive: true},
+			{Key: "webhookSecret", Label: "Webhook Secret", Kind: sens, Sensitive: true},
+			{Key: "ownerOrg", Label: "Owner Org", Kind: text, Required: true},
+			notes(),
+		}},
 	}
 }
 

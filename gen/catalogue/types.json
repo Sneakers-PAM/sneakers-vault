@@ -841,6 +841,64 @@
       ]
     },
     {
+      "id": "type-github-app",
+      "name": "GitHub App",
+      "origin": "SYSTEM",
+      "fields": [
+        {
+          "key": "description",
+          "label": "Description",
+          "kind": "MULTILINE"
+        },
+        {
+          "key": "appId",
+          "label": "App ID",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "clientId",
+          "label": "Client ID",
+          "kind": "TEXT"
+        },
+        {
+          "key": "clientSecret",
+          "label": "Client Secret",
+          "kind": "SENSITIVE",
+          "sensitive": true
+        },
+        {
+          "key": "installationId",
+          "label": "Installation ID",
+          "kind": "TEXT"
+        },
+        {
+          "key": "privateKey",
+          "label": "Private Key (PEM)",
+          "kind": "MULTILINE",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "webhookSecret",
+          "label": "Webhook Secret",
+          "kind": "SENSITIVE",
+          "sensitive": true
+        },
+        {
+          "key": "ownerOrg",
+          "label": "Owner Org",
+          "kind": "TEXT",
+          "required": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "kind": "MULTILINE"
+        }
+      ]
+    },
+    {
       "id": "ext-aws-iam-key",
       "name": "Amazon IAM Access Key",
       "origin": "EXTENSION",
