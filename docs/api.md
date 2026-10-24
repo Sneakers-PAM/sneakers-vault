@@ -359,6 +359,12 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 - **Type changes:** see [type-change.md](type-change.md).
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
   through `seed-catalog`.
+- **GitHub App type:** `type-github-app` holds one GitHub App: `appId` and `installationId`
+  (digits), `clientId`, `clientSecret`, `privateKey`, `webhookSecret` and `ownerOrg`, plus
+  `description` and `notes`. `appId`, `privateKey` and `ownerOrg` are required. `privateKey` is a
+  sensitive MULTILINE field rather than the SENSITIVE kind, so a pasted PEM keeps its line breaks
+  in the editor; like the SSH Key's private key it isn't super-sensitive, so a token can read it
+  for automation. It has no heartbeat, rotation or checkout.
 - **Required fields:** a field a type marks `required` (any kind — TEXT, PASSWORD, MULTILINE,
   SELECT and so on) may not be saved empty. `CreateSecret`, `UpdateSecret`,
   `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `UpdateSecretFieldsForPrincipal` and
