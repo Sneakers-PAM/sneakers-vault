@@ -413,6 +413,14 @@ message ActorContext {
   // (never the session token itself). A break-glass browse session is bound to
   // the reference it was opened with.
   string session_ref = 12;
+  // PRINCIPAL_KIND_USER_TOKEN only: the token's owner holds the site-admin
+  // (or root) role, resolved by the gateway from the owner's identity. A
+  // token never acts with admin authority (is_site_admin and is_root are
+  // ignored for it); the vault reads this flag for one thing only: creating
+  // a top-level folder while
+  // SecuritySettings.agents_may_create_top_level_folders is on. Ignored for
+  // every other principal kind.
+  bool token_owner_is_site_admin = 13;
 }
 
 message ListSecretTypesRequest {}
@@ -800,13 +808,20 @@ message ListFoldersForPrincipalResponse {
   repeated Folder folders = 1;
 }
 
-// Create a subfolder. parent_id is required: a machine cannot create a
-// top-level folder (the human route makes the creator its owner, and a machine
-// cannot own). Requires RACI-Author (R) on the parent's chain (the machine
-// equivalent of the human owner gate, which a machine can never meet). A parent
-// in a personal subtree is refused (PERMISSION_DENIED). A sibling with the same
-// name (case-insensitive) is refused (ALREADY_EXISTS). The folder inherits its
-// parent's scope and RACI chain and gets no owners of its own.
+// Create a subfolder. Requires RACI-Author (R) on the parent's chain (the
+// machine equivalent of the human owner gate, which a machine can never meet).
+// A parent in a personal subtree is refused (PERMISSION_DENIED). A sibling with
+// the same name (case-insensitive) is refused (ALREADY_EXISTS). The folder
+// inherits its parent's scope and RACI chain and gets no owners of its own.
+//
+// An empty parent_id asks for a top-level folder. A service account or
+// workload is refused (INVALID_ARGUMENT). A personal token is refused with
+// PERMISSION_DENIED, reason TOP_LEVEL_FOLDERS_DISABLED, while
+// SecuritySettings.agents_may_create_top_level_folders is off, and with reason
+// NOT_SITE_ADMIN when it's on but the token's owner isn't a site admin
+// (ActorContext.token_owner_is_site_admin). Otherwise the folder is a shared
+// top-level folder owned by the token's user, as when that admin makes one in
+// the web.
 message CreateFolderForPrincipalRequest {
   ActorContext actor = 1;
   string parent_id = 2;
@@ -1862,6 +1877,14 @@ message SecuritySettings {
   // Folder.reveal_step_up overrides it. Machine principals are exempt
   // (allow_api_for_sensitive covers them). Off by default.
   bool require_mfa_for_reveal = 8;
+  // "Agents may create top-level folders". Off (the default): a token, service
+  // account or workload can only create subfolders, and a top-level create
+  // from a personal token is refused with TOP_LEVEL_FOLDERS_DISABLED. On: a
+  // personal token whose owner is a site admin
+  // (ActorContext.token_owner_is_site_admin) may create a folder with no
+  // parent, owned by that admin. Every other machine caller is still refused,
+  // and personal folders stay closed either way.
+  bool agents_may_create_top_level_folders = 9;
 }
 
 message ListPasswordPoliciesRequest {}
@@ -1883,6 +1906,7 @@ message UpdateSecuritySettingsRequest {
   optional int32 session_ttl_seconds = 7;
   optional int32 kek_rotation_days = 8;   // 0 = auto-rotation off (distinct from unset = unchanged)
   optional bool require_mfa_for_reveal = 9;
+  optional bool agents_may_create_top_level_folders = 10;
 }
 message UpdateSecuritySettingsResponse { SecuritySettings settings = 1; }
 
