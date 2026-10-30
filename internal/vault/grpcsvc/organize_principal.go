@@ -6,7 +6,9 @@
 // is non-human only, evaluates RACI for the principal id (evalOf: never an
 // admin flag, never folder ownership), treats a personal subtree as reachable
 // only through an explicit user/group grant, and audits as the principal. There
-// is deliberately no machine delete.
+// is deliberately no machine delete. The one admin-gated verb is a top-level
+// folder create, open only to a site admin's personal token behind a security
+// setting (createTopLevelFolderForPrincipal).
 package grpcsvc
 
 import (
@@ -332,18 +334,18 @@ func (s *Server) ListFoldersForPrincipal(ctx context.Context, req *vaultv1.ListF
 }
 
 // CreateFolderForPrincipal creates a subfolder as a non-human principal:
-// Author on the parent chain, never top level, no duplicate sibling name.
-// Inherits the parent's scope and owning user; no owners. Inside a personal
-// subtree only a personal token of that tree's owner may create (the token
-// acts for the user in their own folder); a service account or workload never
-// may, and nobody may under the master personal root.
+// Author on the parent chain, no duplicate sibling name. Inherits the parent's
+// scope and owning user; no owners. Inside a personal subtree only a personal
+// token of that tree's owner may create (the token acts for the user in their
+// own folder); a service account or workload never may, and nobody may under
+// the master personal root. With no parent see createTopLevelFolderForPrincipal.
 func (s *Server) CreateFolderForPrincipal(ctx context.Context, req *vaultv1.CreateFolderForPrincipalRequest) (*vaultv1.CreateFolderForPrincipalResponse, error) {
 	actor := req.GetActor()
 	if err := requireNonHuman(actor, "folder create"); err != nil {
 		return nil, err
 	}
 	if req.GetParentId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "parent_id is required: a machine cannot create a top-level folder")
+		return s.createTopLevelFolderForPrincipal(ctx, actor, req.GetName())
 	}
 	name, err := organizeName(req.GetName())
 	if err != nil {
@@ -378,6 +380,58 @@ func (s *Server) CreateFolderForPrincipal(ctx context.Context, req *vaultv1.Crea
 	}))
 	s.notifyInformed(ctx, principalActorID(actor), "folder.create.principal", "folder", f.GetId(), f.GetName(), s.chainFor(f.GetId()))
 	return &vaultv1.CreateFolderForPrincipalResponse{Folder: principalFolderView(f, true)}, nil
+}
+
+// Refusal messages for a top-level create through a token. The first names
+// the setting so the caller (the MCP) can tell the person what to turn on.
+const (
+	msgTopLevelFoldersDisabled = `creating a top-level folder through a token needs the security setting "Agents may create top-level folders" (agents_may_create_top_level_folders), which is off`
+	msgTopLevelNeedsAdminToken = "creating a top-level folder through a token needs a token whose owner is a site admin"
+)
+
+// createTopLevelFolderForPrincipal creates a folder with no parent. Only a
+// personal token may, only while agents_may_create_top_level_folders is on,
+// and only when the gateway resolved the token's owner as a site admin. The
+// folder is the same shared folder an admin makes in the web, owned by the
+// token's user. A service account or workload is refused as before.
+func (s *Server) createTopLevelFolderForPrincipal(ctx context.Context, actor *vaultv1.ActorContext, rawName string) (*vaultv1.CreateFolderForPrincipalResponse, error) {
+	const method = "CreateFolderForPrincipal"
+	if !isUserToken(actor) {
+		return nil, status.Error(codes.InvalidArgument, "parent_id is required: a machine cannot create a top-level folder")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	l := s.lg(ctx)
+	if !s.settings.GetAgentsMayCreateTopLevelFolders() {
+		return nil, s.deny(ctx, actor, method, "folder", ReasonTopLevelFoldersDisabled, msgTopLevelFoldersDisabled)
+	}
+	uid := actor.GetUserId()
+	if uid == "" || !actor.GetTokenOwnerIsSiteAdmin() {
+		return nil, s.deny(ctx, actor, method, "folder", ReasonNotSiteAdmin, msgTopLevelNeedsAdminToken)
+	}
+	name, err := organizeName(rawName)
+	if err != nil {
+		return nil, err
+	}
+	if s.siblingNameTaken("", name, "") {
+		l.Debug("principal top-level folder create refused: name taken", log.F("user_id", uid), log.F("token_id", actor.GetTokenId()))
+		return nil, status.Error(codes.AlreadyExists, "a folder with that name already exists here")
+	}
+	id := s.nextID("folder")
+	f := &vaultv1.Folder{
+		Id: id, Name: name, Scope: vaultv1.FolderScope_FOLDER_SCOPE_GROUP,
+		GroupId: "group-" + id, Order: safeconv.Int32(s.childCount("")), Owners: []string{uid},
+	}
+	s.folders = append(s.folders, f)
+	l.Info("principal created a top-level folder", log.F("folder_id", id), log.F("user_id", uid), log.F("token_id", actor.GetTokenId()))
+	s.emitAttrs(ctx, principalActorID(actor), "folder.create.principal", id, false, principalAttrs(actor, map[string]string{
+		"parent_id": "",
+		"name":      name,
+		"path":      "/" + name,
+		"top_level": "true",
+	}))
+	s.notifyInformed(ctx, principalActorID(actor), "folder.create.principal", "folder", id, name, s.chainFor(id))
+	return &vaultv1.CreateFolderForPrincipalResponse{Folder: principalFolderView(f, s.principalFolderAccess(actor, id).Author.Allowed)}, nil
 }
 
 // personalCreateBlocked reports why actor may not create a folder under

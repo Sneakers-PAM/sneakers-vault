@@ -146,7 +146,15 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   own a folder or target, and they get nothing from an `everyone` allow (an `everyone` deny still
   applies). There is no machine delete. A personal token may create folders in its own personal
   tree only; a service account never creates inside a personal tree. Names may not contain `/` or
-  `\`. `RevealSecretFieldForPrincipal` also returns non-sensitive fields, audited as
+  `\`. A top-level folder (`CreateFolderForPrincipal` with no `parent_id`) is refused to a service
+  account or workload (`InvalidArgument`). A personal token gets it only while
+  `agents_may_create_top_level_folders` is on and the gateway has set
+  `ActorContext.token_owner_is_site_admin` (the token's owner holds site admin or root). Otherwise
+  the refusal is `PermissionDenied` with reason `TOP_LEVEL_FOLDERS_DISABLED` (the message names
+  the setting) or `NOT_SITE_ADMIN`, audited as `authz.denied`. The new folder is a shared
+  top-level folder owned by the token's user, and the create is audited as
+  `folder.create.principal` under that user with `token_id`, `path` and `top_level`. The flag
+  counts for nothing else: a token never acts with admin authority. `RevealSecretFieldForPrincipal` also returns non-sensitive fields, audited as
   `secret.read.principal`.
 - **Approval levels** (`SetSecretTokenApproval`). A secret has one of three levels, and they apply
   the same way to a person revealing or copying in the web and to a personal token (MCP
@@ -401,7 +409,10 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   `secret.reveal.step_up_required`). See [configuration.md](configuration.md#security-settings).
 - **Security settings:** before first-run setup has stored any (a store outside `dev`, `local`
   and `development` starts empty), `GetSecuritySettings` returns the defaults setup installs, and
-  `UpdateSecuritySettings` starts from them.
+  `UpdateSecuritySettings` starts from them. A setting a stored row predates reads as its
+  default (off for `agents_may_create_top_level_folders`), so no migration is needed. A change to
+  `agents_may_create_top_level_folders` is audited on `settings.update` with
+  `agents_may_create_top_level_folders.from` and `.to`.
 - **Import:** `SealForImport` seals up to 500 field sets per call under the active working key and
   returns the envelopes in the form `secret_records` and `secret_versions` store, without storing
   anything. `sneakers-migrate import` uses it to re-wrap imported secrets, so the root key never

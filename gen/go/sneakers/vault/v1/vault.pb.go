@@ -2690,9 +2690,17 @@ type ActorContext struct {
 	// An opaque reference the gateway derives from the signed-in web session
 	// (never the session token itself). A break-glass browse session is bound to
 	// the reference it was opened with.
-	SessionRef    string `protobuf:"bytes,12,opt,name=session_ref,json=sessionRef,proto3" json:"session_ref,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SessionRef string `protobuf:"bytes,12,opt,name=session_ref,json=sessionRef,proto3" json:"session_ref,omitempty"`
+	// PRINCIPAL_KIND_USER_TOKEN only: the token's owner holds the site-admin
+	// (or root) role, resolved by the gateway from the owner's identity. A
+	// token never acts with admin authority (is_site_admin and is_root are
+	// ignored for it); the vault reads this flag for one thing only: creating
+	// a top-level folder while
+	// SecuritySettings.agents_may_create_top_level_folders is on. Ignored for
+	// every other principal kind.
+	TokenOwnerIsSiteAdmin bool `protobuf:"varint,13,opt,name=token_owner_is_site_admin,json=tokenOwnerIsSiteAdmin,proto3" json:"token_owner_is_site_admin,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ActorContext) Reset() {
@@ -2800,6 +2808,13 @@ func (x *ActorContext) GetSessionRef() string {
 		return x.SessionRef
 	}
 	return ""
+}
+
+func (x *ActorContext) GetTokenOwnerIsSiteAdmin() bool {
+	if x != nil {
+		return x.TokenOwnerIsSiteAdmin
+	}
+	return false
 }
 
 type ListSecretTypesRequest struct {
@@ -7165,13 +7180,20 @@ func (x *ListFoldersForPrincipalResponse) GetFolders() []*Folder {
 	return nil
 }
 
-// Create a subfolder. parent_id is required: a machine cannot create a
-// top-level folder (the human route makes the creator its owner, and a machine
-// cannot own). Requires RACI-Author (R) on the parent's chain (the machine
-// equivalent of the human owner gate, which a machine can never meet). A parent
-// in a personal subtree is refused (PERMISSION_DENIED). A sibling with the same
-// name (case-insensitive) is refused (ALREADY_EXISTS). The folder inherits its
-// parent's scope and RACI chain and gets no owners of its own.
+// Create a subfolder. Requires RACI-Author (R) on the parent's chain (the
+// machine equivalent of the human owner gate, which a machine can never meet).
+// A parent in a personal subtree is refused (PERMISSION_DENIED). A sibling with
+// the same name (case-insensitive) is refused (ALREADY_EXISTS). The folder
+// inherits its parent's scope and RACI chain and gets no owners of its own.
+//
+// An empty parent_id asks for a top-level folder. A service account or
+// workload is refused (INVALID_ARGUMENT). A personal token is refused with
+// PERMISSION_DENIED, reason TOP_LEVEL_FOLDERS_DISABLED, while
+// SecuritySettings.agents_may_create_top_level_folders is off, and with reason
+// NOT_SITE_ADMIN when it's on but the token's owner isn't a site admin
+// (ActorContext.token_owner_is_site_admin). Otherwise the folder is a shared
+// top-level folder owned by the token's user, as when that admin makes one in
+// the web.
 type CreateFolderForPrincipalRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Actor         *ActorContext          `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor,omitempty"`
@@ -15998,8 +16020,16 @@ type SecuritySettings struct {
 	// Folder.reveal_step_up overrides it. Machine principals are exempt
 	// (allow_api_for_sensitive covers them). Off by default.
 	RequireMfaForReveal bool `protobuf:"varint,8,opt,name=require_mfa_for_reveal,json=requireMfaForReveal,proto3" json:"require_mfa_for_reveal,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// "Agents may create top-level folders". Off (the default): a token, service
+	// account or workload can only create subfolders, and a top-level create
+	// from a personal token is refused with TOP_LEVEL_FOLDERS_DISABLED. On: a
+	// personal token whose owner is a site admin
+	// (ActorContext.token_owner_is_site_admin) may create a folder with no
+	// parent, owned by that admin. Every other machine caller is still refused,
+	// and personal folders stay closed either way.
+	AgentsMayCreateTopLevelFolders bool `protobuf:"varint,9,opt,name=agents_may_create_top_level_folders,json=agentsMayCreateTopLevelFolders,proto3" json:"agents_may_create_top_level_folders,omitempty"`
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *SecuritySettings) Reset() {
@@ -16077,6 +16107,13 @@ func (x *SecuritySettings) GetKekRotationDays() int32 {
 func (x *SecuritySettings) GetRequireMfaForReveal() bool {
 	if x != nil {
 		return x.RequireMfaForReveal
+	}
+	return false
+}
+
+func (x *SecuritySettings) GetAgentsMayCreateTopLevelFolders() bool {
+	if x != nil {
+		return x.AgentsMayCreateTopLevelFolders
 	}
 	return false
 }
@@ -16444,6 +16481,7 @@ type UpdateSecuritySettingsRequest struct {
 	SessionTtlSeconds              *int32                 `protobuf:"varint,7,opt,name=session_ttl_seconds,json=sessionTtlSeconds,proto3,oneof" json:"session_ttl_seconds,omitempty"`
 	KekRotationDays                *int32                 `protobuf:"varint,8,opt,name=kek_rotation_days,json=kekRotationDays,proto3,oneof" json:"kek_rotation_days,omitempty"` // 0 = auto-rotation off (distinct from unset = unchanged)
 	RequireMfaForReveal            *bool                  `protobuf:"varint,9,opt,name=require_mfa_for_reveal,json=requireMfaForReveal,proto3,oneof" json:"require_mfa_for_reveal,omitempty"`
+	AgentsMayCreateTopLevelFolders *bool                  `protobuf:"varint,10,opt,name=agents_may_create_top_level_folders,json=agentsMayCreateTopLevelFolders,proto3,oneof" json:"agents_may_create_top_level_folders,omitempty"`
 	unknownFields                  protoimpl.UnknownFields
 	sizeCache                      protoimpl.SizeCache
 }
@@ -16530,6 +16568,13 @@ func (x *UpdateSecuritySettingsRequest) GetKekRotationDays() int32 {
 func (x *UpdateSecuritySettingsRequest) GetRequireMfaForReveal() bool {
 	if x != nil && x.RequireMfaForReveal != nil {
 		return *x.RequireMfaForReveal
+	}
+	return false
+}
+
+func (x *UpdateSecuritySettingsRequest) GetAgentsMayCreateTopLevelFolders() bool {
+	if x != nil && x.AgentsMayCreateTopLevelFolders != nil {
+		return *x.AgentsMayCreateTopLevelFolders
 	}
 	return false
 }
@@ -16868,7 +16913,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\ttarget_id\x18\x01 \x01(\tR\btargetId\x12\x0e\n" +
 	"\x02ok\x18\x02 \x01(\bR\x02ok\x12\x16\n" +
 	"\x06detail\x18\x03 \x01(\tR\x06detail\x12\x0e\n" +
-	"\x02at\x18\x04 \x01(\tR\x02at\"\x9c\x03\n" +
+	"\x02at\x18\x04 \x01(\tR\x02at\"\xd6\x03\n" +
 	"\fActorContext\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\"\n" +
 	"\ris_site_admin\x18\x02 \x01(\bR\visSiteAdmin\x12\x17\n" +
@@ -16884,7 +16929,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"isRecovery\x12\x1b\n" +
 	"\tgroup_ids\x18\v \x03(\tR\bgroupIds\x12\x1f\n" +
 	"\vsession_ref\x18\f \x01(\tR\n" +
-	"sessionRef\"\x18\n" +
+	"sessionRef\x128\n" +
+	"\x19token_owner_is_site_admin\x18\r \x01(\bR\x15tokenOwnerIsSiteAdmin\"\x18\n" +
 	"\x16ListSecretTypesRequest\"N\n" +
 	"\x17ListSecretTypesResponse\x123\n" +
 	"\x05types\x18\x01 \x03(\v2\x1d.sneakers.vault.v1.SecretTypeR\x05types\"\x83\x01\n" +
@@ -17781,7 +17827,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x0eby_type_fields\x18\x0e \x01(\x05R\fbyTypeFields\x12\x1c\n" +
 	"\tdeletable\x18\x0f \x01(\bR\tdeletableB\r\n" +
 	"\v_max_lengthB\x10\n" +
-	"\x0e_rotation_days\"\xa8\x03\n" +
+	"\x0e_rotation_days\"\xf5\x03\n" +
 	"\x10SecuritySettings\x12;\n" +
 	"\x1adefault_password_policy_id\x18\x01 \x01(\tR\x17defaultPasswordPolicyId\x12J\n" +
 	"\"require_mfa_for_sensitive_checkout\x18\x03 \x01(\bR\x1erequireMfaForSensitiveCheckout\x125\n" +
@@ -17789,7 +17835,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x1erequest_history_retention_days\x18\x05 \x01(\x05R\x1brequestHistoryRetentionDays\x12.\n" +
 	"\x13session_ttl_seconds\x18\x06 \x01(\x05R\x11sessionTtlSeconds\x12*\n" +
 	"\x11kek_rotation_days\x18\a \x01(\x05R\x0fkekRotationDays\x123\n" +
-	"\x16require_mfa_for_reveal\x18\b \x01(\bR\x13requireMfaForReveal\"\x1d\n" +
+	"\x16require_mfa_for_reveal\x18\b \x01(\bR\x13requireMfaForReveal\x12K\n" +
+	"#agents_may_create_top_level_folders\x18\t \x01(\bR\x1eagentsMayCreateTopLevelFolders\"\x1d\n" +
 	"\x1bListPasswordPoliciesRequest\"]\n" +
 	"\x1cListPasswordPoliciesResponse\x12=\n" +
 	"\bpolicies\x18\x01 \x03(\v2!.sneakers.vault.v1.PasswordPolicyR\bpolicies\"\x8d\x01\n" +
@@ -17805,7 +17852,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\aremoved\x18\x01 \x01(\bR\aremoved\"\x1c\n" +
 	"\x1aGetSecuritySettingsRequest\"^\n" +
 	"\x1bGetSecuritySettingsResponse\x12?\n" +
-	"\bsettings\x18\x01 \x01(\v2#.sneakers.vault.v1.SecuritySettingsR\bsettings\"\xdd\x05\n" +
+	"\bsettings\x18\x01 \x01(\v2#.sneakers.vault.v1.SecuritySettingsR\bsettings\"\xd7\x06\n" +
 	"\x1dUpdateSecuritySettingsRequest\x125\n" +
 	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12@\n" +
 	"\x1adefault_password_policy_id\x18\x02 \x01(\tH\x00R\x17defaultPasswordPolicyId\x88\x01\x01\x12O\n" +
@@ -17814,14 +17861,17 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x1erequest_history_retention_days\x18\x06 \x01(\x05H\x03R\x1brequestHistoryRetentionDays\x88\x01\x01\x123\n" +
 	"\x13session_ttl_seconds\x18\a \x01(\x05H\x04R\x11sessionTtlSeconds\x88\x01\x01\x12/\n" +
 	"\x11kek_rotation_days\x18\b \x01(\x05H\x05R\x0fkekRotationDays\x88\x01\x01\x128\n" +
-	"\x16require_mfa_for_reveal\x18\t \x01(\bH\x06R\x13requireMfaForReveal\x88\x01\x01B\x1d\n" +
+	"\x16require_mfa_for_reveal\x18\t \x01(\bH\x06R\x13requireMfaForReveal\x88\x01\x01\x12P\n" +
+	"#agents_may_create_top_level_folders\x18\n" +
+	" \x01(\bH\aR\x1eagentsMayCreateTopLevelFolders\x88\x01\x01B\x1d\n" +
 	"\x1b_default_password_policy_idB%\n" +
 	"#_require_mfa_for_sensitive_checkoutB\x1a\n" +
 	"\x18_allow_api_for_sensitiveB!\n" +
 	"\x1f_request_history_retention_daysB\x16\n" +
 	"\x14_session_ttl_secondsB\x14\n" +
 	"\x12_kek_rotation_daysB\x19\n" +
-	"\x17_require_mfa_for_reveal\"a\n" +
+	"\x17_require_mfa_for_revealB&\n" +
+	"$_agents_may_create_top_level_folders\"a\n" +
 	"\x1eUpdateSecuritySettingsResponse\x12?\n" +
 	"\bsettings\x18\x01 \x01(\v2#.sneakers.vault.v1.SecuritySettingsR\bsettings\"L\n" +
 	"\x13SeedBuiltinsRequest\x125\n" +
