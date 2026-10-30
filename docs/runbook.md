@@ -88,6 +88,17 @@ administrator in identity, then calls `SeedBuiltins`, which installs the secret 
 catalogue, default password policies, connections, the personal folder root and that
 administrator's personal folder. `SeedBuiltins` is idempotent.
 
+## Upgrades
+
+New built-in secret types, extension packs, connections and password policies arrive on upgrade
+with no setup re-run: every start of a vault that has been through first-run setup adds the
+built-ins the new release ships, and logs what it added at info (`vault added built-ins on
+start-up`). It only adds. A built-in already in the store is kept exactly as it is, even when it
+differs from the shipped one, and a built-in an administrator deleted stays deleted: the store
+remembers every built-in it has been given (the `builtin_ledger` table). A vault that hasn't been
+through setup stays empty until it is. Like the migrations, this runs at start-up whether or not
+read-only maintenance is on.
+
 ## Keys
 
 The design behind these keys is in [kek-keyring.md](kek-keyring.md).
@@ -137,9 +148,12 @@ The connector polls `ClaimDueHeartbeats` and `ClaimDueRotations`. Set up its ide
 
 ## Catalogue updates
 
-Run `seed-catalog` after each deploy (the `seed-catalog` image) to upsert new built-in types into
-an existing store. It publishes a reload, so running replicas pick the change up without a
-restart.
+The vault adds new built-ins itself at every start (see [Upgrades](#upgrades)). `seed-catalog`
+(the `seed-catalog` image) is for the other case: it rewrites every stored built-in type,
+extension pack and connection with the shipped definition, so a changed built-in (a new field on
+an existing type) reaches an existing store. It overwrites changes an administrator made to a
+built-in connection, and puts back a deleted one. It publishes a reload, so running replicas pick
+the change up without a restart.
 
 ## Read-only maintenance
 

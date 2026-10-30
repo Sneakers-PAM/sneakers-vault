@@ -255,6 +255,7 @@ func main() {
 		logger.Fatal().Err(err).Msg("vault init")
 	}
 	srv.SetLogger(svcLog)
+	logBootBuiltins(ctx, svcLog, srv.BootAddedBuiltins())
 	srv.SetMaintenance(maint)
 	srv.SetMFAMaxAge(mustMFAMaxAge(logger))
 	srv.SetNotifier(notifyclient.New(notifyv1.NewNotifyServiceClient(notifyConn)))

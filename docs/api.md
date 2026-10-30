@@ -358,7 +358,9 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   or not.
 - **Type changes:** see [type-change.md](type-change.md).
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
-  through `seed-catalog`.
+  (types, extension packs, connections, password policies) at its next start, without changing
+  or putting back anything already given to it (see [runbook.md](runbook.md#upgrades));
+  `seed-catalog` rewrites the definitions of existing built-ins.
 - **GitHub App type:** `type-github-app` holds one GitHub App: `appId` and `installationId`
   (digits), `clientId`, `clientSecret`, `privateKey`, `webhookSecret` and `ownerOrg`, plus
   `description` and `notes`. `appId`, `privateKey` and `ownerOrg` are required. `privateKey` is a

@@ -35,6 +35,9 @@ type state struct {
 	extCatalog     []*vaultv1.SecretType
 	settings       *vaultv1.SecuritySettings
 	records        map[string]crypto.Record // secretID -> sealed field set
+	// builtinLedger holds the "<kind>:<id>" key of every built-in this vault
+	// has been given (see Server.upgradeBuiltins).
+	builtinLedger map[string]bool
 }
 
 // Store persists and restores the vault's state. Two implementations: memStore
@@ -152,7 +155,7 @@ func (p *pgStore) Load(ctx context.Context) (*state, bool, error) {
 
 func loadState(ctx context.Context, q postgres.Querier) (*state, bool, error) {
 	st := &state{records: map[string]crypto.Record{}}
-	for _, load := range []func(context.Context, postgres.Querier, *state) error{loadCollections, loadTargetHostKeys, loadTargetRulesets, loadSettings, loadRecords} {
+	for _, load := range []func(context.Context, postgres.Querier, *state) error{loadCollections, loadTargetHostKeys, loadTargetRulesets, loadSettings, loadRecords, loadBuiltinLedger} {
 		if err := load(ctx, q, st); err != nil {
 			return nil, false, err
 		}
@@ -237,6 +240,25 @@ func loadSettings(ctx context.Context, q postgres.Querier, st *state) error {
 	return nil
 }
 
+// loadBuiltinLedger hydrates the keys of the built-ins this vault has been
+// given.
+func loadBuiltinLedger(ctx context.Context, q postgres.Querier, st *state) error {
+	rows, err := q.Query(ctx, "SELECT id FROM builtin_ledger")
+	if err != nil {
+		return fmt.Errorf("select builtin_ledger: %w", err)
+	}
+	defer rows.Close()
+	st.builtinLedger = map[string]bool{}
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return err
+		}
+		st.builtinLedger[key] = true
+	}
+	return rows.Err()
+}
+
 // loadRecords hydrates the envelope-encrypted field sets keyed by secret id.
 func loadRecords(ctx context.Context, q postgres.Querier, st *state) error {
 	rows, err := q.Query(ctx, "SELECT secret_id, record FROM secret_records")
@@ -283,7 +305,7 @@ func (p *pgStore) Persist(ctx context.Context, st *state) error {
 }
 
 func persistState(ctx context.Context, tx postgres.Tx, st *state) error {
-	for _, save := range []func(context.Context, postgres.Tx, *state) error{persistCollections, persistTargetHostKeys, persistTargetRulesets, persistSettings, persistRecords} {
+	for _, save := range []func(context.Context, postgres.Tx, *state) error{persistCollections, persistTargetHostKeys, persistTargetRulesets, persistSettings, persistRecords, persistBuiltinLedger} {
 		if err := save(ctx, tx, st); err != nil {
 			return err
 		}
@@ -370,6 +392,19 @@ func persistRecords(ctx context.Context, tx postgres.Tx, st *state) error {
 		}
 		if _, err := tx.Exec(ctx, "INSERT INTO secret_records (secret_id, record) VALUES ($1,$2)", id, raw); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// persistBuiltinLedger replaces the built-in ledger from st.
+func persistBuiltinLedger(ctx context.Context, tx postgres.Tx, st *state) error {
+	if _, err := tx.Exec(ctx, "DELETE FROM builtin_ledger"); err != nil {
+		return fmt.Errorf("clear builtin_ledger: %w", err)
+	}
+	for key := range st.builtinLedger {
+		if _, err := tx.Exec(ctx, "INSERT INTO builtin_ledger (id) VALUES ($1)", key); err != nil {
+			return fmt.Errorf("insert builtin_ledger: %w", err)
 		}
 	}
 	return nil

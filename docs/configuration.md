@@ -36,7 +36,7 @@ Both services authenticate every caller and present their own token on outbound 
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `ENVIRONMENT` | `dev` | The environment name. Only `dev` may run without `VAULT_ROOT_KEK`. `dev`, `local` and `development` install the built-in baseline at every boot; any other name starts empty and waits for first-run setup (`SeedBuiltins`). `prod` and `production` also refuse the dev worker token and limit hard delete to site admins. |
+| `ENVIRONMENT` | `dev` | The environment name. Only `dev` may run without `VAULT_ROOT_KEK`. `dev`, `local` and `development` install the built-in baseline at every boot; any other name starts empty and waits for first-run setup (`SeedBuiltins`), and once set up adds the new built-ins of each release at start-up ([runbook.md](runbook.md#upgrades)). `prod` and `production` also refuse the dev worker token and limit hard delete to site admins. |
 | `VAULT_ROOT_KEK` | (none) | The root key: 32 bytes, standard base64. It wraps the working keys in `kek_keyring`. Required in every environment except `dev`. It's permanent for the database: keep it in your secret store and back it up with the database, because without it no secret can be opened. |
 | `DEV_KEK_SEED` | a built-in dev seed | `dev` only, with no `VAULT_ROOT_KEK`: the root key is derived from this string, so a dev database opens across restarts with no setup. It's public in the source; never use it outside development. |
 | `VAULT_DISABLE_DEV_STATIC_KEK` | `false` | `true` drops the decrypt-only static dev key (`dev-static-v1`) from the key ring. The vault refuses to boot with it set while any stored row still uses that key. |
