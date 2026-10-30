@@ -5,6 +5,7 @@ package grpcsvc
 
 import (
 	"context"
+	"maps"
 	"testing"
 	"time"
 
@@ -72,6 +73,7 @@ func cloneState(st *state) *state {
 	for k, v := range st.records {
 		cp.records[k] = v
 	}
+	cp.builtinLedger = maps.Clone(st.builtinLedger)
 	return cp
 }
 

@@ -81,6 +81,12 @@ type Server struct {
 	extCatalog     []*vaultv1.SecretType    // installable extension packs (not yet installed)
 	records        map[string]crypto.Record // secretID -> encrypted field set
 
+	// builtinLedger is the "<kind>:<id>" key of every built-in this vault has
+	// been given, so a start-up never puts back one an admin deleted.
+	builtinLedger map[string]bool
+	// bootAdded is what this start-up added (see BootAddedBuiltins).
+	bootAdded []string
+
 	crypt     *crypto.Envelope
 	audit     Auditor
 	notifier  Notifier
@@ -162,7 +168,7 @@ func New(env *crypto.Envelope, auditor Auditor) *Server {
 // part of first-run /setup, so a prod database stays empty until setup
 // completes. environment also gates irreversible ops (see Server.env).
 func NewWithStore(ctx context.Context, store Store, env *crypto.Envelope, auditor Auditor, environment string) (*Server, error) {
-	s := &Server{crypt: env, audit: auditor, records: map[string]crypto.Record{}, store: store, env: environment}
+	s := &Server{crypt: env, audit: auditor, records: map[string]crypto.Record{}, store: store, env: environment, builtinLedger: map[string]bool{}}
 	// Boot runs under the write lock too: a pod starting during a
 	// rollout must not persist a seed built on a Load that a peer's write has
 	// since overtaken.
@@ -181,27 +187,53 @@ func NewWithStore(ctx context.Context, store Store, env *crypto.Envelope, audito
 		} else {
 			s.hydrate(st)
 		}
-		// DEV-ONLY auto-seed: install the built-in baseline (secret types incl.
-		// type-oauth, password policies, security settings, extension catalog,
-		// built-in connections) on every boot, idempotently, so the catalog is in
-		// memory before the service serves a request. Dev never uses /setup. qa and
-		// prod are prod-like: they start EMPTY and install the baseline via /setup's
-		// SeedBuiltins AFTER setup completes — never before. So only dev/local
-		// auto-seed here; anything else (qa, prod, staging, ...) waits for /setup.
-		switch environment {
-		case "dev", "local", "development", "":
-			s.seed() // baselineSeedSteps with a nil actor (skips the per-admin personal folder)
-			if err := tx.Persist(ctx, s.snapshot()); err != nil {
-				return fmt.Errorf("persist dev baseline: %w", err)
-			}
-		}
-		return nil
+		return s.bootBuiltins(ctx, tx, environment)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return s, nil
 }
+
+// bootBuiltins brings the built-ins up to date at start-up, inside the boot's
+// store lock.
+//
+// DEV-ONLY auto-seed: install the built-in baseline (secret types incl.
+// type-oauth, password policies, security settings, extension catalog,
+// built-in connections) on every boot, idempotently, so the catalog is in
+// memory before the service serves a request. Dev never uses /setup. qa and
+// prod are prod-like: they start EMPTY and install the baseline via /setup's
+// SeedBuiltins AFTER setup completes — never before. So only dev/local
+// auto-seed here; anything else (qa, prod, staging, ...) waits for /setup, and
+// once it has run, every boot adds the built-ins a newer release ships
+// (upgradeBuiltins). What was added is kept for BootAddedBuiltins.
+func (s *Server) bootBuiltins(ctx context.Context, tx Store, environment string) error {
+	switch environment {
+	case "dev", "local", "development", "":
+		s.bootAdded = s.seed() // baselineSeedSteps with a nil actor (skips the per-admin personal folder)
+		if err := tx.Persist(ctx, s.snapshot()); err != nil {
+			return fmt.Errorf("persist dev baseline: %w", err)
+		}
+		return nil
+	}
+	if !s.hasBuiltinTypes() {
+		return nil
+	}
+	known := len(s.builtinLedger)
+	s.bootAdded = s.upgradeBuiltins()
+	if len(s.bootAdded) == 0 && len(s.builtinLedger) == known {
+		return nil
+	}
+	if err := tx.Persist(ctx, s.snapshot()); err != nil {
+		return fmt.Errorf("persist upgraded built-ins: %w", err)
+	}
+	return nil
+}
+
+// BootAddedBuiltins returns the "<kind>:<id>" ledger keys of the built-ins
+// this start-up added to the store (none when it was already current), for
+// cmd/vault to log once its logger is set.
+func (s *Server) BootAddedBuiltins() []string { return slices.Clone(s.bootAdded) }
 
 // Register wires an in-memory vault service into a gRPC server.
 func Register(gs *grpc.Server, env *crypto.Envelope, auditor Auditor) {
@@ -230,6 +262,7 @@ func (s *Server) snapshot() *state {
 		connections: slices.Clone(s.connections), targets: slices.Clone(s.targets),
 		targetRulesets: maps.Clone(s.targetRulesets), policies: slices.Clone(s.policies),
 		extCatalog: slices.Clone(s.extCatalog), settings: s.settings, records: records,
+		builtinLedger: maps.Clone(s.builtinLedger),
 	}
 }
 
@@ -292,6 +325,10 @@ func (s *Server) hydrate(st *state) {
 	s.settings = st.settings
 	if st.records != nil {
 		s.records = st.records
+	}
+	s.builtinLedger = maps.Clone(st.builtinLedger)
+	if s.builtinLedger == nil {
+		s.builtinLedger = map[string]bool{}
 	}
 }
 
@@ -959,10 +996,11 @@ func origin(t *vaultv1.SecretType) vaultv1.TypeOrigin {
 // Privileged-Access-System) can slot their own steps in without touching the
 // existing ones — and so seed() and the on-demand SeedBuiltins RPC share one
 // source of truth. Each step is create-if-missing, so running the list twice is
-// a no-op. The caller holds s.mu for write.
+// a no-op. run returns the ledger keys of the built-ins it added. The caller
+// holds s.mu for write.
 type seedStep struct {
 	name string
-	run  func(actor *vaultv1.ActorContext)
+	run  func(actor *vaultv1.ActorContext) []string
 }
 
 // baselineSeedSteps returns the ordered baseline-install steps. The final step
@@ -970,23 +1008,97 @@ type seedStep struct {
 // step ignores the actor (nil is fine — e.g. seed()'s demo path passes nil).
 func (s *Server) baselineSeedSteps() []seedStep {
 	return []seedStep{
-		{"master-personal-root", func(*vaultv1.ActorContext) { s.ensureMasterPersonalFolder() }},
-		{"password-policies", func(*vaultv1.ActorContext) { s.ensureDefaultPolicies() }},
-		{"security-settings", func(*vaultv1.ActorContext) { s.ensureSecuritySettings() }},
-		{"builtin-types", func(*vaultv1.ActorContext) { s.ensureBuiltinTypes() }},
-		{"extension-catalog", func(*vaultv1.ActorContext) { s.ensureExtensionCatalog() }},
-		{"builtin-connections", func(*vaultv1.ActorContext) { s.ensureBuiltinConnections() }},
-		{"admin-personal-folder", func(a *vaultv1.ActorContext) { s.ensurePersonalFolder(a.GetUserId()) }},
+		{"builtin-ledger", func(*vaultv1.ActorContext) []string { s.backfillBuiltinLedger(); return nil }},
+		{"master-personal-root", func(*vaultv1.ActorContext) []string { s.ensureMasterPersonalFolder(); return nil }},
+		{"password-policies", func(*vaultv1.ActorContext) []string { return s.ensureDefaultPolicies() }},
+		{"security-settings", func(*vaultv1.ActorContext) []string { s.ensureSecuritySettings(); return nil }},
+		{"builtin-types", func(*vaultv1.ActorContext) []string { return s.ensureBuiltinTypes() }},
+		{"extension-catalog", func(*vaultv1.ActorContext) []string { return s.ensureExtensionCatalog() }},
+		{"builtin-connections", func(*vaultv1.ActorContext) []string { return s.ensureBuiltinConnections() }},
+		{"admin-personal-folder", func(a *vaultv1.ActorContext) []string { s.ensurePersonalFolder(a.GetUserId()); return nil }},
 	}
 }
 
 // seed installs the built-in baseline into an empty in-memory vault (the demo /
 // test / no-Postgres path). It runs the same ordered steps SeedBuiltins does,
-// minus the per-admin personal folder (no actor). Idempotent.
-func (s *Server) seed() {
+// minus the per-admin personal folder (no actor). Idempotent. Returns the
+// ledger keys of the built-ins it added.
+func (s *Server) seed() []string {
+	var added []string
 	for _, step := range s.baselineSeedSteps() {
-		step.run(nil)
+		added = append(added, step.run(nil)...)
 	}
+	return added
+}
+
+// Ledger key prefixes, one per kind of built-in: a key is "<kind>:<id>".
+const (
+	ledgerType       = "type:"
+	ledgerExtension  = "extension:"
+	ledgerConnection = "connection:"
+	ledgerPolicy     = "policy:"
+)
+
+// preLedgerBuiltins are the built-ins an admin can delete that every vault
+// set up before the ledger existed was given at /setup. backfillBuiltinLedger
+// counts them as given on such a store, so one the admin deleted back then is
+// not put back. Frozen: a built-in added later is tracked by the ledger
+// itself and never belongs here.
+var preLedgerBuiltins = []string{
+	ledgerConnection + "conn-ssh-default", ledgerConnection + "conn-winrm-default", ledgerConnection + "conn-ldaps",
+	ledgerPolicy + "pwpolicy-default", ledgerPolicy + "pwpolicy-privileged",
+}
+
+// upgradeBuiltins adds the built-ins this release ships that the store has
+// never been given: secret types, extension packs, connections and password
+// policies. It only ever appends. A built-in already in the store is left
+// exactly as it is, even when it differs from the shipped one, and a built-in
+// the ledger says was given before is not put back after an admin deleted it.
+// It needs no actor, so start-up runs it on every boot of a store that has
+// been through /setup. Returns the ledger keys it added. The caller holds s.mu
+// for write (or owns s exclusively, as at boot).
+func (s *Server) upgradeBuiltins() []string {
+	s.backfillBuiltinLedger()
+	var added []string
+	added = append(added, s.ensureDefaultPolicies()...)
+	added = append(added, s.ensureBuiltinTypes()...)
+	added = append(added, s.ensureExtensionCatalog()...)
+	added = append(added, s.ensureBuiltinConnections()...)
+	return added
+}
+
+// hasBuiltinTypes reports whether the store holds a built-in secret type,
+// which only /setup's SeedBuiltins (or the dev boot) installs and nothing
+// removes. A store without one has not been set up yet.
+func (s *Server) hasBuiltinTypes() bool {
+	for _, t := range s.types {
+		if t.GetOrigin() == vaultv1.TypeOrigin_TYPE_ORIGIN_SYSTEM {
+			return true
+		}
+	}
+	return false
+}
+
+// backfillBuiltinLedger starts the ledger of a store set up before it existed:
+// such a store has built-in types but an empty ledger, and was given every
+// preLedgerBuiltins entry at setup. A fresh store is left alone, so setup
+// installs the whole baseline.
+func (s *Server) backfillBuiltinLedger() {
+	if len(s.builtinLedger) > 0 || !s.hasBuiltinTypes() {
+		return
+	}
+	for _, key := range preLedgerBuiltins {
+		s.builtinLedger[key] = true
+	}
+}
+
+// offerBuiltin decides whether the built-in with ledger key is added: only
+// when the store does not hold it and has never been given it. Either way the
+// built-in is recorded as given.
+func (s *Server) offerBuiltin(key string, present bool) bool {
+	given := s.builtinLedger[key]
+	s.builtinLedger[key] = true
+	return !present && !given
 }
 
 // ensureMasterPersonalFolder creates the master "Personal Folders" root (a
@@ -1005,16 +1117,19 @@ func (s *Server) ensureMasterPersonalFolder() {
 }
 
 // ensureDefaultPolicies adds any missing shipped password policies.
-func (s *Server) ensureDefaultPolicies() {
+func (s *Server) ensureDefaultPolicies() []string {
 	i32 := func(v int32) *int32 { return &v }
+	var added []string
 	for _, p := range []*vaultv1.PasswordPolicy{
 		{Id: "pwpolicy-default", Name: "Default", MinLength: 12, MaxLength: i32(64), RequireUpper: true, RequireLower: true, RequireDigit: true, RotationDays: i32(90)},
 		{Id: "pwpolicy-privileged", Name: "Privileged / Admin", MinLength: 20, MaxLength: i32(48), RequireUpper: true, RequireLower: true, RequireDigit: true, RequireSymbol: true, RotationDays: i32(30), StartClass: "letter", EndLiteral: "!", ExcludeChars: "\\`"},
 	} {
-		if findByID(s.policies, p.Id) == nil {
+		if key := ledgerPolicy + p.Id; s.offerBuiltin(key, findByID(s.policies, p.Id) != nil) {
 			s.policies = append(s.policies, p)
+			added = append(added, key)
 		}
 	}
+	return added
 }
 
 // ensureSecuritySettings installs the default instance security settings if
@@ -1043,30 +1158,41 @@ func defaultSecuritySettings() *vaultv1.SecuritySettings {
 
 // ensureBuiltinTypes adds any missing built-in secret types. The full
 // catalogue lives in BuiltinTypes() so cmd/seed upserts the identical set.
-func (s *Server) ensureBuiltinTypes() {
+// A type is matched by id, so any type already holding that id (an older
+// copy of the built-in, or a pasted extension) is kept as it is.
+func (s *Server) ensureBuiltinTypes() []string {
+	var added []string
 	for _, t := range BuiltinTypes() {
-		if s.findType(t.Id) == nil {
+		if key := ledgerType + t.Id; s.offerBuiltin(key, s.findType(t.Id) != nil) {
 			s.types = append(s.types, t)
+			added = append(added, key)
 		}
 	}
+	return added
 }
 
 // ensureExtensionCatalog adds any missing importable extension packs.
-func (s *Server) ensureExtensionCatalog() {
+func (s *Server) ensureExtensionCatalog() []string {
+	var added []string
 	for _, e := range ExtensionCatalog() {
-		if findByID(s.extCatalog, e.Id) == nil {
+		if key := ledgerExtension + e.Id; s.offerBuiltin(key, findByID(s.extCatalog, e.Id) != nil) {
 			s.extCatalog = append(s.extCatalog, e)
+			added = append(added, key)
 		}
 	}
+	return added
 }
 
 // ensureBuiltinConnections adds any missing shipped connection templates.
-func (s *Server) ensureBuiltinConnections() {
+func (s *Server) ensureBuiltinConnections() []string {
+	var added []string
 	for _, c := range BuiltinConnections() {
-		if findByID(s.connections, c.Id) == nil {
+		if key := ledgerConnection + c.Id; s.offerBuiltin(key, findByID(s.connections, c.Id) != nil) {
 			s.connections = append(s.connections, c)
+			added = append(added, key)
 		}
 	}
+	return added
 }
 
 // ensurePersonalFolder creates a user's own personal folder (under the master
