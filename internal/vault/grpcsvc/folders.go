@@ -185,6 +185,11 @@ func (s *Server) MoveFolder(ctx context.Context, req *vaultv1.MoveFolderRequest)
 	if !s.isFolderOwner(actor, f) && !s.canManage(actor, f.GetId()) {
 		return nil, status.Error(codes.PermissionDenied, "not permitted to move this folder")
 	}
+	// A folder that's already there keeps its scope, group and role: rescoping
+	// it to its own location would take access away from everyone holding it.
+	if req.GetNewParentId() == f.GetParentId() {
+		return &vaultv1.MoveFolderResponse{Folder: f}, nil
+	}
 	// Guard against cycles: a folder cannot move into itself or a descendant.
 	if req.GetNewParentId() != "" && s.descendantIDs(f.GetId())[req.GetNewParentId()] {
 		return nil, status.Error(codes.InvalidArgument, "cannot move a folder into itself or one of its descendants")
@@ -192,11 +197,8 @@ func (s *Server) MoveFolder(ctx context.Context, req *vaultv1.MoveFolderRequest)
 
 	dest := s.findFolder(req.GetNewParentId()) // nil = move to top level (shared)
 	if req.GetNewParentId() == "" {
-		// A folder already at the top level adds nothing there.
-		if f.GetParentId() != "" {
-			if err := s.checkTopLevelCreate(ctx, actor, "MoveFolder"); err != nil {
-				return nil, err
-			}
+		if err := s.checkTopLevelCreate(ctx, actor, "MoveFolder"); err != nil {
+			return nil, err
 		}
 	} else if dest == nil {
 		return nil, errNotFound("destination folder")
