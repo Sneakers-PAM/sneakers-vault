@@ -6,7 +6,7 @@ require (
 	github.com/Bugs5382/go-buildinfo v1.1.0
 	github.com/Bugs5382/go-certkit v1.1.1
 	github.com/Bugs5382/go-log v1.3.0
-	github.com/Bugs5382/go-otel v1.3.2
+	github.com/Bugs5382/go-otel v1.4.0
 	github.com/Bugs5382/go-postgres v1.3.0
 	github.com/Bugs5382/go-redis v1.3.0
 	github.com/Bugs5382/go-saga-orchestration v0.7.0
