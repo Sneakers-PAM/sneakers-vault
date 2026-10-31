@@ -365,6 +365,11 @@ const (
 	// SSH: the host offered a key that isn't one of the target's pins.
 	// Recorded as a failed check.
 	HeartbeatResult_HEARTBEAT_RESULT_HOST_KEY_MISMATCH HeartbeatResult = 6
+	// TLS: the target answered, but its certificate failed verification (an
+	// unknown CA, expired or not yet valid, or issued for another host name),
+	// so the connector never sent the credential. The detail names why.
+	// Recorded as a failed check.
+	HeartbeatResult_HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE HeartbeatResult = 7
 )
 
 // Enum value maps for HeartbeatResult.
@@ -377,15 +382,17 @@ var (
 		4: "HEARTBEAT_RESULT_UNREACHABLE",
 		5: "HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED",
 		6: "HEARTBEAT_RESULT_HOST_KEY_MISMATCH",
+		7: "HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE",
 	}
 	HeartbeatResult_value = map[string]int32{
-		"HEARTBEAT_RESULT_UNSPECIFIED":         0,
-		"HEARTBEAT_RESULT_OK":                  1,
-		"HEARTBEAT_RESULT_FAILED":              2,
-		"HEARTBEAT_RESULT_UNKNOWN":             3,
-		"HEARTBEAT_RESULT_UNREACHABLE":         4,
-		"HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED": 5,
-		"HEARTBEAT_RESULT_HOST_KEY_MISMATCH":   6,
+		"HEARTBEAT_RESULT_UNSPECIFIED":           0,
+		"HEARTBEAT_RESULT_OK":                    1,
+		"HEARTBEAT_RESULT_FAILED":                2,
+		"HEARTBEAT_RESULT_UNKNOWN":               3,
+		"HEARTBEAT_RESULT_UNREACHABLE":           4,
+		"HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED":   5,
+		"HEARTBEAT_RESULT_HOST_KEY_MISMATCH":     6,
+		"HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE": 7,
 	}
 )
 
@@ -18515,7 +18522,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x18SUBJECT_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SUBJECT_KIND_GROUP\x10\x01\x12\x15\n" +
 	"\x11SUBJECT_KIND_USER\x10\x02\x12\x19\n" +
-	"\x15SUBJECT_KIND_EVERYONE\x10\x03*\xfb\x01\n" +
+	"\x15SUBJECT_KIND_EVERYONE\x10\x03*\xa7\x02\n" +
 	"\x0fHeartbeatResult\x12 \n" +
 	"\x1cHEARTBEAT_RESULT_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13HEARTBEAT_RESULT_OK\x10\x01\x12\x1b\n" +
@@ -18523,7 +18530,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x18HEARTBEAT_RESULT_UNKNOWN\x10\x03\x12 \n" +
 	"\x1cHEARTBEAT_RESULT_UNREACHABLE\x10\x04\x12(\n" +
 	"$HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED\x10\x05\x12&\n" +
-	"\"HEARTBEAT_RESULT_HOST_KEY_MISMATCH\x10\x06*}\n" +
+	"\"HEARTBEAT_RESULT_HOST_KEY_MISMATCH\x10\x06\x12*\n" +
+	"&HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE\x10\a*}\n" +
 	"\rRotationPhase\x12\x1e\n" +
 	"\x1aROTATION_PHASE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11ROTATION_PHASE_OK\x10\x01\x12\x19\n" +
