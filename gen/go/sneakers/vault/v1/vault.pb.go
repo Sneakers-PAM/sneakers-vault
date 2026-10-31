@@ -1070,7 +1070,7 @@ type Folder struct {
 	IsMasterPersonal   bool                   `protobuf:"varint,8,opt,name=is_master_personal,json=isMasterPersonal,proto3" json:"is_master_personal,omitempty"`
 	Order              int32                  `protobuf:"varint,9,opt,name=order,proto3" json:"order,omitempty"`
 	Owners             []string               `protobuf:"bytes,10,rep,name=owners,proto3" json:"owners,omitempty"`                                                      // RACI owners (user ids): auto read+approve+author, inherit down
-	SubtreeSecretCount int32                  `protobuf:"varint,11,opt,name=subtree_secret_count,json=subtreeSecretCount,proto3" json:"subtree_secret_count,omitempty"` // output-only: secrets in this folder + all descendants (drives delete UX)
+	SubtreeSecretCount int32                  `protobuf:"varint,11,opt,name=subtree_secret_count,json=subtreeSecretCount,proto3" json:"subtree_secret_count,omitempty"` // output-only: active secrets the caller sees in this folder + all descendants (drives delete UX)
 	CanManage          bool                   `protobuf:"varint,12,opt,name=can_manage,json=canManage,proto3" json:"can_manage,omitempty"`                              // output-only: whether the requesting actor may manage/create-under this folder (= isFolderOwner incl. site-admin/root, personal owner, and inherited ancestor ownership). Drives UI affordances (context menu, create-subfolder). Empty/false unless ListFolders computed it for the actor.
 	// Step-up MFA before a reveal in this folder and below. UNSPECIFIED inherits:
 	// the nearest ancestor that sets one, and at the top the global
