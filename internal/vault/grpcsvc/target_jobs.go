@@ -64,7 +64,7 @@ func (s *Server) targetJobFor(targetID string) *vaultv1.TargetJob {
 	}
 	if conn := findByID(s.connections, tgt.GetConnectionId()); conn != nil {
 		job.Connection = &vaultv1.HeartbeatConn{
-			Protocol: conn.GetProtocol(), Host: tgt.GetHostname(), Port: conn.GetPort(), UseTls: conn.GetUseTls(),
+			Protocol: conn.GetProtocol(), Host: tgt.GetHostname(), Port: conn.GetPort(), UseTls: conn.GetUseTls(), KdcPort: conn.GetKdcPort(),
 		}
 	}
 	return job

@@ -1259,6 +1259,9 @@ message Connection {
   string target_id = 8;
   string privileged_secret_id = 9;
   bool bootstrap = 10;
+  // The KDC port for validating a password over Kerberos after a rotation, for
+  // a directory whose KDC doesn't listen on the standard port. 0 means 88.
+  int32 kdc_port = 11;
 }
 
 message Target {
@@ -1341,6 +1344,7 @@ message HeartbeatConn {
   string host = 2;
   int32 port = 3;
   bool use_tls = 4;
+  int32 kdc_port = 5;    // Connection.kdc_port; 0 means 88
 }
 message HeartbeatTarget {
   string kind = 1;

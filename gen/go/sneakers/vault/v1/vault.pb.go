@@ -11488,8 +11488,11 @@ type Connection struct {
 	TargetId           string                 `protobuf:"bytes,8,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
 	PrivilegedSecretId string                 `protobuf:"bytes,9,opt,name=privileged_secret_id,json=privilegedSecretId,proto3" json:"privileged_secret_id,omitempty"`
 	Bootstrap          bool                   `protobuf:"varint,10,opt,name=bootstrap,proto3" json:"bootstrap,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The KDC port for validating a password over Kerberos after a rotation, for
+	// a directory whose KDC doesn't listen on the standard port. 0 means 88.
+	KdcPort       int32 `protobuf:"varint,11,opt,name=kdc_port,json=kdcPort,proto3" json:"kdc_port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Connection) Reset() {
@@ -11590,6 +11593,13 @@ func (x *Connection) GetBootstrap() bool {
 		return x.Bootstrap
 	}
 	return false
+}
+
+func (x *Connection) GetKdcPort() int32 {
+	if x != nil {
+		return x.KdcPort
+	}
+	return 0
 }
 
 type Target struct {
@@ -12705,6 +12715,7 @@ type HeartbeatConn struct {
 	Host          string                 `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
 	Port          int32                  `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
 	UseTls        bool                   `protobuf:"varint,4,opt,name=use_tls,json=useTls,proto3" json:"use_tls,omitempty"`
+	KdcPort       int32                  `protobuf:"varint,5,opt,name=kdc_port,json=kdcPort,proto3" json:"kdc_port,omitempty"` // Connection.kdc_port; 0 means 88
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -12765,6 +12776,13 @@ func (x *HeartbeatConn) GetUseTls() bool {
 		return x.UseTls
 	}
 	return false
+}
+
+func (x *HeartbeatConn) GetKdcPort() int32 {
+	if x != nil {
+		return x.KdcPort
+	}
+	return 0
 }
 
 type HeartbeatTarget struct {
@@ -18066,7 +18084,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x1aReplaceCertificateResponse\x121\n" +
 	"\x06secret\x18\x01 \x01(\v2\x19.sneakers.vault.v1.SecretR\x06secret\x12/\n" +
 	"\x04meta\x18\x02 \x01(\v2\x1b.sneakers.vault.v1.CertMetaR\x04meta\x12\x18\n" +
-	"\aaliases\x18\x03 \x03(\tR\aaliases\"\xab\x02\n" +
+	"\aaliases\x18\x03 \x03(\tR\aaliases\"\xc6\x02\n" +
 	"\n" +
 	"Connection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -18079,7 +18097,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\ttarget_id\x18\b \x01(\tR\btargetId\x120\n" +
 	"\x14privileged_secret_id\x18\t \x01(\tR\x12privilegedSecretId\x12\x1c\n" +
 	"\tbootstrap\x18\n" +
-	" \x01(\bR\tbootstrap\"\x83\x03\n" +
+	" \x01(\bR\tbootstrap\x12\x19\n" +
+	"\bkdc_port\x18\v \x01(\x05R\akdcPort\"\x83\x03\n" +
 	"\x06Target\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -18146,12 +18165,13 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\asecrets\x18\x01 \x03(\v2\x19.sneakers.vault.v1.SecretR\asecrets\"C\n" +
 	"\x0eWorkerIdentity\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1b\n" +
-	"\tworker_id\x18\x02 \x01(\tR\bworkerId\"l\n" +
+	"\tworker_id\x18\x02 \x01(\tR\bworkerId\"\x87\x01\n" +
 	"\rHeartbeatConn\x12\x1a\n" +
 	"\bprotocol\x18\x01 \x01(\tR\bprotocol\x12\x12\n" +
 	"\x04host\x18\x02 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x03 \x01(\x05R\x04port\x12\x17\n" +
-	"\ause_tls\x18\x04 \x01(\bR\x06useTls\"\x93\x01\n" +
+	"\ause_tls\x18\x04 \x01(\bR\x06useTls\x12\x19\n" +
+	"\bkdc_port\x18\x05 \x01(\x05R\akdcPort\"\x93\x01\n" +
 	"\x0fHeartbeatTarget\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x16\n" +
 	"\x06domain\x18\x02 \x01(\tR\x06domain\x12\x14\n" +

@@ -364,6 +364,9 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   because no credential was tried. `HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE`, for a TLS certificate
   that failed verification, is treated the same way and audited as
   `secret.heartbeat.tls_certificate`, with the connector's reason in `detail`.
+- **KDC port:** `Connection.kdc_port` is the port for validating a password over Kerberos after a
+  rotation, for a directory whose KDC isn't on the standard port. 0 means 88; a value outside 0 to
+  65535 is `InvalidArgument`. Jobs carry it as `HeartbeatConn.kdc_port`.
 - **Target connections:** `Target.connections` is an ordered list of `TargetConnection`
   (`connection_id` plus `is_default`), one entry per protocol a host answers on; exactly one entry
   is default. `connection_id` on `Target` stays as an alias for the default entry — reading it

@@ -55,6 +55,9 @@ func (s *Server) SaveConnection(ctx context.Context, req *vaultv1.SaveConnection
 	if in == nil || in.GetName() == "" {
 		return nil, status.Error(codes.InvalidArgument, "connection name is required")
 	}
+	if p := in.GetKdcPort(); p < 0 || p > 65535 {
+		return nil, status.Error(codes.InvalidArgument, "kdc_port must be between 1 and 65535, or 0 for the default")
+	}
 	// Connections are shared infrastructure, managed in the admin app only.
 	if err := s.requireSiteAdmin(ctx, req.GetActor(), "SaveConnection"); err != nil {
 		return nil, err
@@ -74,6 +77,7 @@ func (s *Server) SaveConnection(ctx context.Context, req *vaultv1.SaveConnection
 		}
 		existing.Name, existing.Protocol, existing.Port = in.GetName(), in.GetProtocol(), in.GetPort()
 		existing.UseTls, existing.Description = in.GetUseTls(), in.GetDescription()
+		existing.KdcPort = in.GetKdcPort()
 		// The gateway's ConnectionInput has no linkage fields, so every edit from
 		// the admin app arrives with them empty; empty must keep the stored value.
 		if id := in.GetTargetId(); id != "" {
