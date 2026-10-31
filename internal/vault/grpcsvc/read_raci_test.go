@@ -94,6 +94,63 @@ func listed(t *testing.T, s *Server, a *vaultv1.ActorContext, folderID string) m
 	return out
 }
 
+// The count beside a folder never includes what the caller can't see when they
+// open it, and the master personal root never sums other users' secrets.
+func TestListFoldersCountsOnlyWhatTheCallerSees(t *testing.T) {
+	fx := newListFixture(t)
+	ctx := context.Background()
+	seedPersonalFolder(fx.s, "user-bob")
+	bob := &vaultv1.ActorContext{UserId: "user-bob"}
+	carol := &vaultv1.ActorContext{UserId: "user-carol"}
+	child, err := fx.s.CreateFolder(ctx, &vaultv1.CreateFolderRequest{Actor: carol, ParentId: fx.folder, Name: "sub"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	secretIn(t, fx.s, carol, child.GetFolder().GetId(), "below")
+
+	for _, tc := range []struct {
+		name   string
+		actor  *vaultv1.ActorContext
+		folder string
+		want   int32
+	}{
+		{"bob, root with only carol's secret", bob, "folder-personal-root", 0},
+		{"bob, his empty personal folder", bob, "folder-personal-bob", 0},
+		{"bob, shared folder without the denied secret", bob, fx.folder, 2},
+		{"carol, root with her own secret", carol, "folder-personal-root", 1},
+		{"carol, her personal folder", carol, fx.personal, 1},
+		{"carol, shared folder and its child", carol, fx.folder, 3},
+	} {
+		resp, err := fx.s.ListFolders(ctx, &vaultv1.ListFoldersRequest{Actor: tc.actor})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := subtreeSecretCountOf(resp, tc.folder); got != tc.want {
+			t.Errorf("%s: count = %d, want %d", tc.name, got, tc.want)
+		}
+	}
+}
+
+// A secret shared out of someone's personal folder stays out of the root's
+// count: the folder holding it isn't one the caller can open from the tree.
+func TestListFoldersRootSkipsSecretsSharedFromAnothersPersonalFolder(t *testing.T) {
+	fx := newListFixture(t)
+	ctx := context.Background()
+	if _, err := fx.s.SetSecretRuleset(ctx, &vaultv1.SetSecretRulesetRequest{
+		Actor: &vaultv1.ActorContext{UserId: "user-carol"}, SecretId: fx.carols,
+		Rules: []*vaultv1.RaciRule{{SubjectKind: vaultv1.SubjectKind_SUBJECT_KIND_USER, SubjectName: "user-bob", Grants: map[string]string{"C": "allow"}}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	resp, err := fx.s.ListFolders(ctx, &vaultv1.ListFoldersRequest{Actor: &vaultv1.ActorContext{UserId: "user-bob"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := subtreeSecretCountOf(resp, "folder-personal-root"); got != 0 {
+		t.Fatalf("root count = %d, want 0", got)
+	}
+}
+
 func TestListSecretsInFolderShowsLockedSecretsAndHidesDenied(t *testing.T) {
 	fx := newListFixture(t)
 	bob := &vaultv1.ActorContext{UserId: "user-bob"}
