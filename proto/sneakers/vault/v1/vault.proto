@@ -417,9 +417,8 @@ message ActorContext {
   // (or root) role, resolved by the gateway from the owner's identity. A
   // token never acts with admin authority (is_site_admin and is_root are
   // ignored for it); the vault reads this flag for one thing only: creating
-  // a top-level folder while
-  // SecuritySettings.agents_may_create_top_level_folders is on. Ignored for
-  // every other principal kind.
+  // a top-level folder while SecuritySettings.restrict_top_level_folders is
+  // on. Ignored for every other principal kind.
   bool token_owner_is_site_admin = 13;
 }
 
@@ -463,7 +462,7 @@ message ListFoldersResponse { repeated Folder folders = 1; }
 
 message CreateFolderRequest {
   ActorContext actor = 1;
-  string parent_id = 2;                 // empty = new top-level shared folder
+  string parent_id = 2;                 // empty = new top-level shared folder (see SecuritySettings.restrict_top_level_folders)
   string name = 3;
 }
 message CreateFolderResponse { Folder folder = 1; }
@@ -814,14 +813,12 @@ message ListFoldersForPrincipalResponse {
 // the same name (case-insensitive) is refused (ALREADY_EXISTS). The folder
 // inherits its parent's scope and RACI chain and gets no owners of its own.
 //
-// An empty parent_id asks for a top-level folder. A service account or
-// workload is refused (INVALID_ARGUMENT). A personal token is refused with
-// PERMISSION_DENIED, reason TOP_LEVEL_FOLDERS_DISABLED, while
-// SecuritySettings.agents_may_create_top_level_folders is off, and with reason
-// NOT_SITE_ADMIN when it's on but the token's owner isn't a site admin
-// (ActorContext.token_owner_is_site_admin). Otherwise the folder is a shared
-// top-level folder owned by the token's user, as when that admin makes one in
-// the web.
+// An empty parent_id asks for a top-level folder, owned by the token's user as
+// when that person makes one in the web. A service account or workload is
+// refused (INVALID_ARGUMENT): it has no user to own the folder. While
+// SecuritySettings.restrict_top_level_folders is on, a personal token whose
+// owner isn't a site admin (ActorContext.token_owner_is_site_admin) is refused
+// with PERMISSION_DENIED, reason TOP_LEVEL_FOLDERS_RESTRICTED.
 message CreateFolderForPrincipalRequest {
   ActorContext actor = 1;
   string parent_id = 2;
@@ -1877,14 +1874,16 @@ message SecuritySettings {
   // Folder.reveal_step_up overrides it. Machine principals are exempt
   // (allow_api_for_sensitive covers them). Off by default.
   bool require_mfa_for_reveal = 8;
-  // "Agents may create top-level folders". Off (the default): a token, service
-  // account or workload can only create subfolders, and a top-level create
-  // from a personal token is refused with TOP_LEVEL_FOLDERS_DISABLED. On: a
-  // personal token whose owner is a site admin
-  // (ActorContext.token_owner_is_site_admin) may create a folder with no
-  // parent, owned by that admin. Every other machine caller is still refused,
-  // and personal folders stay closed either way.
-  bool agents_may_create_top_level_folders = 9;
+  reserved 9;
+  reserved "agents_may_create_top_level_folders";
+  // "Restrict top-level folders to admins". Off (the default): any signed-in
+  // person or personal token may create a top-level folder, and the creator or
+  // the token's user owns it. On: only a site admin or root may, in the web or
+  // through a token whose owner is one (ActorContext.token_owner_is_site_admin);
+  // anyone else gets PERMISSION_DENIED, reason TOP_LEVEL_FOLDERS_RESTRICTED.
+  // Service accounts and workloads are refused either way, as they have no
+  // user to own the folder.
+  bool restrict_top_level_folders = 10;
 }
 
 message ListPasswordPoliciesRequest {}
@@ -1906,7 +1905,9 @@ message UpdateSecuritySettingsRequest {
   optional int32 session_ttl_seconds = 7;
   optional int32 kek_rotation_days = 8;   // 0 = auto-rotation off (distinct from unset = unchanged)
   optional bool require_mfa_for_reveal = 9;
-  optional bool agents_may_create_top_level_folders = 10;
+  reserved 10;
+  reserved "agents_may_create_top_level_folders";
+  optional bool restrict_top_level_folders = 11;
 }
 message UpdateSecuritySettingsResponse { SecuritySettings settings = 1; }
 

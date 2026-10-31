@@ -23,9 +23,9 @@ const (
 	// ReasonHostKeysPersonOnly: no token — not even an admin's — may pin or
 	// unpin a target's SSH host keys; only a human in the admin app can.
 	ReasonHostKeysPersonOnly = "HOST_KEYS_PERSON_ONLY"
-	// ReasonTopLevelFoldersDisabled: a token asked for a top-level folder
-	// while the "Agents may create top-level folders" setting is off.
-	ReasonTopLevelFoldersDisabled = "TOP_LEVEL_FOLDERS_DISABLED"
+	// ReasonTopLevelFoldersRestricted: someone other than a site admin asked
+	// for a top-level folder while "Restrict top-level folders to admins" is on.
+	ReasonTopLevelFoldersRestricted = "TOP_LEVEL_FOLDERS_RESTRICTED"
 )
 
 // refuse builds a PermissionDenied status carrying an ErrorInfo for reason.

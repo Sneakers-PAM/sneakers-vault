@@ -6,9 +6,9 @@
 // is non-human only, evaluates RACI for the principal id (evalOf: never an
 // admin flag, never folder ownership), treats a personal subtree as reachable
 // only through an explicit user/group grant, and audits as the principal. There
-// is deliberately no machine delete. The one admin-gated verb is a top-level
-// folder create, open only to a site admin's personal token behind a security
-// setting (createTopLevelFolderForPrincipal).
+// is deliberately no machine delete. A top-level folder create is the one verb
+// open to a personal token but no other machine, because its user owns the
+// result (createTopLevelFolderForPrincipal).
 package grpcsvc
 
 import (
@@ -382,33 +382,37 @@ func (s *Server) CreateFolderForPrincipal(ctx context.Context, req *vaultv1.Crea
 	return &vaultv1.CreateFolderForPrincipalResponse{Folder: principalFolderView(f, true)}, nil
 }
 
-// Refusal messages for a top-level create through a token. The first names
-// the setting so the caller (the MCP) can tell the person what to turn on.
-const (
-	msgTopLevelFoldersDisabled = `creating a top-level folder through a token needs the security setting "Agents may create top-level folders" (agents_may_create_top_level_folders), which is off`
-	msgTopLevelNeedsAdminToken = "creating a top-level folder through a token needs a token whose owner is a site admin"
-)
+// msgTopLevelRestricted names the setting so the caller (the MCP or the web)
+// can tell the person what's stopping them.
+const msgTopLevelRestricted = `only a site admin can create a top-level folder while the security setting "Restrict top-level folders to admins" (restrict_top_level_folders) is on`
 
-// createTopLevelFolderForPrincipal creates a folder with no parent. Only a
-// personal token may, only while agents_may_create_top_level_folders is on,
-// and only when the gateway resolved the token's owner as a site admin. The
-// folder is the same shared folder an admin makes in the web, owned by the
-// token's user. A service account or workload is refused as before.
-func (s *Server) createTopLevelFolderForPrincipal(ctx context.Context, actor *vaultv1.ActorContext, rawName string) (*vaultv1.CreateFolderForPrincipalResponse, error) {
-	const method = "CreateFolderForPrincipal"
-	if !isUserToken(actor) {
-		return nil, status.Error(codes.InvalidArgument, "parent_id is required: a machine cannot create a top-level folder")
+// checkTopLevelCreate is the one gate on a new top-level folder, for people and
+// tokens alike. A service account, a workload or a token with no user is
+// refused in every state: nothing could own the folder. With
+// restrict_top_level_folders on, only a human site admin or root passes, or a
+// token the gateway resolved as owned by one. Caller holds s.mu.
+func (s *Server) checkTopLevelCreate(ctx context.Context, a *vaultv1.ActorContext, method string) error {
+	token := isUserToken(a)
+	if human := a.GetPrincipalKind() == vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN; !human && (!token || a.GetUserId() == "") {
+		return status.Error(codes.InvalidArgument, "parent_id is required: a machine cannot create a top-level folder")
 	}
+	if !s.settings.GetRestrictTopLevelFolders() || isHumanAdmin(a) || (token && a.GetTokenOwnerIsSiteAdmin()) {
+		return nil
+	}
+	return s.deny(ctx, a, method, "folder", ReasonTopLevelFoldersRestricted, msgTopLevelRestricted)
+}
+
+// createTopLevelFolderForPrincipal creates a folder with no parent, past
+// checkTopLevelCreate. The folder is the same shared folder a person makes in
+// the web, owned by the token's user.
+func (s *Server) createTopLevelFolderForPrincipal(ctx context.Context, actor *vaultv1.ActorContext, rawName string) (*vaultv1.CreateFolderForPrincipalResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	l := s.lg(ctx)
-	if !s.settings.GetAgentsMayCreateTopLevelFolders() {
-		return nil, s.deny(ctx, actor, method, "folder", ReasonTopLevelFoldersDisabled, msgTopLevelFoldersDisabled)
+	if err := s.checkTopLevelCreate(ctx, actor, "CreateFolderForPrincipal"); err != nil {
+		return nil, err
 	}
 	uid := actor.GetUserId()
-	if uid == "" || !actor.GetTokenOwnerIsSiteAdmin() {
-		return nil, s.deny(ctx, actor, method, "folder", ReasonNotSiteAdmin, msgTopLevelNeedsAdminToken)
-	}
 	name, err := organizeName(rawName)
 	if err != nil {
 		return nil, err

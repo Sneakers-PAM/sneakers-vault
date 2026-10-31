@@ -106,6 +106,11 @@ func (s *Server) CreateFolder(ctx context.Context, req *vaultv1.CreateFolderRequ
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if req.GetParentId() == "" {
+		if err := s.checkTopLevelCreate(ctx, req.GetActor(), "CreateFolder"); err != nil {
+			return nil, err
+		}
+	}
 	// Provision the actor's own personal folder here — a genuine WRITE the
 	// actor explicitly asked for — rather than as a side effect of a read.
 	// This is the "legitimate provisioning" moment for every real user
