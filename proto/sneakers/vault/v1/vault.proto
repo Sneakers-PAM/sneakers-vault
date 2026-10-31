@@ -73,6 +73,11 @@ enum HeartbeatResult {
   // SSH: the host offered a key that isn't one of the target's pins.
   // Recorded as a failed check.
   HEARTBEAT_RESULT_HOST_KEY_MISMATCH = 6;
+  // TLS: the target answered, but its certificate failed verification (an
+  // unknown CA, expired or not yet valid, or issued for another host name),
+  // so the connector never sent the credential. The detail names why.
+  // Recorded as a failed check.
+  HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE = 7;
 }
 
 enum RotationPhase {
@@ -132,7 +137,7 @@ message Folder {
   bool is_master_personal = 8;
   int32 order = 9;
   repeated string owners = 10;          // RACI owners (user ids): auto read+approve+author, inherit down
-  int32 subtree_secret_count = 11;      // output-only: secrets in this folder + all descendants (drives delete UX)
+  int32 subtree_secret_count = 11;      // output-only: active secrets the caller sees in this folder + all descendants (drives delete UX)
   bool can_manage = 12;                 // output-only: whether the requesting actor may manage/create-under this folder (= isFolderOwner incl. site-admin/root, personal owner, and inherited ancestor ownership). Drives UI affordances (context menu, create-subfolder). Empty/false unless ListFolders computed it for the actor.
   // Step-up MFA before a reveal in this folder and below. UNSPECIFIED inherits:
   // the nearest ancestor that sets one, and at the top the global

@@ -365,6 +365,11 @@ const (
 	// SSH: the host offered a key that isn't one of the target's pins.
 	// Recorded as a failed check.
 	HeartbeatResult_HEARTBEAT_RESULT_HOST_KEY_MISMATCH HeartbeatResult = 6
+	// TLS: the target answered, but its certificate failed verification (an
+	// unknown CA, expired or not yet valid, or issued for another host name),
+	// so the connector never sent the credential. The detail names why.
+	// Recorded as a failed check.
+	HeartbeatResult_HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE HeartbeatResult = 7
 )
 
 // Enum value maps for HeartbeatResult.
@@ -377,15 +382,17 @@ var (
 		4: "HEARTBEAT_RESULT_UNREACHABLE",
 		5: "HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED",
 		6: "HEARTBEAT_RESULT_HOST_KEY_MISMATCH",
+		7: "HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE",
 	}
 	HeartbeatResult_value = map[string]int32{
-		"HEARTBEAT_RESULT_UNSPECIFIED":         0,
-		"HEARTBEAT_RESULT_OK":                  1,
-		"HEARTBEAT_RESULT_FAILED":              2,
-		"HEARTBEAT_RESULT_UNKNOWN":             3,
-		"HEARTBEAT_RESULT_UNREACHABLE":         4,
-		"HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED": 5,
-		"HEARTBEAT_RESULT_HOST_KEY_MISMATCH":   6,
+		"HEARTBEAT_RESULT_UNSPECIFIED":           0,
+		"HEARTBEAT_RESULT_OK":                    1,
+		"HEARTBEAT_RESULT_FAILED":                2,
+		"HEARTBEAT_RESULT_UNKNOWN":               3,
+		"HEARTBEAT_RESULT_UNREACHABLE":           4,
+		"HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED":   5,
+		"HEARTBEAT_RESULT_HOST_KEY_MISMATCH":     6,
+		"HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE": 7,
 	}
 )
 
@@ -1070,7 +1077,7 @@ type Folder struct {
 	IsMasterPersonal   bool                   `protobuf:"varint,8,opt,name=is_master_personal,json=isMasterPersonal,proto3" json:"is_master_personal,omitempty"`
 	Order              int32                  `protobuf:"varint,9,opt,name=order,proto3" json:"order,omitempty"`
 	Owners             []string               `protobuf:"bytes,10,rep,name=owners,proto3" json:"owners,omitempty"`                                                      // RACI owners (user ids): auto read+approve+author, inherit down
-	SubtreeSecretCount int32                  `protobuf:"varint,11,opt,name=subtree_secret_count,json=subtreeSecretCount,proto3" json:"subtree_secret_count,omitempty"` // output-only: secrets in this folder + all descendants (drives delete UX)
+	SubtreeSecretCount int32                  `protobuf:"varint,11,opt,name=subtree_secret_count,json=subtreeSecretCount,proto3" json:"subtree_secret_count,omitempty"` // output-only: active secrets the caller sees in this folder + all descendants (drives delete UX)
 	CanManage          bool                   `protobuf:"varint,12,opt,name=can_manage,json=canManage,proto3" json:"can_manage,omitempty"`                              // output-only: whether the requesting actor may manage/create-under this folder (= isFolderOwner incl. site-admin/root, personal owner, and inherited ancestor ownership). Drives UI affordances (context menu, create-subfolder). Empty/false unless ListFolders computed it for the actor.
 	// Step-up MFA before a reveal in this folder and below. UNSPECIFIED inherits:
 	// the nearest ancestor that sets one, and at the top the global
@@ -2272,12 +2279,11 @@ type Secret struct {
 	NextRotationAt           string                 `protobuf:"bytes,19,opt,name=next_rotation_at,json=nextRotationAt,proto3" json:"next_rotation_at,omitempty"`                                // RFC3339; scheduler mirror (queue is source of truth)
 	RotationOptOut           bool                   `protobuf:"varint,20,opt,name=rotation_opt_out,json=rotationOptOut,proto3" json:"rotation_opt_out,omitempty"`                               // per-secret override: never rotate this secret (audited; type must allow rotation)
 	// Set by vault from connector reports, never by a caller.
-	//
-	//	builtin_administrator: the target account is the domain's built-in
-	//	  Administrator (RID 500). Vault never rotates it; heartbeat still runs.
-	//	admin_count: the account has adminCount=1 (AD protected groups). It
-	//	  rotates with the self-service change only; OU-delegated admin reset
-	//	  does not apply to it.
+	//   builtin_administrator: the target account is the domain's built-in
+	//     Administrator (RID 500). Vault never rotates it; heartbeat still runs.
+	//   admin_count: the account has adminCount=1 (AD protected groups). It
+	//     rotates with the self-service change only; OU-delegated admin reset
+	//     does not apply to it.
 	BuiltinAdministrator bool `protobuf:"varint,29,opt,name=builtin_administrator,json=builtinAdministrator,proto3" json:"builtin_administrator,omitempty"`
 	AdminCount           bool `protobuf:"varint,30,opt,name=admin_count,json=adminCount,proto3" json:"admin_count,omitempty"`
 	HeartbeatOptOut      bool `protobuf:"varint,21,opt,name=heartbeat_opt_out,json=heartbeatOptOut,proto3" json:"heartbeat_opt_out,omitempty"` // per-secret override: never heartbeat this secret (audited)
@@ -18535,7 +18541,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x18SUBJECT_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SUBJECT_KIND_GROUP\x10\x01\x12\x15\n" +
 	"\x11SUBJECT_KIND_USER\x10\x02\x12\x19\n" +
-	"\x15SUBJECT_KIND_EVERYONE\x10\x03*\xfb\x01\n" +
+	"\x15SUBJECT_KIND_EVERYONE\x10\x03*\xa7\x02\n" +
 	"\x0fHeartbeatResult\x12 \n" +
 	"\x1cHEARTBEAT_RESULT_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13HEARTBEAT_RESULT_OK\x10\x01\x12\x1b\n" +
@@ -18543,7 +18549,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x18HEARTBEAT_RESULT_UNKNOWN\x10\x03\x12 \n" +
 	"\x1cHEARTBEAT_RESULT_UNREACHABLE\x10\x04\x12(\n" +
 	"$HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED\x10\x05\x12&\n" +
-	"\"HEARTBEAT_RESULT_HOST_KEY_MISMATCH\x10\x06*}\n" +
+	"\"HEARTBEAT_RESULT_HOST_KEY_MISMATCH\x10\x06\x12*\n" +
+	"&HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE\x10\a*}\n" +
 	"\rRotationPhase\x12\x1e\n" +
 	"\x1aROTATION_PHASE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11ROTATION_PHASE_OK\x10\x01\x12\x19\n" +
