@@ -31,7 +31,7 @@ var maintenanceGolden = map[maintenance.Class][]string{
 		"GetTopAccessedSecrets", "ListSecretsByStatus", "FindSecretsByPublicKey", "GetSecretRuleset",
 		"GetMySecretAccess", "ListConnectors", "ListPasswordPolicies", "GetSecuritySettings",
 		"GenerateKeyPair", "GetSecretUse", "ListPendingSecretUses", "ListSecretUsesToDecide", "ListUseGrants",
-		"GetBreakGlassSession", "ListBreakGlassItems", "ListBreakGlassSessions",
+		"GetBreakGlassSession", "ListBreakGlassItems", "ListBreakGlassSessions", "PreviewSecretTypeChange",
 	},
 	maintenance.Allowed: {
 		"RevealSecretField", "RevealSecretFieldForPrincipal", "RevealSecretVersionField", "CopySecret",
@@ -45,7 +45,7 @@ var maintenanceGolden = map[maintenance.Class][]string{
 		"CreateFolder", "RenameFolder", "MoveFolder", "DeleteFolder", "ReorderFolders", "ReorderSecrets", "AddFolderRule",
 		"RemoveFolderRule", "SetFolderRuleset", "SetFolderRevealStepUp", "CreateSecret", "UpdateSecret",
 		"SetSecretAutomation", "CreateSecretForPrincipal", "GenerateSecretForPrincipal",
-		"MoveSecretForPrincipal", "ChangeSecretTypeForPrincipal", "RenameSecretForPrincipal",
+		"MoveSecretForPrincipal", "ChangeSecretType", "ChangeSecretTypeForPrincipal", "RenameSecretForPrincipal",
 		"UpdateSecretFieldsForPrincipal", "CreateFolderForPrincipal", "RenameFolderForPrincipal",
 		"MoveFolderForPrincipal", "RestoreSecretVersion", "RotateSecretForPrincipal", "RestoreSecretVersionForPrincipal",
 		"BreakGlassSecret", "OpenBreakGlassSession", "RetireSecret",
