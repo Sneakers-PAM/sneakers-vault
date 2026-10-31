@@ -360,6 +360,9 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   the vault records either as a failed check with the connector's reason (counted as drift,
   notified like a drift, audited as `secret.heartbeat.host_key`), but doesn't pause the schedule,
   because no credential was tried.
+- **KDC port:** `Connection.kdc_port` is the port for validating a password over Kerberos after a
+  rotation, for a directory whose KDC isn't on the standard port. 0 means 88; a value outside 0 to
+  65535 is `InvalidArgument`. Jobs carry it as `HeartbeatConn.kdc_port`.
 - **Target connections:** `Target.connections` is an ordered list of `TargetConnection`
   (`connection_id` plus `is_default`), one entry per protocol a host answers on; exactly one entry
   is default. `connection_id` on `Target` stays as an alias for the default entry — reading it
