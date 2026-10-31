@@ -216,3 +216,66 @@ func TestPrincipalMoveToTopLevelStaysClosed(t *testing.T) {
 	}
 	wantStillUnder(t, s, ca, sub, top)
 }
+
+// Moving a folder to where it already is must leave its access alone: anyone
+// who reaches it through its group keeps it.
+func TestMoveToWhereItAlreadyIsChangesNothing(t *testing.T) {
+	t.Run("top-level folder with a group and role", func(t *testing.T) {
+		s := newServer(t)
+		top, sub := bobsTree(t, s)
+		f := s.findFolder(top)
+		f.GroupId, f.Role = "group-team", "operators"
+		child := s.findFolder(sub)
+		child.GroupId, child.Role = "group-team", "operators"
+		ca := &capAudit{}
+		s.audit = ca
+
+		if err := moveToTop(s, moveBob, top); err != nil {
+			t.Fatalf("MoveFolder: %v", err)
+		}
+		for _, got := range []*vaultv1.Folder{s.findFolder(top), s.findFolder(sub)} {
+			if got.GetGroupId() != "group-team" || got.GetRole() != "operators" {
+				t.Fatalf("folder %s = %+v, want group and role kept", got.GetId(), got)
+			}
+		}
+		if ca.find("folder.move") != nil {
+			t.Fatal("nothing moved, so nothing should be audited as a move")
+		}
+	})
+
+	t.Run("top-level personal folder stays personal", func(t *testing.T) {
+		s := newServer(t)
+		id := "folder-bob-personal"
+		s.folders = append(s.folders, &vaultv1.Folder{
+			Id: id, Name: "Mine", Scope: vaultv1.FolderScope_FOLDER_SCOPE_PERSONAL, OwnerUserId: moveBob.GetUserId(),
+		})
+		if err := moveToTop(s, moveBob, id); err != nil {
+			t.Fatalf("MoveFolder: %v", err)
+		}
+		got := s.findFolder(id)
+		if got.GetScope() != vaultv1.FolderScope_FOLDER_SCOPE_PERSONAL || got.GetOwnerUserId() != moveBob.GetUserId() {
+			t.Fatalf("folder = %+v, want it still personal to bob", got)
+		}
+	})
+
+	t.Run("subfolder keeping its parent keeps its own role", func(t *testing.T) {
+		s := newServer(t)
+		top, sub := bobsTree(t, s)
+		s.findFolder(sub).Role = "readers"
+		if _, err := s.MoveFolder(context.Background(), &vaultv1.MoveFolderRequest{Actor: moveBob, Id: sub, NewParentId: top}); err != nil {
+			t.Fatalf("MoveFolder: %v", err)
+		}
+		if got := s.findFolder(sub).GetRole(); got != "readers" {
+			t.Fatalf("role = %q, want it kept", got)
+		}
+	})
+
+	t.Run("a stranger is still refused", func(t *testing.T) {
+		s := newServer(t)
+		top, _ := bobsTree(t, s)
+		err := moveToTop(s, &vaultv1.ActorContext{UserId: "user-eve"}, top)
+		if status.Code(err) != codes.PermissionDenied {
+			t.Fatalf("err = %v, want PermissionDenied", err)
+		}
+	})
+}

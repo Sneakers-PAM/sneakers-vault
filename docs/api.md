@@ -155,7 +155,8 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   `TOP_LEVEL_FOLDERS_RESTRICTED`, audited as `authz.denied`, and the message names the setting.
   `MoveFolder` to the top level follows the same rule, on top of owning or managing the folder; a
   folder already at the top level isn't refused, and reordering top-level folders still needs an
-  admin. A `new_parent_id` that doesn't exist is `NotFound`. `MoveFolderForPrincipal` can't move a
+  admin. `MoveFolder` to the parent a folder already has changes nothing: no rescope and no
+  `folder.move` audit event. A `new_parent_id` that doesn't exist is `NotFound`. `MoveFolderForPrincipal` can't move a
   folder to the top level (`InvalidArgument`), and a token the setting restricts gets
   `TOP_LEVEL_FOLDERS_RESTRICTED` instead. The new folder is shared and owned by the creator or the token's user. A token's create is audited as
   `folder.create.principal` under that user with `token_id`, `path` and `top_level`. The flag counts
