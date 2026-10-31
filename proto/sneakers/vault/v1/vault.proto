@@ -73,6 +73,11 @@ enum HeartbeatResult {
   // SSH: the host offered a key that isn't one of the target's pins.
   // Recorded as a failed check.
   HEARTBEAT_RESULT_HOST_KEY_MISMATCH = 6;
+  // TLS: the target answered, but its certificate failed verification (an
+  // unknown CA, expired or not yet valid, or issued for another host name),
+  // so the connector never sent the credential. The detail names why.
+  // Recorded as a failed check.
+  HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE = 7;
 }
 
 enum RotationPhase {

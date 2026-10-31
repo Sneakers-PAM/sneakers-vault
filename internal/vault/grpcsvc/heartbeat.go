@@ -43,10 +43,16 @@ func hostKeyRefused(r vaultv1.HeartbeatResult) bool {
 		r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_HOST_KEY_MISMATCH
 }
 
+// certificateRefused reports a TLS heartbeat the connector didn't finish
+// because the target's certificate failed verification.
+func certificateRefused(r vaultv1.HeartbeatResult) bool {
+	return r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE
+}
+
 // heartbeatFailed reports a failed check: a wrong credential, or a host the
 // connector refused to trust.
 func heartbeatFailed(r vaultv1.HeartbeatResult) bool {
-	return r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED || hostKeyRefused(r)
+	return r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED || hostKeyRefused(r) || certificateRefused(r)
 }
 
 // nextDue computes the next scheduled time: interval on valid/invalid;
@@ -336,16 +342,24 @@ func (s *Server) ReportHeartbeat(ctx context.Context, req *vaultv1.ReportHeartbe
 	return &vaultv1.ReportHeartbeatResponse{Ok: true}, nil
 }
 
-// auditHostKeyRefusal logs and audits a heartbeat the connector refused
-// because the target's host key couldn't be verified. Other results are a
-// no-op.
-func (s *Server) auditHostKeyRefusal(ctx context.Context, secID string, result vaultv1.HeartbeatResult, detail string) {
-	if !hostKeyRefused(result) {
+// auditTrustRefusal logs and audits a heartbeat the connector refused because
+// it couldn't trust the target: its SSH host key or its TLS certificate.
+// Other results are a no-op.
+func (s *Server) auditTrustRefusal(ctx context.Context, secID string, result vaultv1.HeartbeatResult, detail string) {
+	var action string
+	switch {
+	case hostKeyRefused(result):
+		action = "secret.heartbeat.host_key"
+		s.lg(ctx).Warn("SSH heartbeat refused: the target's host key could not be verified",
+			log.F("secret_id", secID), log.F("result", result.String()))
+	case certificateRefused(result):
+		action = "secret.heartbeat.tls_certificate"
+		s.lg(ctx).Warn("TLS heartbeat refused: the target's certificate could not be verified",
+			log.F("secret_id", secID), log.F("result", result.String()))
+	default:
 		return
 	}
-	s.lg(ctx).Warn("SSH heartbeat refused: the target's host key could not be verified",
-		log.F("secret_id", secID), log.F("result", result.String()))
-	s.emitAttrs(ctx, "connector", "secret.heartbeat.host_key", secID, false,
+	s.emitAttrs(ctx, "connector", action, secID, false,
 		map[string]string{"result": result.String(), "detail": truncate(detail, maxHeartbeatDetail)})
 }
 
@@ -353,9 +367,9 @@ func (s *Server) auditHostKeyRefusal(ctx context.Context, secID string, result v
 // that matches the day and result of a rollup already open for this secret
 // just extends it — no audit event for this check. Everything else flushes
 // any pending rollup as its own summary record and is itself audited
-// individually: a non-OK result (always, never folded — auditHostKeyRefusal
-// adds its own record for a host-key refusal on top of the generic one, same
-// as before this fix), or the first OK check that follows a different
+// individually: a non-OK result (always, never folded — auditTrustRefusal
+// adds its own record for a host-key or certificate refusal on top of the
+// generic one, same as before this fix), or the first OK check that follows a different
 // result (a recovery). A plain day rollover with the result staying OK is
 // not a transition, so it opens the next day's rollup silently.
 func (s *Server) auditHeartbeatCheck(ctx context.Context, secID, workerID string, result vaultv1.HeartbeatResult, detail string) {
@@ -363,7 +377,7 @@ func (s *Server) auditHeartbeatCheck(ctx context.Context, secID, workerID string
 	if result != HB_VALID {
 		s.flushHeartbeatSummary(ctx, secID)
 		s.emit(ctx, "connector", "heartbeat.report", secID, false)
-		s.auditHostKeyRefusal(ctx, secID, result, detail)
+		s.auditTrustRefusal(ctx, secID, result, detail)
 		return
 	}
 	if s.hbSummary == nil {

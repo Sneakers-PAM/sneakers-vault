@@ -313,7 +313,8 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   first. A day rollover with the result staying OK flushes the same way but starts the next day's
   rollup silently, with no individual record of its own. Every failure, host-key refusal and state
   change is still audited on its own, exactly as before: `heartbeat.report` for a failure or
-  recovery, `secret.heartbeat.host_key` for a host-key refusal, `secret.heartbeat.pause` /
+  recovery, `secret.heartbeat.host_key` for a host-key refusal, `secret.heartbeat.tls_certificate` for an
+  untrusted TLS certificate, `secret.heartbeat.pause` /
   `secret.heartbeat.resume` for the pause lifecycle. Person and agent actions on a secret are
   never rolled up.
 - **Built-in Administrator:** an Active Directory account the connector reports as RID 500 is
@@ -359,7 +360,9 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   `HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED` or `HEARTBEAT_RESULT_HOST_KEY_MISMATCH` when it refuses;
   the vault records either as a failed check with the connector's reason (counted as drift,
   notified like a drift, audited as `secret.heartbeat.host_key`), but doesn't pause the schedule,
-  because no credential was tried.
+  because no credential was tried. `HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE`, for a TLS certificate
+  that failed verification, is treated the same way and audited as
+  `secret.heartbeat.tls_certificate`, with the connector's reason in `detail`.
 - **Target connections:** `Target.connections` is an ordered list of `TargetConnection`
   (`connection_id` plus `is_default`), one entry per protocol a host answers on; exactly one entry
   is default. `connection_id` on `Target` stays as an alias for the default entry — reading it
