@@ -191,6 +191,16 @@ func (s *Server) MoveFolder(ctx context.Context, req *vaultv1.MoveFolderRequest)
 	}
 
 	dest := s.findFolder(req.GetNewParentId()) // nil = move to top level (shared)
+	if req.GetNewParentId() == "" {
+		// A folder already at the top level adds nothing there.
+		if f.GetParentId() != "" {
+			if err := s.checkTopLevelCreate(ctx, actor, "MoveFolder"); err != nil {
+				return nil, err
+			}
+		}
+	} else if dest == nil {
+		return nil, errNotFound("destination folder")
+	}
 	destPersonal, destOwner := s.destPersonal(dest)
 
 	// Move rule: personal -> shared and rearranging your own personal tree
