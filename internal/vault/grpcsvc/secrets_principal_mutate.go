@@ -9,9 +9,9 @@ package grpcsvc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -157,12 +157,12 @@ type retypeOutcome struct {
 func certRetypeFields(out map[string]string) (string, error) {
 	derived, meta, err := certsvc.StoredFieldsMeta(out)
 	if err != nil {
-		return "", status.Error(codes.InvalidArgument, "type change into the certificate type: "+strings.TrimPrefix(err.Error(), "certsvc: "))
+		return "", retypeRefusal(codes.InvalidArgument, ReasonTypeChangeCertificateInvalid, "type change into the certificate type: "+strings.TrimPrefix(err.Error(), "certsvc: "))
 	}
 	for _, k := range sortedKeys(derived) {
 		if v := out[k]; v != "" && v != derived[k] {
-			return "", status.Errorf(codes.InvalidArgument,
-				"field %q carries a value that differs from the one derived from the certificate; map it to another field with field_mapping", k)
+			return "", retypeRefusal(codes.InvalidArgument, ReasonTypeChangeCertificateInvalid,
+				fmt.Sprintf("field %q carries a value that differs from the one derived from the certificate; map it to another field with field_mapping", k), k)
 		}
 		out[k] = derived[k]
 	}
@@ -175,7 +175,7 @@ func certRetypeFields(out map[string]string) (string, error) {
 func (s *Server) retypeChecks(ctx context.Context, sec *vaultv1.Secret, nt *vaultv1.SecretType, next map[string]string) (string, error) {
 	// The same authoritative key-pair check every save runs.
 	if err := verifyKeyPairFields(next); err != nil {
-		return "", err
+		return "", retypeRefusal(status.Code(err), ReasonTypeChangeInvalidField, status.Convert(err).Message())
 	}
 	if nt.GetId() != certSecretTypeID {
 		return sec.GetExpiresAt(), nil
@@ -189,6 +189,34 @@ func (s *Server) retypeChecks(ctx context.Context, sec *vaultv1.Secret, nt *vaul
 	return exp, nil
 }
 
+// planRetypeAutomation works out what a type change does to automation, for sec
+// already carrying the new type. It detaches the target when the new type takes
+// none, so the preview calls it on a copy. Caller holds s.mu.
+func (s *Server) planRetypeAutomation(sec *vaultv1.Secret, nt *vaultv1.SecretType) retypeOutcome {
+	o := retypeOutcome{rotation: "none", target: "none", fromTargetID: primaryTargetID(sec)}
+	if o.fromTargetID != "" {
+		o.target = "kept"
+		if !typeTakesTarget(nt) {
+			setSecretTargets(sec, nil)
+			o.target = "detached"
+		}
+	}
+	if nt.GetRotation() {
+		o.rotation = "off"
+	}
+	switch {
+	case !nt.GetHeartbeat():
+		o.heartbeat = "none"
+	case sec.GetHeartbeatOptOut():
+		o.heartbeat = "opted_out"
+	case !s.heartbeatReachable(sec):
+		o.heartbeat = "no_target"
+	default:
+		o.heartbeat = "scheduled"
+	}
+	return o
+}
+
 // applyRetypeAutomation brings a retyped secret's target and schedules in line
 // with its new type. Rotation is opted out after any change into a rotation
 // type, so a credential nobody has reviewed under its new type is never rotated
@@ -196,19 +224,9 @@ func (s *Server) retypeChecks(ctx context.Context, sec *vaultv1.Secret, nt *vaul
 // whose connection exists. Schedule rows of the old type are removed, which
 // also drops their claims. Caller holds s.mu (write).
 func (s *Server) applyRetypeAutomation(ctx context.Context, sec *vaultv1.Secret, st, nt *vaultv1.SecretType) retypeOutcome {
-	o := retypeOutcome{rotation: "none", target: "none", fromTargetID: sec.GetTargetId()}
-	if o.fromTargetID != "" {
-		o.target = "kept"
-		if !typeTakesTarget(nt) {
-			sec.TargetId = ""
-			o.target = "detached"
-		}
-	}
+	o := s.planRetypeAutomation(sec, nt)
 	s.retypeRotation(ctx, sec, st, nt)
-	if nt.GetRotation() {
-		o.rotation = "off"
-	}
-	o.heartbeat = s.retypeHeartbeat(ctx, sec, st, nt)
+	s.retypeHeartbeat(ctx, sec, st, nt, o.heartbeat)
 	l := s.lg(ctx)
 	l.Info("type change automation applied", log.F("secret_id", sec.GetId()), log.F("from_type_id", st.GetId()), log.F("to_type_id", nt.GetId()), log.F("rotation", o.rotation), log.F("heartbeat", o.heartbeat), log.F("target", o.target), log.F("from_target_id", o.fromTargetID))
 	return o
@@ -228,21 +246,11 @@ func (s *Server) retypeRotation(ctx context.Context, sec *vaultv1.Secret, st, nt
 	}
 }
 
-// retypeHeartbeat creates or removes the heartbeat row for the new type and
-// returns the outcome. Caller holds s.mu (write).
-func (s *Server) retypeHeartbeat(ctx context.Context, sec *vaultv1.Secret, st, nt *vaultv1.SecretType) string {
-	outcome := "none"
-	switch {
-	case !nt.GetHeartbeat():
-	case sec.GetHeartbeatOptOut():
-		outcome = "opted_out"
-	case !s.heartbeatReachable(sec):
-		outcome = "no_target"
-	default:
-		outcome = "scheduled"
-	}
+// retypeHeartbeat creates or removes the heartbeat row to match the planned
+// outcome. Caller holds s.mu (write).
+func (s *Server) retypeHeartbeat(ctx context.Context, sec *vaultv1.Secret, st, nt *vaultv1.SecretType, outcome string) {
 	if s.hb == nil || (!st.GetHeartbeat() && !nt.GetHeartbeat()) {
-		return outcome
+		return
 	}
 	var err error
 	if outcome == "scheduled" {
@@ -254,16 +262,15 @@ func (s *Server) retypeHeartbeat(ctx context.Context, sec *vaultv1.Secret, st, n
 		l := s.lg(ctx)
 		l.Error(err, "heartbeat schedule update on type change failed", log.F("secret_id", sec.GetId()), log.F("heartbeat", outcome))
 	}
-	return outcome
 }
 
-// retypeAllowed applies machineTypeChangeBlocked, and refuses a type change
-// while a rotation of a rotation-type secret is claimed: the connector may
-// already have changed the credential, and its report must still find the
-// schedule row. Caller holds s.mu.
-func (s *Server) retypeAllowed(ctx context.Context, sec *vaultv1.Secret, st, nt *vaultv1.SecretType) error {
-	if why := machineTypeChangeBlocked(st, nt); why != "" {
-		return status.Error(codes.FailedPrecondition, why)
+// retypeAllowed applies machineTypeChangeBlocked to a machine, and refuses any
+// type change while a rotation of a rotation-type secret is claimed: the
+// connector may already have changed the credential, and its report must still
+// find the schedule row. Caller holds s.mu.
+func (s *Server) retypeAllowed(ctx context.Context, sec *vaultv1.Secret, st, nt *vaultv1.SecretType, human bool) error {
+	if why := machineTypeChangeBlocked(st, nt); why != "" && !human {
+		return retypeRefusal(codes.FailedPrecondition, ReasonTypeChangeCheckoutHumanOnly, why)
 	}
 	if !st.GetRotation() || s.rot == nil {
 		return nil
@@ -276,7 +283,7 @@ func (s *Server) retypeAllowed(ctx context.Context, sec *vaultv1.Secret, st, nt 
 	}
 	if claimed {
 		l.Info("type change refused: rotation in flight", log.F("secret_id", sec.GetId()))
-		return status.Error(codes.FailedPrecondition, "a rotation of this secret is in progress; retry the type change once it finishes")
+		return refuseCode(codes.FailedPrecondition, ReasonRotationInProgress, "a rotation of this secret is in progress; retry the type change once it finishes")
 	}
 	return nil
 }
@@ -302,30 +309,34 @@ type retypeResult struct {
 	notesKey string
 }
 
-// retypeFields computes the new plaintext for a type change from st to nt.
-// Every non-empty stored value lands in a field of nt (identical key, or
-// mapping[old]=new, which always wins). A value with nowhere to go is never
-// dropped: under the NOTES policy (the default) it is appended to nt's notes
-// field (appendToNotes), under REFUSE the call fails. Sensitivity never
-// decreases. extra fills only keys the mapping left empty. Errors name field
-// keys, never values.
-//
-//nolint:gocognit,gocyclo // a flat sequence of independent validation rules
-func retypeFields(st, nt *vaultv1.SecretType, cur, mapping, extra map[string]string, policy vaultv1.UnmappedFieldPolicy) (retypeResult, error) {
-	for from, to := range mapping {
-		if _, stored := cur[from]; !stored && fieldDef(st, from) == nil {
-			return retypeResult{}, status.Errorf(codes.InvalidArgument, "field_mapping source %q is not a field of this secret", from)
-		}
-		if to == "" || fieldDef(nt, to) == nil {
-			return retypeResult{}, status.Errorf(codes.InvalidArgument, "field_mapping target for %q is not a field of the new type", from)
-		}
-	}
-	out := map[string]string{}
+// retypeKind is what the value rules make of one stored value.
+type retypeKind int
+
+const (
+	retypeCarried   retypeKind = iota // same key under the new type
+	retypeRenamed                     // another key, through the mapping
+	retypeUnmapped                    // no field of the new type
+	retypeLowered                     // lands in a less protected field
+	retypeDuplicate                   // a second value for the same field
+)
+
+// retypeItem is the rules' verdict on one stored value. For retypeLowered,
+// detail describes the drop; for retypeDuplicate, it is the other source key.
+type retypeItem struct {
+	from, to string
+	kind     retypeKind
+	detail   string
+}
+
+// classifyRetype says where each non-empty stored value goes, in key order, the
+// single source of the value rules: retypeFields acts on it and the preview
+// reports it. mapping[old]=new always wins over an identical key. Sensitivity
+// never decreases.
+func classifyRetype(st, nt *vaultv1.SecretType, cur, mapping map[string]string) []retypeItem {
+	var items []retypeItem
 	srcOf := map[string]string{}
-	var unmapped, downgraded []string
 	for _, from := range sortedKeys(cur) {
-		v := cur[from]
-		if v == "" {
+		if cur[from] == "" {
 			continue // an empty field holds no value to lose
 		}
 		to := from
@@ -334,39 +345,82 @@ func retypeFields(st, nt *vaultv1.SecretType, cur, mapping, extra map[string]str
 		}
 		nf := fieldDef(nt, to)
 		if nf == nil {
-			unmapped = append(unmapped, from)
+			items = append(items, retypeItem{from: from, kind: retypeUnmapped})
 			continue
 		}
 		if prev, dup := srcOf[to]; dup {
-			return retypeResult{}, status.Errorf(codes.InvalidArgument, "fields %q and %q both map to %q", prev, from, to)
+			items = append(items, retypeItem{from: from, to: to, kind: retypeDuplicate, detail: prev})
+			continue
 		}
 		srcOf[to] = from
+		it := retypeItem{from: from, to: to, kind: retypeCarried}
+		if to != from {
+			it.kind = retypeRenamed
+		}
 		// A stored key the old type no longer declares is treated as sensitive.
 		of := fieldDef(st, from)
 		srcSensitive := of == nil || defSensitive(of)
 		switch {
 		case srcSensitive && !defSensitive(nf):
-			downgraded = append(downgraded, from+" (sensitive -> "+to+")")
+			it.kind, it.detail = retypeLowered, from+" (sensitive -> "+to+")"
 		case of.GetSuperSensitive() && !nf.GetSuperSensitive():
-			downgraded = append(downgraded, from+" (super-sensitive -> "+to+")")
+			it.kind, it.detail = retypeLowered, from+" (super-sensitive -> "+to+")"
 		}
-		out[to] = v
+		items = append(items, it)
+	}
+	return items
+}
+
+// retypeFields computes the new plaintext for a type change from st to nt.
+// Every non-empty stored value lands in a field of nt (classifyRetype). A value
+// with nowhere to go is never dropped: under the NOTES policy (the default) it
+// is appended to nt's notes field (appendToNotes), under REFUSE the call fails.
+// extra fills only keys the mapping left empty. Errors name field keys, never
+// values.
+//
+//nolint:gocognit,gocyclo // a flat sequence of independent validation rules
+func retypeFields(st, nt *vaultv1.SecretType, cur, mapping, extra map[string]string, policy vaultv1.UnmappedFieldPolicy) (retypeResult, error) {
+	for from, to := range mapping {
+		if _, stored := cur[from]; !stored && fieldDef(st, from) == nil {
+			return retypeResult{}, retypeRefusal(codes.InvalidArgument, ReasonTypeChangeInvalidField,
+				fmt.Sprintf("field_mapping source %q is not a field of this secret", from), from)
+		}
+		if to == "" || fieldDef(nt, to) == nil {
+			return retypeResult{}, retypeRefusal(codes.InvalidArgument, ReasonTypeChangeInvalidField,
+				fmt.Sprintf("field_mapping target for %q is not a field of the new type", from), from)
+		}
+	}
+	out := map[string]string{}
+	var unmapped, downgraded, downgradedKeys []string
+	for _, it := range classifyRetype(st, nt, cur, mapping) {
+		switch it.kind {
+		case retypeUnmapped:
+			unmapped = append(unmapped, it.from)
+			continue
+		case retypeDuplicate:
+			return retypeResult{}, retypeRefusal(codes.InvalidArgument, ReasonTypeChangeInvalidField,
+				fmt.Sprintf("fields %q and %q both map to %q", it.detail, it.from, it.to), it.detail, it.from, it.to)
+		case retypeLowered:
+			downgraded = append(downgraded, it.detail)
+			downgradedKeys = append(downgradedKeys, it.from)
+		}
+		out[it.to] = cur[it.from]
 	}
 	if len(unmapped) > 0 && policy == vaultv1.UnmappedFieldPolicy_UNMAPPED_FIELD_POLICY_REFUSE {
-		return retypeResult{}, status.Errorf(codes.FailedPrecondition,
-			"type change would drop the value of field(s) %s: map each to a field of the new type with field_mapping",
-			strings.Join(unmapped, ", "))
+		return retypeResult{}, retypeRefusal(codes.FailedPrecondition, ReasonTypeChangeUnmappedFields,
+			fmt.Sprintf("type change would drop the value of field(s) %s: map each to a field of the new type with field_mapping", strings.Join(unmapped, ", ")),
+			unmapped...)
 	}
 	if len(downgraded) > 0 {
-		return retypeResult{}, status.Errorf(codes.FailedPrecondition,
-			"type change would lower field protection: %s", strings.Join(downgraded, ", "))
+		return retypeResult{}, retypeRefusal(codes.FailedPrecondition, ReasonTypeChangeLowersProtection,
+			"type change would lower field protection: "+strings.Join(downgraded, ", "), downgradedKeys...)
 	}
 	for _, k := range sortedKeys(extra) {
 		if fieldDef(nt, k) == nil {
-			return retypeResult{}, status.Errorf(codes.InvalidArgument, "field %q is not a field of the new type", k)
+			return retypeResult{}, retypeRefusal(codes.InvalidArgument, ReasonTypeChangeInvalidField, fmt.Sprintf("field %q is not a field of the new type", k), k)
 		}
 		if _, carried := out[k]; carried {
-			return retypeResult{}, status.Errorf(codes.InvalidArgument, "field %q already carries a value over; fields cannot overwrite it", k)
+			return retypeResult{}, retypeRefusal(codes.InvalidArgument, ReasonTypeChangeInvalidField, fmt.Sprintf("field %q already carries a value over; fields cannot overwrite it", k), k)
 		}
 		if extra[k] != "" {
 			out[k] = extra[k]
@@ -384,7 +438,7 @@ func retypeFields(st, nt *vaultv1.SecretType, cur, mapping, extra map[string]str
 		v, ok := out[f.GetKey()]
 		if !ok {
 			if f.GetRequired() {
-				return retypeResult{}, status.Errorf(codes.InvalidArgument, "the new type requires field %q", f.GetKey())
+				return retypeResult{}, requiredRefusal(f)
 			}
 			continue
 		}
@@ -394,11 +448,13 @@ func retypeFields(st, nt *vaultv1.SecretType, cur, mapping, extra map[string]str
 		}
 		out[f.GetKey()] = c
 		if ml := f.GetMaxLength(); ml > 0 && utf8.RuneCountInString(v) > int(ml) {
-			return retypeResult{}, status.Errorf(codes.InvalidArgument, "value for field %q exceeds the new type's max length", f.GetKey())
+			return retypeResult{}, retypeRefusal(codes.InvalidArgument, ReasonTypeChangeInvalidField,
+				fmt.Sprintf("value for field %q exceeds the new type's max length", f.GetKey()), f.GetKey())
 		}
 		if p := f.GetPattern(); p != "" {
 			if re, err := regexp.Compile(p); err == nil && !re.MatchString(v) {
-				return retypeResult{}, status.Errorf(codes.InvalidArgument, "value for field %q does not match the new type's pattern", f.GetKey())
+				return retypeResult{}, retypeRefusal(codes.InvalidArgument, ReasonTypeChangeInvalidField,
+					fmt.Sprintf("value for field %q does not match the new type's pattern", f.GetKey()), f.GetKey())
 			}
 		}
 	}
@@ -414,6 +470,14 @@ func notesFieldKey(nt *vaultv1.SecretType) string {
 		}
 	}
 	return ""
+}
+
+// notesTooOpenFor reports that old field from is more protected than the notes
+// field nf. A stored key the old type no longer declares counts as sensitive.
+func notesTooOpenFor(st *vaultv1.SecretType, nf *vaultv1.SecretFieldDef, from string) bool {
+	of := fieldDef(st, from)
+	srcSensitive := of == nil || defSensitive(of)
+	return (srcSensitive && !defSensitive(nf)) || (of.GetSuperSensitive() && !nf.GetSuperSensitive())
 }
 
 // jsonString encodes v as a JSON string literal without HTML escaping, so a
@@ -435,23 +499,21 @@ func jsonString(v string) string {
 func appendToNotes(st, nt *vaultv1.SecretType, out, cur map[string]string, unmapped []string) (string, error) {
 	nk := notesFieldKey(nt)
 	if nk == "" {
-		return "", status.Errorf(codes.FailedPrecondition,
-			"type change would drop the value of field(s) %s: the new type has no notes field to move them into; map each to a field of the new type with field_mapping",
-			strings.Join(unmapped, ", "))
+		return "", retypeRefusal(codes.FailedPrecondition, ReasonTypeChangeUnmappedFields,
+			fmt.Sprintf("type change would drop the value of field(s) %s: the new type has no notes field to move them into; map each to a field of the new type with field_mapping", strings.Join(unmapped, ", ")),
+			unmapped...)
 	}
 	nf := fieldDef(nt, nk)
 	var tooSensitive []string
 	for _, from := range unmapped {
-		of := fieldDef(st, from)
-		srcSensitive := of == nil || defSensitive(of) // an undeclared stored key counts as sensitive
-		if (srcSensitive && !defSensitive(nf)) || (of.GetSuperSensitive() && !nf.GetSuperSensitive()) {
+		if notesTooOpenFor(st, nf, from) {
 			tooSensitive = append(tooSensitive, from)
 		}
 	}
 	if len(tooSensitive) > 0 {
-		return "", status.Errorf(codes.FailedPrecondition,
-			"type change would move protected field(s) %s into the less-protected notes field %q; map each to a field of the new type with the same protection using field_mapping",
-			strings.Join(tooSensitive, ", "), nk)
+		return "", retypeRefusal(codes.FailedPrecondition, ReasonTypeChangeLowersProtection,
+			fmt.Sprintf("type change would move protected field(s) %s into the less-protected notes field %q; map each to a field of the new type with the same protection using field_mapping", strings.Join(tooSensitive, ", "), nk),
+			tooSensitive...)
 	}
 	lines := make([]string, 0, len(unmapped))
 	for _, from := range unmapped {
@@ -463,9 +525,9 @@ func appendToNotes(st, nt *vaultv1.SecretType, out, cur map[string]string, unmap
 	}
 	notes += strings.Join(lines, "\n")
 	if ml := nf.GetMaxLength(); ml > 0 && utf8.RuneCountInString(notes) > int(ml) {
-		return "", status.Errorf(codes.FailedPrecondition,
-			"moving field(s) %s into the notes field %q would exceed its max length; map them with field_mapping or use a type with room",
-			strings.Join(unmapped, ", "), nk)
+		return "", retypeRefusal(codes.FailedPrecondition, ReasonTypeChangeNotesTooLong,
+			fmt.Sprintf("moving field(s) %s into the notes field %q would exceed its max length; map them with field_mapping or use a type with room", strings.Join(unmapped, ", "), nk),
+			unmapped...)
 	}
 	out[nk] = notes
 	return nk, nil
@@ -502,70 +564,24 @@ func (s *Server) ChangeSecretTypeForPrincipal(ctx context.Context, req *vaultv1.
 	if err != nil {
 		return nil, err
 	}
-	nt := s.findType(req.GetNewTypeId())
-	if nt == nil {
-		return nil, errNotFound("secret type")
-	}
-	if nt.GetId() == sec.GetTypeId() {
-		return nil, status.Error(codes.InvalidArgument, "secret already has that type")
-	}
-	st := s.findType(sec.GetTypeId())
-	if st == nil {
-		return nil, status.Error(codes.FailedPrecondition, "secret's current type is unknown; a human must repair it")
-	}
-	if err := s.retypeAllowed(ctx, sec, st, nt); err != nil {
-		return nil, err
-	}
-	cur := map[string]string{}
-	if rec, ok := s.records[sec.GetId()]; ok {
-		opened, err := s.crypt.OpenAll(rec)
-		if err != nil {
-			return nil, status.Error(codes.Internal, "open existing record")
-		}
-		cur = opened
-	}
-	rt, err := retypeFields(st, nt, cur, req.GetFieldMapping(), req.GetFields(), req.GetUnmappedFields())
+	st, nt, err := s.retypeTypes(sec, req.GetNewTypeId())
 	if err != nil {
 		return nil, err
 	}
-	next := rt.fields
-	expiresAt, err := s.retypeChecks(ctx, sec, nt, next)
+	ev, err := s.evaluateRetype(ctx, sec, st, nt, retypeInput{
+		mapping: req.GetFieldMapping(), extra: req.GetFields(), policy: req.GetUnmappedFields(),
+	})
 	if err != nil {
 		return nil, err
 	}
-	rec, err := s.crypt.Seal(next)
+	done, err := s.commitRetype(ctx, sec, ev, req.GetFieldMapping(), principalActorID(actor), "secret.type_change.principal", func(attrs map[string]string) map[string]string {
+		return principalAttrs(actor, attrs)
+	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "seal fields")
+		return nil, err
 	}
-	from := sec.GetTypeId()
-	s.records[sec.GetId()] = rec
-	sec.TypeId = nt.GetId()
-	sec.ExpiresAt = expiresAt
-	label := typeChangeLabel(st, nt, req.GetFieldMapping(), next, rt.moved)
-	var ledgerNo int
-	if s.vers != nil {
-		ledgerNo, _ = s.vers.AppendActiveWithNote(ctx, sec.GetId(), rec, principalActorID(actor), label)
-	}
-	s.markValueChanged(ctx, sec, ledgerNo)
-	auto := s.applyRetypeAutomation(ctx, sec, st, nt)
-	keys := sortedKeys(next)
-	s.emitAttrs(ctx, principalActorID(actor), "secret.type_change.principal", sec.GetId(), true, principalAttrs(actor, map[string]string{
-		"from_type_id":        from,
-		"to_type_id":          nt.GetId(),
-		"field_keys":          strings.Join(keys, ","),
-		"moved_to_notes_keys": strings.Join(rt.moved, ","),
-		"rotation_managed":    strconv.FormatBool(nt.GetRotation()),
-		"heartbeat_managed":   strconv.FormatBool(nt.GetHeartbeat()),
-		"rotation":            auto.rotation,
-		"heartbeat":           auto.heartbeat,
-		"target":              auto.target,
-		"from_target_id":      auto.fromTargetID,
-		"target_id":           sec.GetTargetId(),
-		"change_label":        label,
-	}))
-	s.notifyInformed(ctx, principalActorID(actor), "secret.type_change.principal", "secret", sec.GetId(), sec.GetName(), s.secretChain(sec))
 	return &vaultv1.ChangeSecretTypeForPrincipalResponse{
-		Secret: sec, FieldKeys: keys, MovedToNotesKeys: rt.moved, NotesFieldKey: rt.notesKey, ChangeLabel: label,
+		Secret: sec, FieldKeys: done.keys, MovedToNotesKeys: ev.result.moved, NotesFieldKey: ev.result.notesKey, ChangeLabel: done.label,
 	}, nil
 }
 

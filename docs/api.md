@@ -53,7 +53,7 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 | Secret types | `ListSecretTypes`, `CreateSecretType`, `UpdateSecretType`, `DeleteSecretType`, `CloneSecretType`, `ListAvailableExtensions`, `ImportExtension`, `ImportExtensionFromJson` |
 | Folders | `ListFolders`, `CreateFolder`, `RenameFolder`, `MoveFolder`, `DeleteFolder`, `ReorderFolders` |
 | Access rules | `GetFolderRuleset`, `SetFolderRuleset`, `GetMyAccess`, `SimulateFolder`, `SimulateSecret`, `GetSecretRuleset`, `SetSecretRuleset`, `GetMySecretAccess`, `GetTargetRuleset`, `SetTargetRuleset`; the older `ListFolderRules`, `GetInheritedFolderRules`, `AddFolderRule`, `RemoveFolderRule` |
-| Secrets | `ListSecretsInFolder`, `ListSecretsByTarget`, `ReorderSecrets`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
+| Secrets | `ListSecretsInFolder`, `ListSecretsByTarget`, `ReorderSecrets`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `ChangeSecretType`, `PreviewSecretTypeChange`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
 | Break-glass browse | `OpenBreakGlassSession`, `GetBreakGlassSession`, `ListBreakGlassItems`, `CloseBreakGlassSession`, `ListBreakGlassSessions` |
 | Dashboard | `GetSecretStats`, `GetTopAccessedSecrets`, `ListSecretsByStatus`, `FindSecretsByPublicKey` |
 | Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `GetSecretForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
@@ -263,9 +263,10 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   refused. A version a type change produced also carries `change_label` — "Type changed: <old
   type> → <new type>", naming any field added, renamed (`field_mapping`) or carried over, and any
   moved to notes — instead of reading as only "Changed: <field>" (#165). Empty for every other
-  version, which renders from its changed field keys as before. `ChangeSecretTypeForPrincipal`'s
-  own response and the `secret.type_change.principal` audit event (`change_label` attribute) carry
-  the identical text. A target attached afterward is its own audit event
+  version, which renders from its changed field keys as before. The response of
+  `ChangeSecretType` and `ChangeSecretTypeForPrincipal`, and their `secret.type_change` and
+  `secret.type_change.principal` audit events (`change_label` attribute), carry the identical
+  text. A target attached afterward is its own audit event
   (`secret.target.principal`) and never touches an already-written version's label — attaching a
   target mints no version at all. Revealing a field of any version (`RevealSecretVersionField`) and
   `RestoreSecretVersion` need read on the secret plus the recovery role (`is_recovery`; site
@@ -378,10 +379,14 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   sensitive MULTILINE field rather than the SENSITIVE kind, so a pasted PEM keeps its line breaks
   in the editor; like the SSH Key's private key it isn't super-sensitive, so a token can read it
   for automation. It has no heartbeat, rotation or checkout.
+- **Changing a secret's type:** `ChangeSecretType` is a signed-in person's version of
+  `ChangeSecretTypeForPrincipal`, and `PreviewSecretTypeChange` runs the same rules without writing
+  anything. See [type-change.md](type-change.md) for the rules, the preview and the refusal
+  reasons.
 - **Required fields:** a field a type marks `required` (any kind — TEXT, PASSWORD, MULTILINE,
   SELECT and so on) may not be saved empty. `CreateSecret`, `UpdateSecret`,
-  `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `UpdateSecretFieldsForPrincipal` and
-  `ChangeSecretTypeForPrincipal` refuse an empty or missing value for one with `InvalidArgument`
+  `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`,
+  `ChangeSecretType` and `ChangeSecretTypeForPrincipal` refuse an empty or missing value for one with `InvalidArgument`
   and an ErrorInfo (domain `sneakers.vault`, reason `FIELD_VALUE_REQUIRED`, metadata `field`),
   naming the field; a SELECT's refusal also lists its options (metadata `allowed`, the options
   joined by `|`). An optional field may be empty. A create checks every field of the type, sent or

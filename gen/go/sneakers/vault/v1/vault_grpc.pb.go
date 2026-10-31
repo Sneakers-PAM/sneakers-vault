@@ -77,6 +77,8 @@ const (
 	VaultService_RestoreSecretVersionForPrincipal_FullMethodName = "/sneakers.vault.v1.VaultService/RestoreSecretVersionForPrincipal"
 	VaultService_MoveSecretForPrincipal_FullMethodName           = "/sneakers.vault.v1.VaultService/MoveSecretForPrincipal"
 	VaultService_ChangeSecretTypeForPrincipal_FullMethodName     = "/sneakers.vault.v1.VaultService/ChangeSecretTypeForPrincipal"
+	VaultService_ChangeSecretType_FullMethodName                 = "/sneakers.vault.v1.VaultService/ChangeSecretType"
+	VaultService_PreviewSecretTypeChange_FullMethodName          = "/sneakers.vault.v1.VaultService/PreviewSecretTypeChange"
 	VaultService_RenameSecretForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/RenameSecretForPrincipal"
 	VaultService_UpdateSecretFieldsForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/UpdateSecretFieldsForPrincipal"
 	VaultService_ListFoldersForPrincipal_FullMethodName          = "/sneakers.vault.v1.VaultService/ListFoldersForPrincipal"
@@ -216,6 +218,9 @@ type VaultServiceClient interface {
 	RestoreSecretVersionForPrincipal(ctx context.Context, in *RestoreSecretVersionForPrincipalRequest, opts ...grpc.CallOption) (*RestoreSecretVersionForPrincipalResponse, error)
 	MoveSecretForPrincipal(ctx context.Context, in *MoveSecretForPrincipalRequest, opts ...grpc.CallOption) (*MoveSecretForPrincipalResponse, error)
 	ChangeSecretTypeForPrincipal(ctx context.Context, in *ChangeSecretTypeForPrincipalRequest, opts ...grpc.CallOption) (*ChangeSecretTypeForPrincipalResponse, error)
+	// A person's type change, and its preview. Same rules as the machine path.
+	ChangeSecretType(ctx context.Context, in *ChangeSecretTypeRequest, opts ...grpc.CallOption) (*ChangeSecretTypeResponse, error)
+	PreviewSecretTypeChange(ctx context.Context, in *PreviewSecretTypeChangeRequest, opts ...grpc.CallOption) (*PreviewSecretTypeChangeResponse, error)
 	// Organize verbs for non-human principals: rename/update a secret and
 	// list/create/rename/move folders. No machine delete.
 	RenameSecretForPrincipal(ctx context.Context, in *RenameSecretForPrincipalRequest, opts ...grpc.CallOption) (*RenameSecretForPrincipalResponse, error)
@@ -858,6 +863,26 @@ func (c *vaultServiceClient) ChangeSecretTypeForPrincipal(ctx context.Context, i
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ChangeSecretTypeForPrincipalResponse)
 	err := c.cc.Invoke(ctx, VaultService_ChangeSecretTypeForPrincipal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) ChangeSecretType(ctx context.Context, in *ChangeSecretTypeRequest, opts ...grpc.CallOption) (*ChangeSecretTypeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangeSecretTypeResponse)
+	err := c.cc.Invoke(ctx, VaultService_ChangeSecretType_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) PreviewSecretTypeChange(ctx context.Context, in *PreviewSecretTypeChangeRequest, opts ...grpc.CallOption) (*PreviewSecretTypeChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PreviewSecretTypeChangeResponse)
+	err := c.cc.Invoke(ctx, VaultService_PreviewSecretTypeChange_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1541,6 +1566,9 @@ type VaultServiceServer interface {
 	RestoreSecretVersionForPrincipal(context.Context, *RestoreSecretVersionForPrincipalRequest) (*RestoreSecretVersionForPrincipalResponse, error)
 	MoveSecretForPrincipal(context.Context, *MoveSecretForPrincipalRequest) (*MoveSecretForPrincipalResponse, error)
 	ChangeSecretTypeForPrincipal(context.Context, *ChangeSecretTypeForPrincipalRequest) (*ChangeSecretTypeForPrincipalResponse, error)
+	// A person's type change, and its preview. Same rules as the machine path.
+	ChangeSecretType(context.Context, *ChangeSecretTypeRequest) (*ChangeSecretTypeResponse, error)
+	PreviewSecretTypeChange(context.Context, *PreviewSecretTypeChangeRequest) (*PreviewSecretTypeChangeResponse, error)
 	// Organize verbs for non-human principals: rename/update a secret and
 	// list/create/rename/move folders. No machine delete.
 	RenameSecretForPrincipal(context.Context, *RenameSecretForPrincipalRequest) (*RenameSecretForPrincipalResponse, error)
@@ -1803,6 +1831,12 @@ func (UnimplementedVaultServiceServer) MoveSecretForPrincipal(context.Context, *
 }
 func (UnimplementedVaultServiceServer) ChangeSecretTypeForPrincipal(context.Context, *ChangeSecretTypeForPrincipalRequest) (*ChangeSecretTypeForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ChangeSecretTypeForPrincipal not implemented")
+}
+func (UnimplementedVaultServiceServer) ChangeSecretType(context.Context, *ChangeSecretTypeRequest) (*ChangeSecretTypeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangeSecretType not implemented")
+}
+func (UnimplementedVaultServiceServer) PreviewSecretTypeChange(context.Context, *PreviewSecretTypeChangeRequest) (*PreviewSecretTypeChangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PreviewSecretTypeChange not implemented")
 }
 func (UnimplementedVaultServiceServer) RenameSecretForPrincipal(context.Context, *RenameSecretForPrincipalRequest) (*RenameSecretForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RenameSecretForPrincipal not implemented")
@@ -2991,6 +3025,42 @@ func _VaultService_ChangeSecretTypeForPrincipal_Handler(srv interface{}, ctx con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VaultServiceServer).ChangeSecretTypeForPrincipal(ctx, req.(*ChangeSecretTypeForPrincipalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_ChangeSecretType_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeSecretTypeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ChangeSecretType(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ChangeSecretType_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ChangeSecretType(ctx, req.(*ChangeSecretTypeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_PreviewSecretTypeChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PreviewSecretTypeChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).PreviewSecretTypeChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_PreviewSecretTypeChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).PreviewSecretTypeChange(ctx, req.(*PreviewSecretTypeChangeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4301,6 +4371,14 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ChangeSecretTypeForPrincipal",
 			Handler:    _VaultService_ChangeSecretTypeForPrincipal_Handler,
+		},
+		{
+			MethodName: "ChangeSecretType",
+			Handler:    _VaultService_ChangeSecretType_Handler,
+		},
+		{
+			MethodName: "PreviewSecretTypeChange",
+			Handler:    _VaultService_PreviewSecretTypeChange_Handler,
 		},
 		{
 			MethodName: "RenameSecretForPrincipal",

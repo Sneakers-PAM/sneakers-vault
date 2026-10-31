@@ -682,8 +682,9 @@ message MoveSecretForPrincipalResponse {
   Folder destination = 3;
 }
 
-// What ChangeSecretTypeForPrincipal does with a non-empty value that has no
-// field under the new type (neither the same key nor a field_mapping entry).
+// What a type change (ChangeSecretType, ChangeSecretTypeForPrincipal) does with
+// a non-empty value that has no field under the new type (neither the same key
+// nor a field_mapping entry).
 enum UnmappedFieldPolicy {
   // Default: same as NOTES.
   UNMAPPED_FIELD_POLICY_UNSPECIFIED = 0;
@@ -741,6 +742,99 @@ message ChangeSecretTypeForPrincipalResponse {
   // version (SecretVersion.change_label) — #165, so a type change never
   // reads in history as just "Changed: <field>".
   string change_label = 5;
+}
+
+// Change a secret's type as a signed-in person. A person's version of
+// ChangeSecretTypeForPrincipal with the same value, certificate and automation
+// rules and the same refusal while a rotation is in flight, plus one thing a
+// machine may not do: drop checkout from a plain checkout type. Needs Author on
+// the secret (a per-secret deny holds) or ownership of its folder, and refuses
+// any non-human actor (PERMISSION_DENIED) and a retired secret
+// (FAILED_PRECONDITION, RETIRED). Audited as secret.type_change with field keys
+// only. Refusals carry an ErrorInfo (domain sneakers.vault); see
+// docs/type-change.md.
+message ChangeSecretTypeRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  string new_type_id = 3;
+  // Old field key -> new field key. Keys not listed carry over by identical key.
+  map<string, string> field_mapping = 4;
+  // Values for new-type fields the mapping leaves empty (e.g. a field the new
+  // type requires). May not overwrite a carried-over value.
+  map<string, string> fields = 5;
+  // NOTES (the default) moves a value with no field into the notes field;
+  // REFUSE fails the change naming the keys. Nothing is dropped under either.
+  UnmappedFieldPolicy unmapped_fields = 6;
+}
+message ChangeSecretTypeResponse {
+  Secret secret = 1;
+  repeated string field_keys = 2; // field keys populated under the new type (never values)
+  repeated string moved_to_notes_keys = 3; // old keys appended to the notes field (never values)
+  string notes_field_key = 4; // the notes field used, when moved_to_notes_keys is non-empty
+  string change_label = 5; // the text recorded on the new version and in the audit event
+}
+
+// What a type change would do with one stored value.
+enum SecretTypeChangeFieldOutcome {
+  SECRET_TYPE_CHANGE_FIELD_OUTCOME_UNSPECIFIED = 0;
+  // Stays under the same key.
+  SECRET_TYPE_CHANGE_FIELD_OUTCOME_CARRIED = 1;
+  // Moves to another key through field_mapping.
+  SECRET_TYPE_CHANGE_FIELD_OUTCOME_RENAMED = 2;
+  // No field for it: appended to the notes field.
+  SECRET_TYPE_CHANGE_FIELD_OUTCOME_MOVED_TO_NOTES = 3;
+  // It can't move, so the change would be refused; reason says why.
+  SECRET_TYPE_CHANGE_FIELD_OUTCOME_BLOCKED = 4;
+}
+
+// One stored non-empty field in a preview. Keys only, never values.
+message SecretTypeChangeField {
+  string from_key = 1;
+  // The new type's field, or the notes field. Empty when BLOCKED with no place
+  // to go.
+  string to_key = 2;
+  SecretTypeChangeFieldOutcome outcome = 3;
+  // When BLOCKED: the refusal reason for this field.
+  string reason = 4;
+}
+
+// Runs a person's type change through the same rules without writing anything:
+// no new version, no audit event, no schedule change. Takes the same access and
+// the same inputs as ChangeSecretType, so a call that previews as allowed
+// succeeds unless the secret changes first. Access, a retired secret, a missing
+// secret or type and the type the secret already has are still gRPC errors; a
+// change the rules refuse is a normal response with allowed false.
+message PreviewSecretTypeChangeRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  string new_type_id = 3;
+  map<string, string> field_mapping = 4;
+  map<string, string> fields = 5;
+  UnmappedFieldPolicy unmapped_fields = 6;
+}
+message PreviewSecretTypeChangeResponse {
+  bool allowed = 1;
+  // When not allowed: the ErrorInfo reason and message ChangeSecretType would
+  // refuse with. Messages name field keys, never values.
+  string refusal_reason = 2;
+  string refusal_message = 3;
+  // One entry per stored non-empty field, in key order, also when refused.
+  repeated SecretTypeChangeField field_changes = 4;
+  // Required fields of the new type that nothing fills yet.
+  repeated string missing_required_keys = 5;
+  // The notes field values would move into, when any would.
+  string notes_field_key = 6;
+  // When allowed: the keys the new type would hold, and the change label.
+  repeated string field_keys = 7;
+  string change_label = 8;
+  // What automation would do, the same values as the audit attributes.
+  // rotation: none | off. heartbeat: none | scheduled | no_target | opted_out.
+  // target: none | kept | detached.
+  string rotation = 9;
+  string heartbeat = 10;
+  string target = 11;
+  string from_target_id = 12;
+  string target_id = 13;
 }
 
 // ---- Organize verbs for non-human principals --------------------------------
@@ -1676,6 +1770,11 @@ service VaultService {
   rpc RestoreSecretVersionForPrincipal(RestoreSecretVersionForPrincipalRequest) returns (RestoreSecretVersionForPrincipalResponse);
   rpc MoveSecretForPrincipal(MoveSecretForPrincipalRequest) returns (MoveSecretForPrincipalResponse);
   rpc ChangeSecretTypeForPrincipal(ChangeSecretTypeForPrincipalRequest) returns (ChangeSecretTypeForPrincipalResponse);
+  // A person's type change, and its preview. Same rules as the machine path.
+  rpc ChangeSecretType(ChangeSecretTypeRequest) returns (ChangeSecretTypeResponse);
+  rpc PreviewSecretTypeChange(PreviewSecretTypeChangeRequest) returns (PreviewSecretTypeChangeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Organize verbs for non-human principals: rename/update a secret and
   // list/create/rename/move folders. No machine delete.
   rpc RenameSecretForPrincipal(RenameSecretForPrincipalRequest) returns (RenameSecretForPrincipalResponse);
