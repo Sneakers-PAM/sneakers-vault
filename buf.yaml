@@ -9,10 +9,17 @@ modules:
 lint:
   use: [STANDARD]
 breaking:
-  use: [FILE]
+  # A field may go only with its number and name reserved, so neither can come
+  # back meaning something else: FILE's plain FIELD_NO_DELETE would refuse even
+  # that, which is the one way to retire a field whose meaning has flipped.
+  use:
+    - FILE
+    - FIELD_NO_DELETE_UNLESS_NUMBER_RESERVED
+    - FIELD_NO_DELETE_UNLESS_NAME_RESERVED
   # The read-only maintenance mode reads which RPCs are reads from their
   # idempotency level, so marking an existing RPC NO_SIDE_EFFECTS (or taking
   # the mark off) is a deliberate classification change, pinned by the
   # services' maintenance tests. Over gRPC the level changes nothing on the wire.
   except:
+    - FIELD_NO_DELETE
     - RPC_SAME_IDEMPOTENCY_LEVEL

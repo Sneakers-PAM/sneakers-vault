@@ -232,13 +232,13 @@ func (s *Server) UpdateSecuritySettings(ctx context.Context, req *vaultv1.Update
 		s.settings.KekRotationDays = days
 	}
 	var attrs map[string]string
-	if req.AgentsMayCreateTopLevelFolders != nil {
-		from, to := s.settings.GetAgentsMayCreateTopLevelFolders(), req.GetAgentsMayCreateTopLevelFolders()
-		s.settings.AgentsMayCreateTopLevelFolders = to
-		s.lg(ctx).Info("agents_may_create_top_level_folders changed", log.F("from", from), log.F("to", to), log.F("user_id", req.GetActor().GetUserId()))
+	if req.RestrictTopLevelFolders != nil {
+		from, to := s.settings.GetRestrictTopLevelFolders(), req.GetRestrictTopLevelFolders()
+		s.settings.RestrictTopLevelFolders = to
+		s.lg(ctx).Info("restrict_top_level_folders changed", log.F("from", from), log.F("to", to), log.F("user_id", req.GetActor().GetUserId()))
 		attrs = map[string]string{
-			"agents_may_create_top_level_folders.from": strconv.FormatBool(from),
-			"agents_may_create_top_level_folders.to":   strconv.FormatBool(to),
+			"restrict_top_level_folders.from": strconv.FormatBool(from),
+			"restrict_top_level_folders.to":   strconv.FormatBool(to),
 		}
 	}
 	s.emitAttrs(ctx, req.GetActor().GetUserId(), "settings.update", "security", false, attrs)
