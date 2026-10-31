@@ -386,8 +386,8 @@ func (s *Server) CreateFolderForPrincipal(ctx context.Context, req *vaultv1.Crea
 // can tell the person what's stopping them.
 const msgTopLevelRestricted = `only a site admin can create a top-level folder while the security setting "Restrict top-level folders to admins" (restrict_top_level_folders) is on`
 
-// checkTopLevelCreate is the one gate on a new top-level folder, for people and
-// tokens alike. A service account, a workload or a token with no user is
+// checkTopLevelCreate is the one gate on a new top-level folder, created or
+// moved there, for people and tokens alike. A service account, a workload or a token with no user is
 // refused in every state: nothing could own the folder. With
 // restrict_top_level_folders on, only a human site admin or root passes, or a
 // token the gateway resolved as owned by one. Caller holds s.mu.
@@ -553,11 +553,17 @@ func (s *Server) MoveFolderForPrincipal(ctx context.Context, req *vaultv1.MoveFo
 	if err := requireNonHuman(actor, "folder move"); err != nil {
 		return nil, err
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if isUserToken(actor) && req.GetId() != "" && req.GetNewParentId() == "" {
+		// The move is refused below either way; this names the setting.
+		if err := s.checkTopLevelCreate(ctx, actor, "MoveFolderForPrincipal"); err != nil {
+			return nil, err
+		}
+	}
 	if req.GetId() == "" || req.GetNewParentId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id and new_parent_id are required: a machine cannot move a folder to the top level")
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	f, dest, err := s.principalFolderMoveTargets(actor, req.GetId(), req.GetNewParentId())
 	if err != nil {
 		return nil, err

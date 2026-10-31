@@ -152,8 +152,12 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   while `restrict_top_level_folders` is off, its default. While it's on, only a human site admin or
   root does, or a token for which the gateway has set `ActorContext.token_owner_is_site_admin` (the
   token's owner holds site admin or root). Anyone else gets `PermissionDenied` with reason
-  `TOP_LEVEL_FOLDERS_RESTRICTED`, audited as `authz.denied`, and the message names the setting. The
-  new folder is shared and owned by the creator or the token's user. A token's create is audited as
+  `TOP_LEVEL_FOLDERS_RESTRICTED`, audited as `authz.denied`, and the message names the setting.
+  `MoveFolder` to the top level follows the same rule, on top of owning or managing the folder; a
+  folder already at the top level isn't refused, and reordering top-level folders still needs an
+  admin. A `new_parent_id` that doesn't exist is `NotFound`. `MoveFolderForPrincipal` can't move a
+  folder to the top level (`InvalidArgument`), and a token the setting restricts gets
+  `TOP_LEVEL_FOLDERS_RESTRICTED` instead. The new folder is shared and owned by the creator or the token's user. A token's create is audited as
   `folder.create.principal` under that user with `token_id`, `path` and `top_level`. The flag counts
   for nothing else: a token never acts with admin authority. Every person sees a shared folder's
   name in `ListFolders`; its contents stay with its owners and site admins until an owner adds a
