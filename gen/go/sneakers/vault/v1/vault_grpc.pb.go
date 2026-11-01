@@ -42,6 +42,7 @@ const (
 	VaultService_ListAvailableExtensions_FullMethodName          = "/sneakers.vault.v1.VaultService/ListAvailableExtensions"
 	VaultService_ImportExtension_FullMethodName                  = "/sneakers.vault.v1.VaultService/ImportExtension"
 	VaultService_ImportExtensionFromJson_FullMethodName          = "/sneakers.vault.v1.VaultService/ImportExtensionFromJson"
+	VaultService_ImportExtensionForPrincipal_FullMethodName      = "/sneakers.vault.v1.VaultService/ImportExtensionForPrincipal"
 	VaultService_ListFolders_FullMethodName                      = "/sneakers.vault.v1.VaultService/ListFolders"
 	VaultService_CreateFolder_FullMethodName                     = "/sneakers.vault.v1.VaultService/CreateFolder"
 	VaultService_RenameFolder_FullMethodName                     = "/sneakers.vault.v1.VaultService/RenameFolder"
@@ -169,6 +170,7 @@ type VaultServiceClient interface {
 	ListAvailableExtensions(ctx context.Context, in *ListAvailableExtensionsRequest, opts ...grpc.CallOption) (*ListAvailableExtensionsResponse, error)
 	ImportExtension(ctx context.Context, in *ImportExtensionRequest, opts ...grpc.CallOption) (*ImportExtensionResponse, error)
 	ImportExtensionFromJson(ctx context.Context, in *ImportExtensionFromJsonRequest, opts ...grpc.CallOption) (*ImportExtensionFromJsonResponse, error)
+	ImportExtensionForPrincipal(ctx context.Context, in *ImportExtensionForPrincipalRequest, opts ...grpc.CallOption) (*ImportExtensionForPrincipalResponse, error)
 	// Folders
 	ListFolders(ctx context.Context, in *ListFoldersRequest, opts ...grpc.CallOption) (*ListFoldersResponse, error)
 	CreateFolder(ctx context.Context, in *CreateFolderRequest, opts ...grpc.CallOption) (*CreateFolderResponse, error)
@@ -513,6 +515,16 @@ func (c *vaultServiceClient) ImportExtensionFromJson(ctx context.Context, in *Im
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ImportExtensionFromJsonResponse)
 	err := c.cc.Invoke(ctx, VaultService_ImportExtensionFromJson_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) ImportExtensionForPrincipal(ctx context.Context, in *ImportExtensionForPrincipalRequest, opts ...grpc.CallOption) (*ImportExtensionForPrincipalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ImportExtensionForPrincipalResponse)
+	err := c.cc.Invoke(ctx, VaultService_ImportExtensionForPrincipal_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1517,6 +1529,7 @@ type VaultServiceServer interface {
 	ListAvailableExtensions(context.Context, *ListAvailableExtensionsRequest) (*ListAvailableExtensionsResponse, error)
 	ImportExtension(context.Context, *ImportExtensionRequest) (*ImportExtensionResponse, error)
 	ImportExtensionFromJson(context.Context, *ImportExtensionFromJsonRequest) (*ImportExtensionFromJsonResponse, error)
+	ImportExtensionForPrincipal(context.Context, *ImportExtensionForPrincipalRequest) (*ImportExtensionForPrincipalResponse, error)
 	// Folders
 	ListFolders(context.Context, *ListFoldersRequest) (*ListFoldersResponse, error)
 	CreateFolder(context.Context, *CreateFolderRequest) (*CreateFolderResponse, error)
@@ -1726,6 +1739,9 @@ func (UnimplementedVaultServiceServer) ImportExtension(context.Context, *ImportE
 }
 func (UnimplementedVaultServiceServer) ImportExtensionFromJson(context.Context, *ImportExtensionFromJsonRequest) (*ImportExtensionFromJsonResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ImportExtensionFromJson not implemented")
+}
+func (UnimplementedVaultServiceServer) ImportExtensionForPrincipal(context.Context, *ImportExtensionForPrincipalRequest) (*ImportExtensionForPrincipalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ImportExtensionForPrincipal not implemented")
 }
 func (UnimplementedVaultServiceServer) ListFolders(context.Context, *ListFoldersRequest) (*ListFoldersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListFolders not implemented")
@@ -2395,6 +2411,24 @@ func _VaultService_ImportExtensionFromJson_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VaultServiceServer).ImportExtensionFromJson(ctx, req.(*ImportExtensionFromJsonRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_ImportExtensionForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ImportExtensionForPrincipalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ImportExtensionForPrincipal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ImportExtensionForPrincipal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ImportExtensionForPrincipal(ctx, req.(*ImportExtensionForPrincipalRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4231,6 +4265,10 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ImportExtensionFromJson",
 			Handler:    _VaultService_ImportExtensionFromJson_Handler,
+		},
+		{
+			MethodName: "ImportExtensionForPrincipal",
+			Handler:    _VaultService_ImportExtensionForPrincipal_Handler,
 		},
 		{
 			MethodName: "ListFolders",

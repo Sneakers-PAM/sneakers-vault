@@ -41,7 +41,7 @@ var maintenanceGolden = map[maintenance.Class][]string{
 	maintenance.Mutation: {
 		"SaveConnection", "DeleteConnection", "SaveTarget", "DeleteTarget", "SetTargetRuleset",
 		"ImportCertificate", "ReplaceCertificate", "CreateSecretType", "UpdateSecretType",
-		"DeleteSecretType", "CloneSecretType", "ImportExtension", "ImportExtensionFromJson",
+		"DeleteSecretType", "CloneSecretType", "ImportExtension", "ImportExtensionFromJson", "ImportExtensionForPrincipal",
 		"CreateFolder", "RenameFolder", "MoveFolder", "DeleteFolder", "ReorderFolders", "ReorderSecrets", "AddFolderRule",
 		"RemoveFolderRule", "SetFolderRuleset", "SetFolderRevealStepUp", "CreateSecret", "UpdateSecret",
 		"SetSecretAutomation", "CreateSecretForPrincipal", "GenerateSecretForPrincipal",
