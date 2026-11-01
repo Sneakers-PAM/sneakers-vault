@@ -362,7 +362,7 @@ func TestCanariesStayOffEverySignal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	call := func(method string) {
 		callCtx := metadata.AppendToOutgoingContext(context.Background(), "baggage", "key="+canary+"-baggage")
 		_ = conn.Invoke(callCtx, method, &emptypb.Empty{}, &emptypb.Empty{}, grpc.WaitForReady(true))
