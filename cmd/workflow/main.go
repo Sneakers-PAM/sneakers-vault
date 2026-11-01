@@ -19,6 +19,7 @@ import (
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/maintenance"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/telemetry"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/auditclient"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/grpcsvc"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/vaultclient"
@@ -40,7 +41,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	logger := log.New(serviceName)
+	svcLog, logger := telemetry.NewLoggers(serviceName, os.Getenv)
+	telemetry.HandleErrors(svcLog)
 	cfg, err := config.Load()
 	if err != nil {
 		logger.Fatal().Err(err).Msg("config")
@@ -48,7 +50,7 @@ func main() {
 
 	maint := mustMaintenance(logger)
 
-	otelShutdown, err := otel.Init(ctx, serviceName, cfg.OTLPEndpoint)
+	otelShutdown, err := otel.InitWithOptions(ctx, serviceName, cfg.OTLPEndpoint, telemetry.Options(os.Getenv)...)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("otel init")
 	}
@@ -62,7 +64,6 @@ func main() {
 	// migrations run.
 	mustWorkloadAuthConfig(logger)
 
-	svcLog := log.NewLogger(serviceName)
 	// The port answers health from here on, while the boot waits for
 	// Postgres and runs the migrations: liveness SERVING, so the startup probe
 	// passes on a slow boot, and readiness NOT_SERVING with postgres listed
@@ -129,7 +130,7 @@ func main() {
 	maintUnary, maintStream := grpcsvc.MaintenanceInterceptors(maint, svcLog)
 	authOpts = append(authOpts, grpc.ChainUnaryInterceptor(maintUnary), grpc.ChainStreamInterceptor(maintStream))
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	checker := mustChecker(logger, svcLog, dependencies(db, vault.Conn(), auditConn, workloadVerifier))
+	checker := mustChecker(logger, svcLog, append(dependencies(db, vault.Conn(), auditConn, workloadVerifier), telemetry.Dependencies(cfg.OTLPEndpoint, os.Getenv)...))
 	boot.Stop()
 	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, func(gs *grpc.Server) {
 		grpcsvc.Register(gs, svc)
