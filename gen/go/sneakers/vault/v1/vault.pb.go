@@ -2279,11 +2279,12 @@ type Secret struct {
 	NextRotationAt           string                 `protobuf:"bytes,19,opt,name=next_rotation_at,json=nextRotationAt,proto3" json:"next_rotation_at,omitempty"`                                // RFC3339; scheduler mirror (queue is source of truth)
 	RotationOptOut           bool                   `protobuf:"varint,20,opt,name=rotation_opt_out,json=rotationOptOut,proto3" json:"rotation_opt_out,omitempty"`                               // per-secret override: never rotate this secret (audited; type must allow rotation)
 	// Set by vault from connector reports, never by a caller.
-	//   builtin_administrator: the target account is the domain's built-in
-	//     Administrator (RID 500). Vault never rotates it; heartbeat still runs.
-	//   admin_count: the account has adminCount=1 (AD protected groups). It
-	//     rotates with the self-service change only; OU-delegated admin reset
-	//     does not apply to it.
+	//
+	//	builtin_administrator: the target account is the domain's built-in
+	//	  Administrator (RID 500). Vault never rotates it; heartbeat still runs.
+	//	admin_count: the account has adminCount=1 (AD protected groups). It
+	//	  rotates with the self-service change only; OU-delegated admin reset
+	//	  does not apply to it.
 	BuiltinAdministrator bool `protobuf:"varint,29,opt,name=builtin_administrator,json=builtinAdministrator,proto3" json:"builtin_administrator,omitempty"`
 	AdminCount           bool `protobuf:"varint,30,opt,name=admin_count,json=adminCount,proto3" json:"admin_count,omitempty"`
 	HeartbeatOptOut      bool `protobuf:"varint,21,opt,name=heartbeat_opt_out,json=heartbeatOptOut,proto3" json:"heartbeat_opt_out,omitempty"` // per-secret override: never heartbeat this secret (audited)
