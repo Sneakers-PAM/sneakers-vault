@@ -26,6 +26,7 @@ import (
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/maintenance"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/telemetry"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/auditclient"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
@@ -173,7 +174,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	logger := log.New(serviceName)
+	svcLog, logger := telemetry.NewLoggers(serviceName, os.Getenv)
 	cfg, err := config.Load()
 	if err == nil {
 		err = refuseRemovedSettings(os.Getenv)
@@ -184,7 +185,7 @@ func main() {
 
 	maint := mustMaintenance(logger)
 
-	otelShutdown, err := otel.Init(ctx, serviceName, cfg.OTLPEndpoint)
+	otelShutdown, err := otel.InitWithOptions(ctx, serviceName, cfg.OTLPEndpoint, telemetry.Options(os.Getenv)...)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("otel init")
 	}
@@ -215,7 +216,6 @@ func main() {
 	}
 	defer func() { _ = notifyConn.Close() }()
 
-	svcLog := log.NewLogger(serviceName)
 	// The port answers health from here on, while the boot waits for
 	// Postgres and runs the preflight and migrations: liveness SERVING, so
 	// the startup probe passes on a slow boot, and readiness NOT_SERVING with
@@ -304,7 +304,7 @@ func main() {
 		logger.Fatal().Err(err).Msg("workload auth")
 	}
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	checker := mustChecker(logger, svcLog, dependencies(db, auditConn, notifyConn, valkeyPing, workloadVerifier))
+	checker := mustChecker(logger, svcLog, append(dependencies(db, auditConn, notifyConn, valkeyPing, workloadVerifier), telemetry.Dependencies(cfg.OTLPEndpoint, os.Getenv)...))
 	maintUnary, maintStream := grpcsvc.MaintenanceInterceptors(maint, svcLog)
 	opts := append(authOpts, grpc.ChainUnaryInterceptor(maintUnary, srv.PersistUnary), grpc.ChainStreamInterceptor(maintStream))
 	boot.Stop()
