@@ -8,10 +8,13 @@ import (
 	"context"
 	"errors"
 	"io"
+	stdlog "log"
 	"net"
 	"os"
+	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -19,42 +22,92 @@ import (
 	log "github.com/Bugs5382/go-log"
 	otel "github.com/Bugs5382/go-otel"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
+	"github.com/exaring/otelpgx"
+	"github.com/jackc/pgx/v5"
 	otelapi "go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
+	"go.opentelemetry.io/otel/metric"
 	collogs "go.opentelemetry.io/proto/otlp/collector/logs/v1"
+	colmetric "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
+	coltrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const canary = "canary-value-7f3a"
 
-type logCollector struct {
+type collector struct {
 	collogs.UnimplementedLogsServiceServer
-	mu   sync.Mutex
-	wire strings.Builder
+	mu    sync.Mutex
+	logs  strings.Builder
+	other strings.Builder
 }
 
-func (c *logCollector) Export(_ context.Context, r *collogs.ExportLogsServiceRequest) (*collogs.ExportLogsServiceResponse, error) {
+func (c *collector) Export(_ context.Context, r *collogs.ExportLogsServiceRequest) (*collogs.ExportLogsServiceResponse, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.wire.WriteString(prototext.Format(r))
+	c.logs.WriteString(prototext.Format(r))
 	return &collogs.ExportLogsServiceResponse{}, nil
 }
 
-func (c *logCollector) text() string {
+func (c *collector) record(m proto.Message) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.wire.String()
+	c.other.WriteString(prototext.Format(m))
 }
 
-func startCollector(t *testing.T) (*logCollector, string) {
+// text is what arrived on the logs signal.
+func (c *collector) text() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.logs.String()
+}
+
+// everything is what arrived on all three signals.
+func (c *collector) everything() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.logs.String() + c.other.String()
+}
+
+type traceCollector struct {
+	coltrace.UnimplementedTraceServiceServer
+	c *collector
+}
+
+func (s traceCollector) Export(_ context.Context, r *coltrace.ExportTraceServiceRequest) (*coltrace.ExportTraceServiceResponse, error) {
+	s.c.record(r)
+	return &coltrace.ExportTraceServiceResponse{}, nil
+}
+
+type metricCollector struct {
+	colmetric.UnimplementedMetricsServiceServer
+	c *collector
+}
+
+func (s metricCollector) Export(_ context.Context, r *colmetric.ExportMetricsServiceRequest) (*colmetric.ExportMetricsServiceResponse, error) {
+	s.c.record(r)
+	return &colmetric.ExportMetricsServiceResponse{}, nil
+}
+
+func startCollector(t *testing.T) (*collector, string) {
 	t.Helper()
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := &logCollector{}
+	c := &collector{}
 	s := grpc.NewServer()
 	collogs.RegisterLogsServiceServer(s, c)
+	coltrace.RegisterTraceServiceServer(s, traceCollector{c: c})
+	colmetric.RegisterMetricsServiceServer(s, metricCollector{c: c})
 	go func() { _ = s.Serve(lis) }()
 	t.Cleanup(s.Stop)
 	return c, "http://" + lis.Addr().String()
@@ -117,6 +170,7 @@ func TestOnlyAllowedFieldsReachTheCollector(t *testing.T) {
 		log.F("secret_id", "sec-1"),
 		log.F("port", token),
 		log.F("reason", canary+"-reason"),
+		log.F("outcome", canary+"-outcome"),
 		log.F("subject", "sec-1#"+canary+"-subject"),
 		log.F("field_key", canary+"-field"),
 		log.F("trigger", canary+"-trigger"),
@@ -233,14 +287,116 @@ func TestFailingCollectorDegradesButStaysReady(t *testing.T) {
 }
 
 func TestExportErrorsLeaveOutEndpointAndHeaders(t *testing.T) {
-	var buf bytes.Buffer
-	HandleErrors(log.NewLoggerWithOptions("vault", log.WithOutput(&buf), log.WithDefaultFormat(log.FormatJSON)))
-	otelapi.Handle(errors.New("post https://user:" + canary + "@collector.example.test: authorization=" + canary))
-	got := buf.String()
-	if !strings.Contains(got, "otel export error") {
-		t.Fatalf("no line logged: %q", got)
+	_, endpoint := startCollector(t)
+	stop, err := otel.InitWithOptions(context.Background(), "vault", endpoint, Options(env(nil))...)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if strings.Contains(got, canary) || strings.Contains(got, "collector.example.test") {
+	defer shutdownWithin(t, stop, time.Second)
+
+	var buf bytes.Buffer
+	stdlog.SetOutput(&buf)
+	defer stdlog.SetOutput(os.Stderr)
+	otelapi.Handle(errors.New("post https://user:" + canary + "@collector.example.test: authorization=" + canary))
+	if got := buf.String(); strings.Contains(got, canary) || strings.Contains(got, "collector.example.test") {
 		t.Fatalf("raw error logged: %q", got)
+	}
+}
+
+func TestOutcomeStaysOffTheAllowList(t *testing.T) {
+	if slices.Contains(AllowFields, "outcome") {
+		t.Fatal("outcome carries err.Error() from go-workload-identity")
+	}
+}
+
+func unaryDesc(service, method string, h func(context.Context) (any, error)) *grpc.ServiceDesc {
+	return &grpc.ServiceDesc{
+		ServiceName: service,
+		HandlerType: (*any)(nil),
+		Methods: []grpc.MethodDesc{{
+			MethodName: method,
+			Handler: func(_ any, ctx context.Context, dec func(any) error, intercept grpc.UnaryServerInterceptor) (any, error) {
+				if err := dec(&emptypb.Empty{}); err != nil {
+					return nil, err
+				}
+				return intercept(ctx, &emptypb.Empty{}, &grpc.UnaryServerInfo{FullMethod: "/" + service + "/" + method},
+					func(ctx context.Context, _ any) (any, error) { return h(ctx) })
+			},
+		}},
+	}
+}
+
+// Real RPCs through the service's own server and client handlers, plus a query
+// through the service's own database tracer options.
+func TestCanariesStayOffEverySignal(t *testing.T) {
+	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "deployment.environment="+canary+"-resource")
+	c, endpoint := startCollector(t)
+	stop, err := otel.InitWithOptions(context.Background(), "vault", endpoint, Options(env(nil))...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, port, _ := net.SplitHostPort(lis.Addr().String())
+	_ = lis.Close()
+
+	var baggageSeen atomic.Int32
+	ctx, cancel := context.WithCancel(context.Background())
+	served := make(chan error, 1)
+	go func() {
+		served <- server.RunWithHealth(ctx, port, log.Nop(), nil, func(s *grpc.Server) {
+			s.RegisterService(unaryDesc("sneakers.vault.v1.VaultService", "Fail", func(ctx context.Context) (any, error) {
+				baggageSeen.Add(int32(baggage.FromContext(ctx).Len()))
+				return nil, status.Error(codes.Internal, canary+"-status")
+			}), nil)
+			s.RegisterService(unaryDesc("sneakers.vault.v1.VaultService2", "Panic", func(context.Context) (any, error) {
+				panic(errors.New(canary + "-exception"))
+			}), nil)
+		})
+	}()
+
+	conn, err := grpc.NewClient("127.0.0.1:"+port, grpc.WithTransportCredentials(insecure.NewCredentials()), server.ClientStatsHandler())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	call := func(method string) {
+		callCtx := metadata.AppendToOutgoingContext(context.Background(), "baggage", "key="+canary+"-baggage")
+		_ = conn.Invoke(callCtx, method, &emptypb.Empty{}, &emptypb.Empty{}, grpc.WaitForReady(true))
+	}
+	call("/sneakers.vault.v1.VaultService/Fail")
+	call("/sneakers.vault.v1.VaultService2/Panic")
+	call("/sneakers.vault.v1.VaultService/" + canary + "-method")
+
+	counter, err := otelapi.Meter("test").Int64Counter("canary.count")
+	if err != nil {
+		t.Fatal(err)
+	}
+	counter.Add(context.Background(), 1, metric.WithAttributes(attribute.String("label", canary+"-metric")))
+
+	tracer := otelpgx.NewTracer(dbTracing()...)
+	parent, span := otelapi.Tracer("test").Start(context.Background(), "parent")
+	qctx := tracer.TraceQueryStart(parent, nil, pgx.TraceQueryStartData{SQL: "SELECT '" + canary + "-sql' FROM secrets"})
+	tracer.TraceQueryEnd(qctx, nil, pgx.TraceQueryEndData{})
+	span.End()
+
+	cancel()
+	<-served
+	shutdownWithin(t, stop, 5*time.Second)
+
+	got := c.everything()
+	for _, want := range []string{"sneakers.vault.v1.VaultService/Fail", "rpc.response.status_code", "query SELECT", "[span]"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%q did not arrive", want)
+		}
+	}
+	if strings.Contains(got, canary) {
+		t.Fatalf("a canary reached the collector: %s", got)
+	}
+	if n := baggageSeen.Load(); n != 0 {
+		t.Fatalf("handler saw %d baggage members", n)
 	}
 }

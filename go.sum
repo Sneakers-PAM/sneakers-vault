@@ -6,8 +6,8 @@ github.com/Bugs5382/go-certkit v1.1.1 h1:WkmiwRPjpcY4ZTXV4nU2EH4JsL4ABK3igcYg2Ej
 github.com/Bugs5382/go-certkit v1.1.1/go.mod h1:TAqCT/Hn7ABFHHXbudXvL4DogxsFf6yZgG364zjK5Ac=
 github.com/Bugs5382/go-log v1.4.0 h1:6AKDyc8PSxjW/dkkL0zCy9tKz3ce7c16f4PXQAsWYFI=
 github.com/Bugs5382/go-log v1.4.0/go.mod h1:OGgIWWKKNg2AXVJlbVJZb/s8dnqqsrKwWznYXik547E=
-github.com/Bugs5382/go-otel v1.5.0 h1:bI+jR3HbT6SO58SiDg2CfbavMgFNiv437ZBUDauc/Kg=
-github.com/Bugs5382/go-otel v1.5.0/go.mod h1:KiN6H/LzIrumq7MgAqwUVBYYYHf0r7CbU2bf64RNUa0=
+github.com/Bugs5382/go-otel v1.6.0 h1:cjptZM4h5jXzU6d3hLz2tGgPmN9blhxLVc81PmoWdNw=
+github.com/Bugs5382/go-otel v1.6.0/go.mod h1:dY2m4IIVbcK87lrMzPC92JJtGpgd2W3A6NBeCEidEKs=
 github.com/Bugs5382/go-postgres v1.3.0 h1:gpXzgYCKW+lkCePmY93STXulThNVcGJUdHJSunBbKos=
 github.com/Bugs5382/go-postgres v1.3.0/go.mod h1:vGXO5noHhSxOn1h8KdMIeXv5mhbuWLyZHBVHgzfhsUA=
 github.com/Bugs5382/go-redis v1.3.0 h1:cdIpifmEPI4V/VwcQuu4qmIZtjeT/zCln40xo6/8hsI=
@@ -137,8 +137,8 @@ go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0 h1:oECp5f+hN7nkwjU/8BxQ/q23bGPb8FIrD839owX222E=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0/go.mod h1:DqEFwLumhzMBDQv9PcWbyoDxHI/4lAk6CM4nJBH39sc=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 h1:8tvICD4vSTOOsNrsI4Ljf6C+6UKvpTEH5XY3JMoyPoo=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0/go.mod h1:z9+yiacE0IHRqM4qFfkbt/JYlmYXgss8GY/jXoNuPJI=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0 h1:LMuyCAyfalSjDyjdC65nK6N0zoTT63+E/u95X0JovZI=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0/go.mod h1:085m8qbm4hgc8rZWGDEa4vmyyo2c3nPxUslYUKUIU04=
 go.opentelemetry.io/otel v1.45.0 h1:pdrWmLHofpubmArBv1LgFSv1Z0Ie/ppdZzu+kUN5EeU=
 go.opentelemetry.io/otel v1.45.0/go.mod h1:XZxIqPapzEYnhNSScF5DIqXhm/rYi0FzCe2XddAwZfQ=
 go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.21.0 h1:WseeVYf5dJZTsyPiyW5L14k5qsSibqXAMTSiFEDiWr0=

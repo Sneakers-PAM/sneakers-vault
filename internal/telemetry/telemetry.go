@@ -18,9 +18,10 @@ import (
 	"github.com/Bugs5382/go-buildinfo/health"
 	log "github.com/Bugs5382/go-log"
 	otel "github.com/Bugs5382/go-otel"
+	"github.com/Bugs5382/go-postgres"
+	otelpg "github.com/Bugs5382/go-postgres/otel"
+	"github.com/exaring/otelpgx"
 	"github.com/rs/zerolog"
-	otelapi "go.opentelemetry.io/otel"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -37,15 +38,15 @@ const (
 // someone typed, a URL, an address, a body or a target system's text. That is
 // why error, reason, subject, field_key, trigger, added, removed, version,
 // commit, claimed_actor, panic and stack aren't here: each holds free text or
-// caller input in at least one log call, or a fingerprint.
+// caller input in at least one log call, or a fingerprint. outcome is off too:
+// go-workload-identity logs err.Error() under that name.
 var AllowFields = []string{
 	"action", "active_ref", "actor", "actor_user_id", "allowed", "attempt",
 	"caller", "clamped", "confirm", "count", "cutoff", "decided_by",
 	"dependencies", "dependency", "dev_static_kek_loaded", "end_reason",
 	"error_class", "expires_at", "folder_id", "folders", "found",
 	"from_target_id", "from_type_id", "heartbeat_opt_out", "item", "items",
-	"lease_id", "method", "mode", "new_version_no", "otlp_code", "outcome",
-	"parent_id", "port", "principal_id", "principal_kind", "request_id",
+	"lease_id", "method", "mode", "new_version_no", "parent_id", "port", "principal_id", "principal_kind", "request_id",
 	"requested", "result", "retention_days", "retry_in", "reveals",
 	"rewrapped_records", "rewrapped_versions", "rotated_by",
 	"rotation_opt_out", "rpc", "run_id", "secret_id", "secrets", "session_id",
@@ -53,18 +54,42 @@ var AllowFields = []string{
 	"use_id", "user_id", "value_version", "verb", "version_no", "worker_id",
 }
 
-var apiToken = regexp.MustCompile(`\bsnk_[A-Za-z0-9_\-]+`)
+var (
+	apiToken = regexp.MustCompile(`\bsnk_[A-Za-z0-9_\-]+`)
+	// rpcMethod bounds a client-supplied method name to this product's shape.
+	rpcMethod = regexp.MustCompile(`^sneakers\.[a-z]+\.v1\.[A-Za-z]+/[A-Za-z]+$`)
+	// querySpan is the name otelpgx gives a query once dbTracing trims the SQL.
+	querySpan = regexp.MustCompile(`^query [A-Z]+$`)
+)
 
-// Options are the settings for otel.InitWithOptions. With both switches unset
-// they change nothing about what is exported.
+// Options are the settings for otel.InitWithOptions. Traces, metrics and the
+// resource are default-deny: only the span names and attributes named here
+// leave, on top of service.name. The filter strips status text, exception
+// events and stacks, drops baggage and replaces the SDK's error handler with
+// one that prints the gRPC code only.
 func Options(getenv func(string) string) []otel.Option {
 	return []otel.Option{
 		otel.WithInsecureSkipVerify(getenv(EnvInsecureSkipVerify) == "true"),
 		otel.WithLogs(logsEnabled(getenv)),
 		otel.WithLogAllowFields(AllowFields...),
 		otel.WithLogRedactPatterns(apiToken),
+		otel.WithTelemetryFilter(true),
+		otel.WithTraceAllowSpanNames(rpcMethod, querySpan),
+		otel.WithTraceAllowAttributes("rpc.method", "rpc.response.status_code"),
+		otel.WithMetricAllowAttributes("rpc.method", "rpc.response.status_code"),
+		otel.WithAttributeValuePattern("rpc.method", rpcMethod),
+		otel.WithBaggage(false),
+		otel.WithRedactedErrors(true),
 	}
 }
+
+func dbTracing() []otelpgx.Option {
+	return []otelpgx.Option{otelpgx.WithTrimSQLInSpanName(), otelpgx.WithDisableSQLStatementInAttributes()}
+}
+
+// DBTracing traces queries with the SQL text kept out of the span name and
+// attributes, so the name is one the trace filter can allow.
+func DBTracing() postgres.Option { return otelpg.WithTracing(dbTracing()...) }
 
 func logsEnabled(getenv func(string) string) bool { return getenv(EnvLogsEnabled) == "true" }
 
@@ -85,14 +110,6 @@ func NewLoggers(service string, getenv func(string) string) (log.TraceLogger, ze
 	// go-log has no options on New; with no span in ctx, Ctx is the logger
 	// NewLoggerWithOptions just built.
 	return lg, log.Ctx(context.Background()) //nolint:staticcheck
-}
-
-// HandleErrors sends otel's internal errors to lg. The error text is left out
-// because it can carry the endpoint and headers; only the gRPC code is kept.
-func HandleErrors(lg log.Logger) {
-	otelapi.SetErrorHandler(otelapi.ErrorHandlerFunc(func(err error) {
-		lg.Warn("otel export error", log.F("otlp_code", status.Code(err).String()))
-	}))
 }
 
 var errExportFailing = errors.New("otlp export failing")

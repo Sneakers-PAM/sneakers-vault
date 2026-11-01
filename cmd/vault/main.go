@@ -175,7 +175,6 @@ func main() {
 	defer stop()
 
 	svcLog, logger := telemetry.NewLoggers(serviceName, os.Getenv)
-	telemetry.HandleErrors(svcLog)
 	cfg, err := config.Load()
 	if err == nil {
 		err = refuseRemovedSettings(os.Getenv)
