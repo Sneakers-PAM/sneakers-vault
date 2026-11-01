@@ -306,7 +306,9 @@ func main() {
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
 	checker := mustChecker(logger, svcLog, append(dependencies(db, auditConn, notifyConn, valkeyPing, workloadVerifier), telemetry.Dependencies(cfg.OTLPEndpoint, os.Getenv)...))
 	maintUnary, maintStream := grpcsvc.MaintenanceInterceptors(maint, svcLog)
-	opts := append(authOpts, grpc.ChainUnaryInterceptor(maintUnary, srv.PersistUnary), grpc.ChainStreamInterceptor(maintStream))
+	// PersonSessionUnary runs after the caller-auth chain (and its
+	// SelfActorUnary), with or without service-to-service authentication.
+	opts := append(authOpts, grpc.ChainUnaryInterceptor(srv.PersonSessionUnary, maintUnary, srv.PersistUnary), grpc.ChainStreamInterceptor(maintStream))
 	boot.Stop()
 	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, srv.RegisterInto, opts...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")

@@ -232,9 +232,16 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   only its own token's pending uses, and only with a `run_id` (`PermissionDenied` without one).
   Deciding stays one use at a time through `DecideSecretUse` and `ConfirmSecretUse`, each with its
   own checks and audit.
+- **What break-glass is for:** the emergency backup for an admin who needs a password outside the
+  planned access paths, when no grant, check-out or approval covers it. It is audited, it needs a
+  TOTP code (checked by the gateway) and a reason, and it is for people only: the MCP, AI agents,
+  service accounts and any API token can't use it, by design. The vault enforces this itself, not
+  only the gateway.
 - **Break-glass:** `BreakGlassSecret` reveals every field of a secret the caller can read, past
-  a check-out lock or a pending approval. People only (`PermissionDenied` for service accounts,
-  workloads and personal tokens). It records a high-severity `break_glass` audit event first and
+  a check-out lock or a pending approval. People only, from their own signed-in web session: a
+  service account, workload or personal token, or a person whose `ActorContext.session_ref` is
+  empty, gets `PermissionDenied` with `PERSON_SESSION_REQUIRED` ("break-glass needs a person's own
+  signed-in session; agents and tokens can't use it"), audited as `break_glass.denied`. It records a high-severity `break_glass` audit event first and
   fails closed if that can't be written, then queues a forced rotation for a rotatable secret,
   writes a `break_glass_events` ledger row and notifies a personal folder's owner.
 - **Break-glass browse:** a human site admin or root opens a session with
@@ -258,6 +265,16 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   event is written once. `ListBreakGlassSessions` (site admin or root; `limit` defaults to 50, at
   most 200) lists sessions newest first, each with the secrets revealed in it, for the audit view.
   Without the vault database these calls answer `Unavailable`.
+- **A person's reveal needs their web session:** `PRINCIPAL_KIND_HUMAN` is the enum's zero value, so
+  an actor that names no kind reads as a person's. `RevealSecretField`, `RevealSecretVersionField`,
+  `CopySecret`, `ExportCertificate` and `BreakGlassSecret` therefore also need
+  `ActorContext.session_ref`, which the gateway sets from the signed-in web session (and the SSH
+  broker passes on with a key reveal). A person-kind call without it, including one with no actor,
+  is refused with `PermissionDenied` and `PERSON_SESSION_REQUIRED` and audited as
+  `secret.reveal.denied` (`break_glass.denied` for break-glass), with the method and the calling
+  service. Callers that act only as themselves (the workflow, sneakers-migrate) get the vault's own
+  actor and aren't asked for one. Personal tokens, service accounts and workloads use the
+  `*ForPrincipal` calls under their own rules.
 - **Moves:** personal to shared is free. Shared to personal needs a site admin; for anyone else the
   vault moves nothing, answers `approval_required`, and the caller files a move request with the
   workflow service. A move is audited as `secret.move` (or `secret.move.principal`) with
