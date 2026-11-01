@@ -421,10 +421,16 @@ message ActorContext {
   // PRINCIPAL_KIND_USER_TOKEN only: the token's owner holds the site-admin
   // (or root) role, resolved by the gateway from the owner's identity. A
   // token never acts with admin authority (is_site_admin and is_root are
-  // ignored for it); the vault reads this flag for one thing only: creating
+  // ignored for it); the vault reads this flag for two things only: creating
   // a top-level folder while SecuritySettings.restrict_top_level_folders is
-  // on. Ignored for every other principal kind.
+  // on, and ImportExtensionForPrincipal. Ignored for every other principal
+  // kind.
   bool token_owner_is_site_admin = 13;
+  // PRINCIPAL_KIND_USER_TOKEN only: the kind of client the token was minted
+  // for, as identity recorded it ("mcp" for an MCP agent token). Set by the
+  // gateway from the verified token. Grants nothing; it says where a change
+  // came from in the audit log.
+  string token_client_kind = 14;
 }
 
 message ListSecretTypesRequest {}
@@ -458,6 +464,16 @@ message ImportExtensionRequest { ActorContext actor = 1; string id = 2; }       
 message ImportExtensionResponse { SecretType type = 1; }
 message ImportExtensionFromJsonRequest { ActorContext actor = 1; string json = 2; } // install a pasted pack
 message ImportExtensionFromJsonResponse { SecretType type = 1; }
+
+// Install a catalogued pack by id as a personal token whose owner is a site
+// admin or root (ActorContext.token_owner_is_site_admin). A person is refused
+// with PERMISSION_DENIED and no reason, as on every *ForPrincipal call; any
+// other machine with PERMISSION_DENIED, reason NOT_SITE_ADMIN, audited as
+// authz.denied. A pack that isn't catalogued is NOT_FOUND, and one already
+// installed is ALREADY_EXISTS. There's no machine equivalent of
+// ImportExtensionFromJson: only catalogued packs can be activated this way.
+message ImportExtensionForPrincipalRequest { ActorContext actor = 1; string id = 2; }
+message ImportExtensionForPrincipalResponse { SecretType type = 1; }
 
 // Actor-scoped: returns shared folders plus only the actor's OWN personal
 // folders (never other users' personal folders). The master personal root is
@@ -1702,6 +1718,7 @@ service VaultService {
   }
   rpc ImportExtension(ImportExtensionRequest) returns (ImportExtensionResponse);
   rpc ImportExtensionFromJson(ImportExtensionFromJsonRequest) returns (ImportExtensionFromJsonResponse);
+  rpc ImportExtensionForPrincipal(ImportExtensionForPrincipalRequest) returns (ImportExtensionForPrincipalResponse);
 
   // Folders
   rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse) {

@@ -56,7 +56,7 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 | Secrets | `ListSecretsInFolder`, `ListSecretsByTarget`, `ReorderSecrets`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `ChangeSecretType`, `PreviewSecretTypeChange`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
 | Break-glass browse | `OpenBreakGlassSession`, `GetBreakGlassSession`, `ListBreakGlassItems`, `CloseBreakGlassSession`, `ListBreakGlassSessions` |
 | Dashboard | `GetSecretStats`, `GetTopAccessedSecrets`, `ListSecretsByStatus`, `FindSecretsByPublicKey` |
-| Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `GetSecretForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
+| Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `GetSecretForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `ImportExtensionForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
 | Secret uses and approvals | `PrepareSecretUse`, `GetSecretUse`, `ListPendingSecretUses`, `ListSecretUsesToDecide`, `DecideSecretUse`, `ConfirmSecretUse`, `RedeemSecretUse`, `CreateUseGrant`, `ListUseGrants`, `RevokeUseGrant`, `SetSecretTokenApproval` |
 | Certificates | `ImportCertificate`, `ExportCertificate`, `ReplaceCertificate` |
 | Connections and targets | `ListConnections`, `SaveConnection`, `DeleteConnection`, `ListTargets`, `SaveTarget`, `DeleteTarget` |
@@ -159,11 +159,24 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   `folder.move` audit event. A `new_parent_id` that doesn't exist is `NotFound`. `MoveFolderForPrincipal` can't move a
   folder to the top level (`InvalidArgument`), and a token the setting restricts gets
   `TOP_LEVEL_FOLDERS_RESTRICTED` instead. The new folder is shared and owned by the creator or the token's user. A token's create is audited as
-  `folder.create.principal` under that user with `token_id`, `path` and `top_level`. The flag counts
-  for nothing else: a token never acts with admin authority. Every person sees a shared folder's
+  `folder.create.principal` under that user with `token_id`, `path` and `top_level`. The flag
+  counts for one thing more, activating an extension pack, and for nothing else: a token never
+  acts with admin authority. Every person sees a shared folder's
   name in `ListFolders`; its contents stay with its owners and site admins until an owner adds a
   rule. `RevealSecretFieldForPrincipal` also returns non-sensitive fields, audited as
   `secret.read.principal`.
+- **Extension packs for tokens** (`ImportExtensionForPrincipal`): a personal token whose owner is a
+  site admin or root (`ActorContext.token_owner_is_site_admin`) can activate a catalogued pack by
+  id. A person is refused, as on every `*ForPrincipal` call; a service account, a workload and any
+  other token get `PermissionDenied` with reason `NOT_SITE_ADMIN`, audited as `authz.denied` with
+  the pack as the subject when it's catalogued and `vault` otherwise. A pack that isn't catalogued
+  is `NotFound`, and one already installed is `AlreadyExists`. Each activation is audited as
+  `extension.import.principal` in the audit tier, under the token's user, with the pack as the
+  subject and `name`, `token_id` and `source` as attributes. `source` is `mcp` for an MCP agent
+  token (`ActorContext.token_client_kind`, set by the gateway from the verified token) and
+  `machine_api` for any other. The event is written first and fails closed: if it can't be
+  recorded, the pack isn't installed. A person's `ImportExtension` stays on the activity tier as
+  `extension.import`. `ImportExtensionFromJson` has no machine equivalent.
 - **Approval levels** (`SetSecretTokenApproval`). A secret has one of three levels, and they apply
   the same way to a person revealing or copying in the web and to a personal token (MCP
   `get_secret`, `sneakers-run`):

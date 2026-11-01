@@ -356,7 +356,7 @@ var mutatingMethods = map[string]bool{
 	"CreateSecretType": true, "UpdateSecretType": true, "DeleteSecretType": true, "CloneSecretType": true,
 	"SaveConnection": true, "DeleteConnection": true, "SaveTarget": true, "DeleteTarget": true,
 	"SavePasswordPolicy": true, "DeletePasswordPolicy": true, "UpdateSecuritySettings": true,
-	"ImportExtension": true, "ImportExtensionFromJson": true,
+	"ImportExtension": true, "ImportExtensionFromJson": true, "ImportExtensionForPrincipal": true,
 	// Reveal/copy bump the secret's view_count (dashboard "top accessed"),
 	// so they must persist too.
 	"RevealSecretField": true, "CopySecret": true,
