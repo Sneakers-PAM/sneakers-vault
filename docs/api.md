@@ -380,6 +380,24 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   because no credential was tried. `HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE`, for a TLS certificate
   that failed verification, is treated the same way and audited as
   `secret.heartbeat.tls_certificate`, with the connector's reason in `detail`.
+- **TLS certificate pins:** `Target.tls_cert_pins` holds the SHA-256 fingerprints of the TLS
+  certificates the connector accepts for the target's LDAPS (and other TLS) connections, so a
+  directory whose certificate comes from an enterprise CA can be trusted without a CA file. They
+  are public, not secrets. `SaveTarget` replaces the whole list: each entry is 64 hex digits, with
+  an optional `sha256:` prefix (any case) and colons between bytes, as `openssl x509 -fingerprint
+  -sha256` prints them; it's stored bare, in lowercase. Anything else is `InvalidArgument`, naming
+  the entry by position only. Repeats are dropped; at most 16 per target. The rule is the SSH
+  host key one: only a person may change them, a site admin on any target or the owner of a
+  personal target. A token is refused (`PermissionDenied`, reason `TLS_PINS_PERSON_ONLY`), an
+  admin's or the owner's own included, and a person who is neither gets `TLS_PINS_NOT_OWNER`.
+  Anyone who may edit the target can save it with the pins it already has. A change is audited as
+  `target.tls_cert_pins.change` with the fingerprints `added` and `removed`. They're stored in
+  `target_tls_cert_pins`. Heartbeat and rotation jobs carry them as `HeartbeatTarget.tls_cert_pins`
+  (on `HeartbeatJob.target`, `RotationJob.target` and each per-target entry). An empty list
+  means no pin, and the connector verifies against the system roots alone. The connector reports
+  `HEARTBEAT_RESULT_CERTIFICATE_MISMATCH` when the target's certificate matches none of its pins;
+  the vault records it like `HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE`: a failed check, counted as
+  drift, audited as `secret.heartbeat.tls_certificate`, with the schedule left running.
 - **KDC port:** `Connection.kdc_port` is the port for validating a password over Kerberos after a
   rotation, for a directory whose KDC isn't on the standard port. 0 means 88; a value outside 0 to
   65535 is `InvalidArgument`. Jobs carry it as `HeartbeatConn.kdc_port`.

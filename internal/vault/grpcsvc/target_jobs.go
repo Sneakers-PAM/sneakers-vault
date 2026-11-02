@@ -60,7 +60,7 @@ func (s *Server) targetJobFor(targetID string) *vaultv1.TargetJob {
 	}
 	job.Target = &vaultv1.HeartbeatTarget{
 		Kind: tgt.GetKind(), Domain: tgt.GetDomain(), Realm: tgt.GetRealm(), Hostname: tgt.GetHostname(),
-		SshHostKeys: slices.Clone(tgt.GetSshHostKeys()),
+		SshHostKeys: slices.Clone(tgt.GetSshHostKeys()), TlsCertPins: slices.Clone(tgt.GetTlsCertPins()),
 	}
 	if conn := findByID(s.connections, tgt.GetConnectionId()); conn != nil {
 		job.Connection = &vaultv1.HeartbeatConn{

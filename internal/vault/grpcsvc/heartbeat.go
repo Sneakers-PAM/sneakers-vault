@@ -44,9 +44,11 @@ func hostKeyRefused(r vaultv1.HeartbeatResult) bool {
 }
 
 // certificateRefused reports a TLS heartbeat the connector didn't finish
-// because the target's certificate failed verification.
+// because the target's certificate failed verification or matched none of
+// its pins.
 func certificateRefused(r vaultv1.HeartbeatResult) bool {
-	return r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE
+	return r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE ||
+		r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_CERTIFICATE_MISMATCH
 }
 
 // heartbeatFailed reports a failed check: a wrong credential, or a host the

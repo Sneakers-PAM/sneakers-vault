@@ -26,6 +26,12 @@ const (
 	// ReasonHostKeysNotOwner: a person who is neither the personal target's
 	// owner nor a site admin asked to change its SSH host keys.
 	ReasonHostKeysNotOwner = "HOST_KEYS_NOT_OWNER"
+	// ReasonTLSPinsPersonOnly: no token, an admin's included, may change a
+	// target's TLS certificate pins; only a person can.
+	ReasonTLSPinsPersonOnly = "TLS_PINS_PERSON_ONLY"
+	// ReasonTLSPinsNotOwner: a person who is neither the personal target's
+	// owner nor a site admin asked to change its TLS certificate pins.
+	ReasonTLSPinsNotOwner = "TLS_PINS_NOT_OWNER"
 	// ReasonTopLevelFoldersRestricted: someone other than a site admin asked
 	// for a top-level folder while "Restrict top-level folders to admins" is on.
 	ReasonTopLevelFoldersRestricted = "TOP_LEVEL_FOLDERS_RESTRICTED"
