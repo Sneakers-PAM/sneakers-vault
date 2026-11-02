@@ -101,9 +101,10 @@ func hostKeyDiff(before, after []string) (added, removed []string) {
 }
 
 // applyHostKeys validates the requested pins against the stored ones, gates a
-// change to site admins, and returns the canonical list plus the audit
-// attributes of the change (nil when the pins are unchanged).
-func applyHostKeys(actor *vaultv1.ActorContext, before, requested []string) ([]string, map[string]string, error) {
+// change to a person who may pin (see mayPinHostKeys), and returns the
+// canonical list plus the audit attributes of the change (nil when the pins
+// are unchanged). ownerUserID is the target's owner: empty for a shared one.
+func applyHostKeys(actor *vaultv1.ActorContext, ownerUserID string, before, requested []string) ([]string, map[string]string, error) {
 	keys, afterFPs, err := normalizeHostKeys(requested)
 	if err != nil {
 		return nil, nil, err
@@ -112,18 +113,32 @@ func applyHostKeys(actor *vaultv1.ActorContext, before, requested []string) ([]s
 	if len(added) == 0 && len(removed) == 0 {
 		return keys, nil, nil
 	}
-	if !isHumanAdmin(actor) {
+	if !isHumanUser(actor) {
 		// Not "you're missing a role": even an admin's token can't do this —
 		// pinning decides which server a credential may be sent to, so it
-		// stays with a person, in the admin app, on purpose (#164).
+		// stays with a person, on purpose (#164).
 		return nil, nil, refuse(ReasonHostKeysPersonOnly,
-			"SSH host keys are pinned by a person in the admin app (Targets → Scan and pin). "+
+			"SSH host keys are pinned by a person in the web app (Scan and pin host key). "+
 				"An agent's token can't change them, even an admin's.")
+	}
+	if !mayPinHostKeys(actor, ownerUserID) {
+		return nil, nil, refuse(ReasonHostKeysNotOwner,
+			"SSH host keys on a personal target are pinned by its owner, and on a shared target by a site admin.")
 	}
 	return keys, map[string]string{
 		"added":   strings.Join(added, ","),
 		"removed": strings.Join(removed, ","),
 	}, nil
+}
+
+// mayPinHostKeys reports whether a person may change a target's pins: a site
+// admin on any target, or the owner of a personal target (#318). A token
+// never may; callers check isHumanUser first.
+func mayPinHostKeys(actor *vaultv1.ActorContext, ownerUserID string) bool {
+	if isHumanAdmin(actor) {
+		return true
+	}
+	return isHumanUser(actor) && ownerUserID != "" && ownerUserID == actor.GetUserId()
 }
 
 // ---- persistence ------------------------------------------------------------

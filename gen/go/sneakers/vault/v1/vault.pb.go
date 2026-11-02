@@ -11735,9 +11735,10 @@ type Target struct {
 	OwnerUserId  string `protobuf:"bytes,10,opt,name=owner_user_id,json=ownerUserId,proto3" json:"owner_user_id,omitempty"` // empty = shared (admin-owned); set = personal (owner-scoped)
 	// SSH host keys the broker accepts for this target, one OpenSSH public key
 	// per entry in authorized_keys form ("ssh-ed25519 AAAA... comment"). Public,
-	// not secret. Set by a site admin; checked on save (each must parse, carry
-	// no options and not be a private key or certificate). A save replaces the
-	// whole list; empty means not pinned, and the broker refuses to connect.
+	// not secret. Set by a person: a site admin, or a personal target's owner,
+	// never a token; checked on save (each must parse, carry no options and not
+	// be a private key or certificate). A save replaces the whole list; empty
+	// means not pinned, and the broker refuses to connect.
 	SshHostKeys []string `protobuf:"bytes,11,rep,name=ssh_host_keys,json=sshHostKeys,proto3" json:"ssh_host_keys,omitempty"`
 	// The target's connections, in display order, one connector protocol
 	// apiece (no two entries may resolve to the same Connection.protocol) and

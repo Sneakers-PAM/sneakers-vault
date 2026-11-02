@@ -223,46 +223,127 @@ func TestSaveTargetRejectsBadHostKeys(t *testing.T) {
 	}
 }
 
-func TestSaveTargetHostKeysAdminOnly(t *testing.T) {
+// #318: a person may pin their own personal target's host keys; a site admin
+// pins a shared one. Anyone else, and every token, is refused.
+func TestSaveTargetHostKeysOwnerOfPersonalTargetPins(t *testing.T) {
 	s := newServer(t)
 	ctx := context.Background()
 	owner := &vaultv1.ActorContext{UserId: "user-dana", PrincipalKind: vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN}
 	key, _ := genHostKey(t)
+	key2, _ := genECDSAHostKey(t)
 
-	// A non-admin may not pin keys on their own target.
-	if _, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: owner, Target: &vaultv1.Target{
+	created, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: owner, Target: &vaultv1.Target{
 		Name: "lab01", Hostname: "lab01.example.org", ConnectionId: "conn-ssh-default", SshHostKeys: []string{key},
-	}}); code(err) != codes.PermissionDenied {
-		t.Fatalf("non-admin pin on create: code = %v, want PermissionDenied", code(err))
+	}})
+	if err != nil {
+		t.Fatalf("owner pin on create: %v", err)
 	}
+	id := created.GetTarget().GetId()
+	if created.GetTarget().GetOwnerUserId() != "user-dana" {
+		t.Fatalf("owner = %q, want the creator", created.GetTarget().GetOwnerUserId())
+	}
+	if _, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: owner, Target: &vaultv1.Target{
+		Id: id, Name: "lab01", Hostname: "lab01.example.org", ConnectionId: "conn-ssh-default", SshHostKeys: []string{key2},
+	}}); err != nil {
+		t.Fatalf("owner re-pin: %v", err)
+	}
+	if got := listedTarget(t, s, owner, id).GetSshHostKeys(); len(got) != 1 || got[0] != key2 {
+		t.Fatalf("pins after owner re-pin = %q", got)
+	}
+}
 
+func TestSaveTargetHostKeysOwnersTokenRefused(t *testing.T) {
+	s := newServer(t)
+	ctx := context.Background()
+	owner := &vaultv1.ActorContext{UserId: "user-dana", PrincipalKind: vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN}
+	key, _ := genHostKey(t)
 	created, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: owner, Target: &vaultv1.Target{
 		Name: "lab01", Hostname: "lab01.example.org", ConnectionId: "conn-ssh-default",
 	}})
 	if err != nil {
-		t.Fatalf("non-admin create without pins: %v", err)
+		t.Fatalf("create: %v", err)
 	}
 	id := created.GetTarget().GetId()
-
-	// An admin pins it; the owner can still edit the rest while sending the
-	// same pins back, but cannot change or clear them.
-	if _, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: hostKeyAdmin, Target: &vaultv1.Target{
+	_, err = s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: tokenActor("user-dana", false), Target: &vaultv1.Target{
 		Id: id, Name: "lab01", Hostname: "lab01.example.org", ConnectionId: "conn-ssh-default", SshHostKeys: []string{key},
-	}}); err != nil {
-		t.Fatalf("admin pin: %v", err)
+	}})
+	if code(err) != codes.PermissionDenied {
+		t.Fatalf("owner's token pin: code = %v, want PermissionDenied", code(err))
 	}
-	if _, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: owner, Target: &vaultv1.Target{
-		Id: id, Name: "lab01 renamed", Hostname: "lab01.example.org", ConnectionId: "conn-ssh-default", SshHostKeys: []string{key},
-	}}); err != nil {
-		t.Fatalf("owner edit with unchanged pins: %v", err)
+	if got := listedTarget(t, s, owner, id).GetSshHostKeys(); len(got) != 0 {
+		t.Fatalf("pins after refused token save = %q", got)
 	}
-	if _, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: owner, Target: &vaultv1.Target{
-		Id: id, Name: "lab01", Hostname: "lab01.example.org", ConnectionId: "conn-ssh-default",
+}
+
+func TestSaveTargetHostKeysNonOwnerRefused(t *testing.T) {
+	s := newServer(t)
+	ctx := context.Background()
+	owner := &vaultv1.ActorContext{UserId: "user-dana", PrincipalKind: vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN}
+	other := &vaultv1.ActorContext{UserId: "user-eli", PrincipalKind: vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN}
+	key, _ := genHostKey(t)
+
+	// Another person's personal target.
+	personal, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: owner, Target: &vaultv1.Target{
+		Name: "lab01", Hostname: "lab01.example.org", ConnectionId: "conn-ssh-default",
+	}})
+	if err != nil {
+		t.Fatalf("create personal: %v", err)
+	}
+	if _, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: other, Target: &vaultv1.Target{
+		Id: personal.GetTarget().GetId(), Name: "lab01", Hostname: "lab01.example.org", ConnectionId: "conn-ssh-default", SshHostKeys: []string{key},
 	}}); code(err) != codes.PermissionDenied {
-		t.Fatalf("owner clearing pins: code = %v, want PermissionDenied", code(err))
+		t.Fatalf("other person's pin on a personal target: code = %v, want PermissionDenied", code(err))
+	}
+
+	// A shared target: only a site admin pins it.
+	shared, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: hostKeyAdmin, Target: &vaultv1.Target{
+		Name: "db01", Hostname: "db01.example.org", ConnectionId: "conn-ssh-default",
+	}})
+	if err != nil {
+		t.Fatalf("create shared: %v", err)
+	}
+	if _, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: other, Target: &vaultv1.Target{
+		Id: shared.GetTarget().GetId(), Name: "db01", Hostname: "db01.example.org", ConnectionId: "conn-ssh-default", SshHostKeys: []string{key},
+	}}); code(err) != codes.PermissionDenied {
+		t.Fatalf("non-admin pin on a shared target: code = %v, want PermissionDenied", code(err))
+	}
+
+	// The rule itself, apart from SaveTarget's edit gate: a person who isn't
+	// the owner can't change a personal target's pins, nor anyone's a
+	// shared target's.
+	if _, _, err := applyHostKeys(other, "user-dana", nil, []string{key}); code(err) != codes.PermissionDenied {
+		t.Fatalf("applyHostKeys non-owner: code = %v, want PermissionDenied", code(err))
+	}
+	if _, _, err := applyHostKeys(other, "", nil, []string{key}); code(err) != codes.PermissionDenied {
+		t.Fatalf("applyHostKeys non-admin on shared: code = %v, want PermissionDenied", code(err))
+	}
+	if _, _, err := applyHostKeys(owner, "user-dana", nil, []string{key}); err != nil {
+		t.Fatalf("applyHostKeys owner: %v", err)
+	}
+}
+
+func TestSaveTargetHostKeysAdminPinsSharedTarget(t *testing.T) {
+	s := newServer(t)
+	ctx := context.Background()
+	owner := &vaultv1.ActorContext{UserId: "user-dana", PrincipalKind: vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN}
+	key, _ := genHostKey(t)
+	created, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: hostKeyAdmin, Target: &vaultv1.Target{
+		Name: "db01", Hostname: "db01.example.org", ConnectionId: "conn-ssh-default",
+	}})
+	if err != nil {
+		t.Fatalf("create shared: %v", err)
+	}
+	id := created.GetTarget().GetId()
+	if created.GetTarget().GetOwnerUserId() != "" {
+		t.Fatalf("an admin's target must be shared, owner = %q", created.GetTarget().GetOwnerUserId())
+	}
+	if _, err := s.SaveTarget(ctx, &vaultv1.SaveTargetRequest{Actor: hostKeyAdmin, Target: &vaultv1.Target{
+		Id: id, Name: "db01", Hostname: "db01.example.org", ConnectionId: "conn-ssh-default", SshHostKeys: []string{key},
+	}}); err != nil {
+		t.Fatalf("admin pin on shared: %v", err)
 	}
 	if got := listedTarget(t, s, owner, id).GetSshHostKeys(); len(got) != 1 || got[0] != key {
-		t.Fatalf("pins after refused edit = %q", got)
+		t.Fatalf("pins after admin pin = %q", got)
 	}
 }
 

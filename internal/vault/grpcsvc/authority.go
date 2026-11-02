@@ -21,8 +21,11 @@ const (
 	ReasonNotSiteAdmin   = "NOT_SITE_ADMIN"
 	ReasonNotFolderOwner = "NOT_FOLDER_OWNER"
 	// ReasonHostKeysPersonOnly: no token — not even an admin's — may pin or
-	// unpin a target's SSH host keys; only a human in the admin app can.
+	// unpin a target's SSH host keys; only a person in the web app can.
 	ReasonHostKeysPersonOnly = "HOST_KEYS_PERSON_ONLY"
+	// ReasonHostKeysNotOwner: a person who is neither the personal target's
+	// owner nor a site admin asked to change its SSH host keys.
+	ReasonHostKeysNotOwner = "HOST_KEYS_NOT_OWNER"
 	// ReasonTopLevelFoldersRestricted: someone other than a site admin asked
 	// for a top-level folder while "Restrict top-level folders to admins" is on.
 	ReasonTopLevelFoldersRestricted = "TOP_LEVEL_FOLDERS_RESTRICTED"
