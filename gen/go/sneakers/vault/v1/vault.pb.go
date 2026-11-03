@@ -370,6 +370,10 @@ const (
 	// so the connector never sent the credential. The detail names why.
 	// Recorded as a failed check.
 	HeartbeatResult_HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE HeartbeatResult = 7
+	// TLS: the target presented a certificate that matches none of its pins
+	// (Target.tls_cert_pins), so the connector never sent the credential. The
+	// detail names the fingerprint it saw. Recorded as a failed check.
+	HeartbeatResult_HEARTBEAT_RESULT_CERTIFICATE_MISMATCH HeartbeatResult = 8
 )
 
 // Enum value maps for HeartbeatResult.
@@ -383,6 +387,7 @@ var (
 		5: "HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED",
 		6: "HEARTBEAT_RESULT_HOST_KEY_MISMATCH",
 		7: "HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE",
+		8: "HEARTBEAT_RESULT_CERTIFICATE_MISMATCH",
 	}
 	HeartbeatResult_value = map[string]int32{
 		"HEARTBEAT_RESULT_UNSPECIFIED":           0,
@@ -393,6 +398,7 @@ var (
 		"HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED":   5,
 		"HEARTBEAT_RESULT_HOST_KEY_MISMATCH":     6,
 		"HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE": 7,
+		"HEARTBEAT_RESULT_CERTIFICATE_MISMATCH":  8,
 	}
 )
 
@@ -11745,7 +11751,15 @@ type Target struct {
 	// exactly one marked default. A save with this list empty and connection_id
 	// set is normalized into a one-item list on write; a target saved before
 	// this field existed is read back the same way, so no data is lost.
-	Connections   []*TargetConnection `protobuf:"bytes,12,rep,name=connections,proto3" json:"connections,omitempty"`
+	Connections []*TargetConnection `protobuf:"bytes,12,rep,name=connections,proto3" json:"connections,omitempty"`
+	// SHA-256 fingerprints of the TLS certificates the connector accepts for
+	// this target (LDAPS and other TLS adapters), each 64 lowercase hex digits.
+	// Public, not secret. Set by a person: a site admin, or a personal target's
+	// owner, never a token. A save takes 64 hex digits with an optional
+	// "sha256:" prefix and colons, and stores the bare lowercase form; repeats
+	// are dropped, at most 16. A save replaces the whole list; empty means no
+	// pin, and the connector verifies against the system roots alone.
+	TlsCertPins   []string `protobuf:"bytes,13,rep,name=tls_cert_pins,json=tlsCertPins,proto3" json:"tls_cert_pins,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11860,6 +11874,13 @@ func (x *Target) GetSshHostKeys() []string {
 func (x *Target) GetConnections() []*TargetConnection {
 	if x != nil {
 		return x.Connections
+	}
+	return nil
+}
+
+func (x *Target) GetTlsCertPins() []string {
+	if x != nil {
+		return x.TlsCertPins
 	}
 	return nil
 }
@@ -12910,7 +12931,11 @@ type HeartbeatTarget struct {
 	Hostname string                 `protobuf:"bytes,4,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	// The target's SSH host-key pins (Target.ssh_host_keys, authorized_keys
 	// form). Empty means not pinned: the connector must not connect over SSH.
-	SshHostKeys   []string `protobuf:"bytes,5,rep,name=ssh_host_keys,json=sshHostKeys,proto3" json:"ssh_host_keys,omitempty"`
+	SshHostKeys []string `protobuf:"bytes,5,rep,name=ssh_host_keys,json=sshHostKeys,proto3" json:"ssh_host_keys,omitempty"`
+	// The target's TLS certificate pins (Target.tls_cert_pins, SHA-256, 64
+	// lowercase hex digits). Empty means no pin: verify against the system
+	// roots alone.
+	TlsCertPins   []string `protobuf:"bytes,6,rep,name=tls_cert_pins,json=tlsCertPins,proto3" json:"tls_cert_pins,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -12976,6 +13001,13 @@ func (x *HeartbeatTarget) GetHostname() string {
 func (x *HeartbeatTarget) GetSshHostKeys() []string {
 	if x != nil {
 		return x.SshHostKeys
+	}
+	return nil
+}
+
+func (x *HeartbeatTarget) GetTlsCertPins() []string {
+	if x != nil {
+		return x.TlsCertPins
 	}
 	return nil
 }
@@ -18221,7 +18253,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x14privileged_secret_id\x18\t \x01(\tR\x12privilegedSecretId\x12\x1c\n" +
 	"\tbootstrap\x18\n" +
 	" \x01(\bR\tbootstrap\x12\x19\n" +
-	"\bkdc_port\x18\v \x01(\x05R\akdcPort\"\x83\x03\n" +
+	"\bkdc_port\x18\v \x01(\x05R\akdcPort\"\xa7\x03\n" +
 	"\x06Target\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -18235,7 +18267,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\rowner_user_id\x18\n" +
 	" \x01(\tR\vownerUserId\x12\"\n" +
 	"\rssh_host_keys\x18\v \x03(\tR\vsshHostKeys\x12E\n" +
-	"\vconnections\x18\f \x03(\v2#.sneakers.vault.v1.TargetConnectionR\vconnections\"V\n" +
+	"\vconnections\x18\f \x03(\v2#.sneakers.vault.v1.TargetConnectionR\vconnections\x12\"\n" +
+	"\rtls_cert_pins\x18\r \x03(\tR\vtlsCertPins\"V\n" +
 	"\x10TargetConnection\x12#\n" +
 	"\rconnection_id\x18\x01 \x01(\tR\fconnectionId\x12\x1d\n" +
 	"\n" +
@@ -18294,13 +18327,14 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x04host\x18\x02 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x03 \x01(\x05R\x04port\x12\x17\n" +
 	"\ause_tls\x18\x04 \x01(\bR\x06useTls\x12\x19\n" +
-	"\bkdc_port\x18\x05 \x01(\x05R\akdcPort\"\x93\x01\n" +
+	"\bkdc_port\x18\x05 \x01(\x05R\akdcPort\"\xb7\x01\n" +
 	"\x0fHeartbeatTarget\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x16\n" +
 	"\x06domain\x18\x02 \x01(\tR\x06domain\x12\x14\n" +
 	"\x05realm\x18\x03 \x01(\tR\x05realm\x12\x1a\n" +
 	"\bhostname\x18\x04 \x01(\tR\bhostname\x12\"\n" +
-	"\rssh_host_keys\x18\x05 \x03(\tR\vsshHostKeys\"^\n" +
+	"\rssh_host_keys\x18\x05 \x03(\tR\vsshHostKeys\x12\"\n" +
+	"\rtls_cert_pins\x18\x06 \x03(\tR\vtlsCertPins\"^\n" +
 	"\vLogonFormat\x12\x16\n" +
 	"\x06format\x18\x01 \x01(\tR\x06format\x12\x18\n" +
 	"\anetbios\x18\x02 \x01(\tR\anetbios\x12\x1d\n" +
@@ -18665,7 +18699,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x18SUBJECT_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SUBJECT_KIND_GROUP\x10\x01\x12\x15\n" +
 	"\x11SUBJECT_KIND_USER\x10\x02\x12\x19\n" +
-	"\x15SUBJECT_KIND_EVERYONE\x10\x03*\xa7\x02\n" +
+	"\x15SUBJECT_KIND_EVERYONE\x10\x03*\xd2\x02\n" +
 	"\x0fHeartbeatResult\x12 \n" +
 	"\x1cHEARTBEAT_RESULT_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13HEARTBEAT_RESULT_OK\x10\x01\x12\x1b\n" +
@@ -18674,7 +18708,8 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x1cHEARTBEAT_RESULT_UNREACHABLE\x10\x04\x12(\n" +
 	"$HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED\x10\x05\x12&\n" +
 	"\"HEARTBEAT_RESULT_HOST_KEY_MISMATCH\x10\x06\x12*\n" +
-	"&HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE\x10\a*}\n" +
+	"&HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE\x10\a\x12)\n" +
+	"%HEARTBEAT_RESULT_CERTIFICATE_MISMATCH\x10\b*}\n" +
 	"\rRotationPhase\x12\x1e\n" +
 	"\x1aROTATION_PHASE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11ROTATION_PHASE_OK\x10\x01\x12\x19\n" +

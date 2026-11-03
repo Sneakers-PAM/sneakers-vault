@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	log "github.com/Bugs5382/go-log"
 	postgres "github.com/Bugs5382/go-postgres"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"golang.org/x/crypto/ssh"
@@ -141,6 +142,17 @@ func mayPinHostKeys(actor *vaultv1.ActorContext, ownerUserID string) bool {
 	return isHumanUser(actor) && ownerUserID != "" && ownerUserID == actor.GetUserId()
 }
 
+// auditHostKeyChange records a pin change as target.host_keys.change, with the
+// fingerprints added and removed. A nil change records nothing.
+func (s *Server) auditHostKeyChange(ctx context.Context, actor *vaultv1.ActorContext, targetID string, change map[string]string) {
+	if change == nil {
+		return
+	}
+	s.lg(ctx).Info("target SSH host keys changed", log.F("target_id", targetID), log.F("actor_user_id", actor.GetUserId()),
+		log.F("added", change["added"]), log.F("removed", change["removed"]))
+	s.emitAttrs(ctx, actor.GetUserId(), "target.host_keys.change", targetID, false, change)
+}
+
 // ---- persistence ------------------------------------------------------------
 
 // loadTargetHostKeys hydrates each target's pins from target_ssh_host_keys, in
@@ -190,17 +202,18 @@ func persistTargetHostKeys(ctx context.Context, tx postgres.Tx, st *state) error
 	return nil
 }
 
-// targetsWithoutHostKeys returns copies of targets with the pins cleared, for
-// the targets table's JSON documents (the pins are stored separately).
+// targetsWithoutHostKeys returns copies of targets with the SSH host key and
+// TLS certificate pins cleared, for the targets table's JSON documents (the
+// pins are stored separately).
 func targetsWithoutHostKeys(targets []*vaultv1.Target) []*vaultv1.Target {
 	out := make([]*vaultv1.Target, len(targets))
 	for i, t := range targets {
-		if len(t.GetSshHostKeys()) == 0 {
+		if len(t.GetSshHostKeys()) == 0 && len(t.GetTlsCertPins()) == 0 {
 			out[i] = t
 			continue
 		}
 		cp := proto.Clone(t).(*vaultv1.Target)
-		cp.SshHostKeys = nil
+		cp.SshHostKeys, cp.TlsCertPins = nil, nil
 		out[i] = cp
 	}
 	return out

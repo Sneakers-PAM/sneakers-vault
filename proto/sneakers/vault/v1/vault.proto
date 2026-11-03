@@ -78,6 +78,10 @@ enum HeartbeatResult {
   // so the connector never sent the credential. The detail names why.
   // Recorded as a failed check.
   HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE = 7;
+  // TLS: the target presented a certificate that matches none of its pins
+  // (Target.tls_cert_pins), so the connector never sent the credential. The
+  // detail names the fingerprint it saw. Recorded as a failed check.
+  HEARTBEAT_RESULT_CERTIFICATE_MISMATCH = 8;
 }
 
 enum RotationPhase {
@@ -1307,6 +1311,14 @@ message Target {
   // set is normalized into a one-item list on write; a target saved before
   // this field existed is read back the same way, so no data is lost.
   repeated TargetConnection connections = 12;
+  // SHA-256 fingerprints of the TLS certificates the connector accepts for
+  // this target (LDAPS and other TLS adapters), each 64 lowercase hex digits.
+  // Public, not secret. Set by a person: a site admin, or a personal target's
+  // owner, never a token. A save takes 64 hex digits with an optional
+  // "sha256:" prefix and colons, and stores the bare lowercase form; repeats
+  // are dropped, at most 16. A save replaces the whole list; empty means no
+  // pin, and the connector verifies against the system roots alone.
+  repeated string tls_cert_pins = 13;
 }
 
 // One of a target's connections: a reference to a shared Connection (which
@@ -1371,6 +1383,10 @@ message HeartbeatTarget {
   // The target's SSH host-key pins (Target.ssh_host_keys, authorized_keys
   // form). Empty means not pinned: the connector must not connect over SSH.
   repeated string ssh_host_keys = 5;
+  // The target's TLS certificate pins (Target.tls_cert_pins, SHA-256, 64
+  // lowercase hex digits). Empty means no pin: verify against the system
+  // roots alone.
+  repeated string tls_cert_pins = 6;
 }
 
 // The Active Directory type's logon format fields (logonFormat, netbios and

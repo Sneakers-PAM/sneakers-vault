@@ -155,7 +155,7 @@ func (p *pgStore) Load(ctx context.Context) (*state, bool, error) {
 
 func loadState(ctx context.Context, q postgres.Querier) (*state, bool, error) {
 	st := &state{records: map[string]crypto.Record{}}
-	for _, load := range []func(context.Context, postgres.Querier, *state) error{loadCollections, loadTargetHostKeys, loadTargetRulesets, loadSettings, loadRecords, loadBuiltinLedger} {
+	for _, load := range []func(context.Context, postgres.Querier, *state) error{loadCollections, loadTargetHostKeys, loadTargetTLSPins, loadTargetRulesets, loadSettings, loadRecords, loadBuiltinLedger} {
 		if err := load(ctx, q, st); err != nil {
 			return nil, false, err
 		}
@@ -305,7 +305,7 @@ func (p *pgStore) Persist(ctx context.Context, st *state) error {
 }
 
 func persistState(ctx context.Context, tx postgres.Tx, st *state) error {
-	for _, save := range []func(context.Context, postgres.Tx, *state) error{persistCollections, persistTargetHostKeys, persistTargetRulesets, persistSettings, persistRecords, persistBuiltinLedger} {
+	for _, save := range []func(context.Context, postgres.Tx, *state) error{persistCollections, persistTargetHostKeys, persistTargetTLSPins, persistTargetRulesets, persistSettings, persistRecords, persistBuiltinLedger} {
 		if err := save(ctx, tx, st); err != nil {
 			return err
 		}
