@@ -56,7 +56,7 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 | Secrets | `ListSecretsInFolder`, `ListSecretsByTarget`, `ReorderSecrets`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `ChangeSecretType`, `PreviewSecretTypeChange`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
 | Break-glass browse | `OpenBreakGlassSession`, `GetBreakGlassSession`, `ListBreakGlassItems`, `CloseBreakGlassSession`, `ListBreakGlassSessions` |
 | Dashboard | `GetSecretStats`, `GetTopAccessedSecrets`, `ListSecretsByStatus`, `FindSecretsByPublicKey` |
-| Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `GetSecretForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `ImportExtensionForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
+| Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `GetSecretForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `ImportExtensionForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal`, `ReplaceCertificateForPrincipal` |
 | Secret uses and approvals | `PrepareSecretUse`, `GetSecretUse`, `ListPendingSecretUses`, `ListSecretUsesToDecide`, `DecideSecretUse`, `ConfirmSecretUse`, `RedeemSecretUse`, `RedeemSecretShare`, `RevokeSecretShare`, `CreateUseGrant`, `ListUseGrants`, `RevokeUseGrant`, `SetSecretTokenApproval` |
 | Certificates | `ImportCertificate`, `ExportCertificate`, `ReplaceCertificate` |
 | Connections and targets | `ListConnections`, `SaveConnection`, `DeleteConnection`, `ListTargets`, `SaveTarget`, `DeleteTarget` |
@@ -92,6 +92,16 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   once, at creation, by `CreateSecret`/`CreateSecretForPrincipal`/`GenerateSecretForPrincipal`;
   empty on a secret created before this field existed, so it stays unreadable under an own-reveal
   grant until explicitly reassigned (not yet built).
+- **Replace a certificate as a machine principal:** `ReplaceCertificateForPrincipal` renews a
+  certificate secret in place for a personal token or a service account, and refuses a person. It
+  needs Author on the secret's folder chain and on the secret's own ruleset, as the other
+  `*ForPrincipal` edits do. The secret keeps its id, name, folder, target and ruleset; a version is
+  appended and the derived fields (subject, serial, expiry and the rest) are recomputed. A secret that
+  is not a certificate (`InvalidArgument`), a retired one (`FailedPrecondition`), a wrong passphrase, a
+  file that does not parse and a private key that does not match the certificate (all
+  `InvalidArgument`) change nothing. A multi-entry container with no `alias` returns the aliases and
+  changes nothing. The audit event is `certificate.replace`, marked sensitive and carrying the
+  principal kind, principal id and token id; the file and passphrase are never logged.
 - **Rotate/restore for a machine principal:** `RotateSecretForPrincipal` regenerates the type's
   password field under its policy and stores it as a new version, always returning the new value
   once — the caller (e.g. a local-admin-password broker) stores it, then sets it on the host.
