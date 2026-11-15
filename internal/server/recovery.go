@@ -28,7 +28,7 @@ import (
 // log and the trace.
 //
 // It must run outermost in the unary chain so it catches panics from every
-// inner interceptor as well as the handler. Run wires it as the first default
+// inner interceptor as well as the handler. RunWithLogger wires it as the first default
 // interceptor for exactly this reason.
 func RecoveryUnaryInterceptor(lg log.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
