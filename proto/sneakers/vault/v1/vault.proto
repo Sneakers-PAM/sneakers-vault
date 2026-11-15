@@ -2055,7 +2055,24 @@ message SecuritySettings {
   // Service accounts and workloads are refused either way, as they have no
   // user to own the folder.
   bool restrict_top_level_folders = 10;
+  // Internal-only: the gateway refuses every request whose source address is
+  // outside allowed_networks, with a stable error code, and publishes the flag
+  // on its unauthenticated release document so an app can tell before signing
+  // in. Off by default. The vault only stores it; it can't be turned on with an
+  // empty allowed_networks.
+  bool internal_only = 11;
+  // The source networks internal_only lets through, as canonical CIDR prefixes
+  // (a bare address is stored as a /32 or /128). At most 64.
+  repeated string allowed_networks = 12;
+  // Require-managed: the gateway refuses a phone app's sign-in unless the app
+  // reports it was installed and configured by the organisation's MDM. Off by
+  // default.
+  bool require_managed = 13;
 }
+
+// A list of CIDR prefixes, so an update can say "replace the list" (present) or
+// "leave it" (absent).
+message NetworkList { repeated string cidrs = 1; }
 
 message ListPasswordPoliciesRequest {}
 message ListPasswordPoliciesResponse { repeated PasswordPolicy policies = 1; }
@@ -2079,6 +2096,9 @@ message UpdateSecuritySettingsRequest {
   reserved 10;
   reserved "agents_may_create_top_level_folders";
   optional bool restrict_top_level_folders = 11;
+  optional bool internal_only = 12;
+  NetworkList allowed_networks = 13;   // present = replace the list; absent = unchanged
+  optional bool require_managed = 14;
 }
 message UpdateSecuritySettingsResponse { SecuritySettings settings = 1; }
 

@@ -481,6 +481,15 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   default (off for `restrict_top_level_folders`), so no migration is needed. A retired field left in
   a stored row is dropped on load. A change to `restrict_top_level_folders` is audited on
   `settings.update` with `restrict_top_level_folders.from` and `.to`.
+  `internal_only`, `allowed_networks` and `require_managed` follow the same rule (off or empty by
+  default), are site admin only, and are audited with `internal_only.from`/`.to`,
+  `allowed_networks.from`/`.to` (comma-separated) and `require_managed.from`/`.to`. The vault only
+  stores them; the gateway enforces them. An allowed network is a CIDR prefix or a bare address,
+  stored as a canonical prefix with duplicates dropped, at most 64. A network that doesn't parse, or
+  `internal_only` on with no network listed (whichever field the request changes), is
+  `INVALID_ARGUMENT` and changes nothing, so an admin can't lock everyone out by accident.
+  `UpdateSecuritySettingsRequest.allowed_networks` replaces the list when present and leaves it
+  alone when absent.
 - **Import:** `SealForImport` seals up to 500 field sets per call under the active working key and
   returns the envelopes in the form `secret_records` and `secret_versions` store, without storing
   anything. `sneakers-migrate import` uses it to re-wrap imported secrets, so the root key never

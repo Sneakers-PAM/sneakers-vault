@@ -16986,8 +16986,21 @@ type SecuritySettings struct {
 	// Service accounts and workloads are refused either way, as they have no
 	// user to own the folder.
 	RestrictTopLevelFolders bool `protobuf:"varint,10,opt,name=restrict_top_level_folders,json=restrictTopLevelFolders,proto3" json:"restrict_top_level_folders,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Internal-only: the gateway refuses every request whose source address is
+	// outside allowed_networks, with a stable error code, and publishes the flag
+	// on its unauthenticated release document so an app can tell before signing
+	// in. Off by default. The vault only stores it; it can't be turned on with an
+	// empty allowed_networks.
+	InternalOnly bool `protobuf:"varint,11,opt,name=internal_only,json=internalOnly,proto3" json:"internal_only,omitempty"`
+	// The source networks internal_only lets through, as canonical CIDR prefixes
+	// (a bare address is stored as a /32 or /128). At most 64.
+	AllowedNetworks []string `protobuf:"bytes,12,rep,name=allowed_networks,json=allowedNetworks,proto3" json:"allowed_networks,omitempty"`
+	// Require-managed: the gateway refuses a phone app's sign-in unless the app
+	// reports it was installed and configured by the organisation's MDM. Off by
+	// default.
+	RequireManaged bool `protobuf:"varint,13,opt,name=require_managed,json=requireManaged,proto3" json:"require_managed,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SecuritySettings) Reset() {
@@ -17076,6 +17089,73 @@ func (x *SecuritySettings) GetRestrictTopLevelFolders() bool {
 	return false
 }
 
+func (x *SecuritySettings) GetInternalOnly() bool {
+	if x != nil {
+		return x.InternalOnly
+	}
+	return false
+}
+
+func (x *SecuritySettings) GetAllowedNetworks() []string {
+	if x != nil {
+		return x.AllowedNetworks
+	}
+	return nil
+}
+
+func (x *SecuritySettings) GetRequireManaged() bool {
+	if x != nil {
+		return x.RequireManaged
+	}
+	return false
+}
+
+// A list of CIDR prefixes, so an update can say "replace the list" (present) or
+// "leave it" (absent).
+type NetworkList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Cidrs         []string               `protobuf:"bytes,1,rep,name=cidrs,proto3" json:"cidrs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NetworkList) Reset() {
+	*x = NetworkList{}
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[263]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkList) ProtoMessage() {}
+
+func (x *NetworkList) ProtoReflect() protoreflect.Message {
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[263]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkList.ProtoReflect.Descriptor instead.
+func (*NetworkList) Descriptor() ([]byte, []int) {
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{263}
+}
+
+func (x *NetworkList) GetCidrs() []string {
+	if x != nil {
+		return x.Cidrs
+	}
+	return nil
+}
+
 type ListPasswordPoliciesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -17084,7 +17164,7 @@ type ListPasswordPoliciesRequest struct {
 
 func (x *ListPasswordPoliciesRequest) Reset() {
 	*x = ListPasswordPoliciesRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[263]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[264]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17096,7 +17176,7 @@ func (x *ListPasswordPoliciesRequest) String() string {
 func (*ListPasswordPoliciesRequest) ProtoMessage() {}
 
 func (x *ListPasswordPoliciesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[263]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[264]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17109,7 +17189,7 @@ func (x *ListPasswordPoliciesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPasswordPoliciesRequest.ProtoReflect.Descriptor instead.
 func (*ListPasswordPoliciesRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{263}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{264}
 }
 
 type ListPasswordPoliciesResponse struct {
@@ -17121,7 +17201,7 @@ type ListPasswordPoliciesResponse struct {
 
 func (x *ListPasswordPoliciesResponse) Reset() {
 	*x = ListPasswordPoliciesResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[264]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[265]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17133,7 +17213,7 @@ func (x *ListPasswordPoliciesResponse) String() string {
 func (*ListPasswordPoliciesResponse) ProtoMessage() {}
 
 func (x *ListPasswordPoliciesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[264]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[265]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17146,7 +17226,7 @@ func (x *ListPasswordPoliciesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPasswordPoliciesResponse.ProtoReflect.Descriptor instead.
 func (*ListPasswordPoliciesResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{264}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{265}
 }
 
 func (x *ListPasswordPoliciesResponse) GetPolicies() []*PasswordPolicy {
@@ -17166,7 +17246,7 @@ type SavePasswordPolicyRequest struct {
 
 func (x *SavePasswordPolicyRequest) Reset() {
 	*x = SavePasswordPolicyRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[265]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[266]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17178,7 +17258,7 @@ func (x *SavePasswordPolicyRequest) String() string {
 func (*SavePasswordPolicyRequest) ProtoMessage() {}
 
 func (x *SavePasswordPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[265]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[266]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17191,7 +17271,7 @@ func (x *SavePasswordPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SavePasswordPolicyRequest.ProtoReflect.Descriptor instead.
 func (*SavePasswordPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{265}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{266}
 }
 
 func (x *SavePasswordPolicyRequest) GetActor() *ActorContext {
@@ -17217,7 +17297,7 @@ type SavePasswordPolicyResponse struct {
 
 func (x *SavePasswordPolicyResponse) Reset() {
 	*x = SavePasswordPolicyResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[266]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[267]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17229,7 +17309,7 @@ func (x *SavePasswordPolicyResponse) String() string {
 func (*SavePasswordPolicyResponse) ProtoMessage() {}
 
 func (x *SavePasswordPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[266]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[267]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17242,7 +17322,7 @@ func (x *SavePasswordPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SavePasswordPolicyResponse.ProtoReflect.Descriptor instead.
 func (*SavePasswordPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{266}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{267}
 }
 
 func (x *SavePasswordPolicyResponse) GetPolicy() *PasswordPolicy {
@@ -17262,7 +17342,7 @@ type DeletePasswordPolicyRequest struct {
 
 func (x *DeletePasswordPolicyRequest) Reset() {
 	*x = DeletePasswordPolicyRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[267]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[268]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17274,7 +17354,7 @@ func (x *DeletePasswordPolicyRequest) String() string {
 func (*DeletePasswordPolicyRequest) ProtoMessage() {}
 
 func (x *DeletePasswordPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[267]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[268]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17287,7 +17367,7 @@ func (x *DeletePasswordPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePasswordPolicyRequest.ProtoReflect.Descriptor instead.
 func (*DeletePasswordPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{267}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{268}
 }
 
 func (x *DeletePasswordPolicyRequest) GetActor() *ActorContext {
@@ -17313,7 +17393,7 @@ type DeletePasswordPolicyResponse struct {
 
 func (x *DeletePasswordPolicyResponse) Reset() {
 	*x = DeletePasswordPolicyResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[268]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[269]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17325,7 +17405,7 @@ func (x *DeletePasswordPolicyResponse) String() string {
 func (*DeletePasswordPolicyResponse) ProtoMessage() {}
 
 func (x *DeletePasswordPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[268]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[269]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17338,7 +17418,7 @@ func (x *DeletePasswordPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePasswordPolicyResponse.ProtoReflect.Descriptor instead.
 func (*DeletePasswordPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{268}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{269}
 }
 
 func (x *DeletePasswordPolicyResponse) GetRemoved() bool {
@@ -17356,7 +17436,7 @@ type GetSecuritySettingsRequest struct {
 
 func (x *GetSecuritySettingsRequest) Reset() {
 	*x = GetSecuritySettingsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[269]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[270]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17368,7 +17448,7 @@ func (x *GetSecuritySettingsRequest) String() string {
 func (*GetSecuritySettingsRequest) ProtoMessage() {}
 
 func (x *GetSecuritySettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[269]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[270]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17381,7 +17461,7 @@ func (x *GetSecuritySettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecuritySettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetSecuritySettingsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{269}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{270}
 }
 
 type GetSecuritySettingsResponse struct {
@@ -17393,7 +17473,7 @@ type GetSecuritySettingsResponse struct {
 
 func (x *GetSecuritySettingsResponse) Reset() {
 	*x = GetSecuritySettingsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[270]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[271]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17405,7 +17485,7 @@ func (x *GetSecuritySettingsResponse) String() string {
 func (*GetSecuritySettingsResponse) ProtoMessage() {}
 
 func (x *GetSecuritySettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[270]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[271]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17418,7 +17498,7 @@ func (x *GetSecuritySettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecuritySettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetSecuritySettingsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{270}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{271}
 }
 
 func (x *GetSecuritySettingsResponse) GetSettings() *SecuritySettings {
@@ -17440,13 +17520,16 @@ type UpdateSecuritySettingsRequest struct {
 	KekRotationDays                *int32                 `protobuf:"varint,8,opt,name=kek_rotation_days,json=kekRotationDays,proto3,oneof" json:"kek_rotation_days,omitempty"` // 0 = auto-rotation off (distinct from unset = unchanged)
 	RequireMfaForReveal            *bool                  `protobuf:"varint,9,opt,name=require_mfa_for_reveal,json=requireMfaForReveal,proto3,oneof" json:"require_mfa_for_reveal,omitempty"`
 	RestrictTopLevelFolders        *bool                  `protobuf:"varint,11,opt,name=restrict_top_level_folders,json=restrictTopLevelFolders,proto3,oneof" json:"restrict_top_level_folders,omitempty"`
+	InternalOnly                   *bool                  `protobuf:"varint,12,opt,name=internal_only,json=internalOnly,proto3,oneof" json:"internal_only,omitempty"`
+	AllowedNetworks                *NetworkList           `protobuf:"bytes,13,opt,name=allowed_networks,json=allowedNetworks,proto3" json:"allowed_networks,omitempty"` // present = replace the list; absent = unchanged
+	RequireManaged                 *bool                  `protobuf:"varint,14,opt,name=require_managed,json=requireManaged,proto3,oneof" json:"require_managed,omitempty"`
 	unknownFields                  protoimpl.UnknownFields
 	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *UpdateSecuritySettingsRequest) Reset() {
 	*x = UpdateSecuritySettingsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[271]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[272]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17458,7 +17541,7 @@ func (x *UpdateSecuritySettingsRequest) String() string {
 func (*UpdateSecuritySettingsRequest) ProtoMessage() {}
 
 func (x *UpdateSecuritySettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[271]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[272]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17471,7 +17554,7 @@ func (x *UpdateSecuritySettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSecuritySettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSecuritySettingsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{271}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{272}
 }
 
 func (x *UpdateSecuritySettingsRequest) GetActor() *ActorContext {
@@ -17537,6 +17620,27 @@ func (x *UpdateSecuritySettingsRequest) GetRestrictTopLevelFolders() bool {
 	return false
 }
 
+func (x *UpdateSecuritySettingsRequest) GetInternalOnly() bool {
+	if x != nil && x.InternalOnly != nil {
+		return *x.InternalOnly
+	}
+	return false
+}
+
+func (x *UpdateSecuritySettingsRequest) GetAllowedNetworks() *NetworkList {
+	if x != nil {
+		return x.AllowedNetworks
+	}
+	return nil
+}
+
+func (x *UpdateSecuritySettingsRequest) GetRequireManaged() bool {
+	if x != nil && x.RequireManaged != nil {
+		return *x.RequireManaged
+	}
+	return false
+}
+
 type UpdateSecuritySettingsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Settings      *SecuritySettings      `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
@@ -17546,7 +17650,7 @@ type UpdateSecuritySettingsResponse struct {
 
 func (x *UpdateSecuritySettingsResponse) Reset() {
 	*x = UpdateSecuritySettingsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[272]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[273]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17558,7 +17662,7 @@ func (x *UpdateSecuritySettingsResponse) String() string {
 func (*UpdateSecuritySettingsResponse) ProtoMessage() {}
 
 func (x *UpdateSecuritySettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[272]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[273]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17571,7 +17675,7 @@ func (x *UpdateSecuritySettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSecuritySettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSecuritySettingsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{272}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{273}
 }
 
 func (x *UpdateSecuritySettingsResponse) GetSettings() *SecuritySettings {
@@ -17592,7 +17696,7 @@ type SeedBuiltinsRequest struct {
 
 func (x *SeedBuiltinsRequest) Reset() {
 	*x = SeedBuiltinsRequest{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[273]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[274]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17604,7 +17708,7 @@ func (x *SeedBuiltinsRequest) String() string {
 func (*SeedBuiltinsRequest) ProtoMessage() {}
 
 func (x *SeedBuiltinsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[273]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[274]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17617,7 +17721,7 @@ func (x *SeedBuiltinsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeedBuiltinsRequest.ProtoReflect.Descriptor instead.
 func (*SeedBuiltinsRequest) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{273}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{274}
 }
 
 func (x *SeedBuiltinsRequest) GetActor() *ActorContext {
@@ -17640,7 +17744,7 @@ type SeedBuiltinsResponse struct {
 
 func (x *SeedBuiltinsResponse) Reset() {
 	*x = SeedBuiltinsResponse{}
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[274]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[275]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17652,7 +17756,7 @@ func (x *SeedBuiltinsResponse) String() string {
 func (*SeedBuiltinsResponse) ProtoMessage() {}
 
 func (x *SeedBuiltinsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[274]
+	mi := &file_sneakers_vault_v1_vault_proto_msgTypes[275]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17665,7 +17769,7 @@ func (x *SeedBuiltinsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeedBuiltinsResponse.ProtoReflect.Descriptor instead.
 func (*SeedBuiltinsResponse) Descriptor() ([]byte, []int) {
-	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{274}
+	return file_sneakers_vault_v1_vault_proto_rawDescGZIP(), []int{275}
 }
 
 func (x *SeedBuiltinsResponse) GetTypes() int32 {
@@ -18868,7 +18972,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x0eby_type_fields\x18\x0e \x01(\x05R\fbyTypeFields\x12\x1c\n" +
 	"\tdeletable\x18\x0f \x01(\bR\tdeletableB\r\n" +
 	"\v_max_lengthB\x10\n" +
-	"\x0e_rotation_days\"\x90\x04\n" +
+	"\x0e_rotation_days\"\x89\x05\n" +
 	"\x10SecuritySettings\x12;\n" +
 	"\x1adefault_password_policy_id\x18\x01 \x01(\tR\x17defaultPasswordPolicyId\x12J\n" +
 	"\"require_mfa_for_sensitive_checkout\x18\x03 \x01(\bR\x1erequireMfaForSensitiveCheckout\x125\n" +
@@ -18878,8 +18982,13 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x11kek_rotation_days\x18\a \x01(\x05R\x0fkekRotationDays\x123\n" +
 	"\x16require_mfa_for_reveal\x18\b \x01(\bR\x13requireMfaForReveal\x12;\n" +
 	"\x1arestrict_top_level_folders\x18\n" +
-	" \x01(\bR\x17restrictTopLevelFoldersJ\x04\b\t\x10\n" +
-	"R#agents_may_create_top_level_folders\"\x1d\n" +
+	" \x01(\bR\x17restrictTopLevelFolders\x12#\n" +
+	"\rinternal_only\x18\v \x01(\bR\finternalOnly\x12)\n" +
+	"\x10allowed_networks\x18\f \x03(\tR\x0fallowedNetworks\x12'\n" +
+	"\x0frequire_managed\x18\r \x01(\bR\x0erequireManagedJ\x04\b\t\x10\n" +
+	"R#agents_may_create_top_level_folders\"#\n" +
+	"\vNetworkList\x12\x14\n" +
+	"\x05cidrs\x18\x01 \x03(\tR\x05cidrs\"\x1d\n" +
 	"\x1bListPasswordPoliciesRequest\"]\n" +
 	"\x1cListPasswordPoliciesResponse\x12=\n" +
 	"\bpolicies\x18\x01 \x03(\v2!.sneakers.vault.v1.PasswordPolicyR\bpolicies\"\x8d\x01\n" +
@@ -18895,7 +19004,7 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\aremoved\x18\x01 \x01(\bR\aremoved\"\x1c\n" +
 	"\x1aGetSecuritySettingsRequest\"^\n" +
 	"\x1bGetSecuritySettingsResponse\x12?\n" +
-	"\bsettings\x18\x01 \x01(\v2#.sneakers.vault.v1.SecuritySettingsR\bsettings\"\xe9\x06\n" +
+	"\bsettings\x18\x01 \x01(\v2#.sneakers.vault.v1.SecuritySettingsR\bsettings\"\xb2\b\n" +
 	"\x1dUpdateSecuritySettingsRequest\x125\n" +
 	"\x05actor\x18\x01 \x01(\v2\x1f.sneakers.vault.v1.ActorContextR\x05actor\x12@\n" +
 	"\x1adefault_password_policy_id\x18\x02 \x01(\tH\x00R\x17defaultPasswordPolicyId\x88\x01\x01\x12O\n" +
@@ -18905,7 +19014,10 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x13session_ttl_seconds\x18\a \x01(\x05H\x04R\x11sessionTtlSeconds\x88\x01\x01\x12/\n" +
 	"\x11kek_rotation_days\x18\b \x01(\x05H\x05R\x0fkekRotationDays\x88\x01\x01\x128\n" +
 	"\x16require_mfa_for_reveal\x18\t \x01(\bH\x06R\x13requireMfaForReveal\x88\x01\x01\x12@\n" +
-	"\x1arestrict_top_level_folders\x18\v \x01(\bH\aR\x17restrictTopLevelFolders\x88\x01\x01B\x1d\n" +
+	"\x1arestrict_top_level_folders\x18\v \x01(\bH\aR\x17restrictTopLevelFolders\x88\x01\x01\x12(\n" +
+	"\rinternal_only\x18\f \x01(\bH\bR\finternalOnly\x88\x01\x01\x12I\n" +
+	"\x10allowed_networks\x18\r \x01(\v2\x1e.sneakers.vault.v1.NetworkListR\x0fallowedNetworks\x12,\n" +
+	"\x0frequire_managed\x18\x0e \x01(\bH\tR\x0erequireManaged\x88\x01\x01B\x1d\n" +
 	"\x1b_default_password_policy_idB%\n" +
 	"#_require_mfa_for_sensitive_checkoutB\x1a\n" +
 	"\x18_allow_api_for_sensitiveB!\n" +
@@ -18913,7 +19025,9 @@ const file_sneakers_vault_v1_vault_proto_rawDesc = "" +
 	"\x14_session_ttl_secondsB\x14\n" +
 	"\x12_kek_rotation_daysB\x19\n" +
 	"\x17_require_mfa_for_revealB\x1d\n" +
-	"\x1b_restrict_top_level_foldersJ\x04\b\n" +
+	"\x1b_restrict_top_level_foldersB\x10\n" +
+	"\x0e_internal_onlyB\x12\n" +
+	"\x10_require_managedJ\x04\b\n" +
 	"\x10\vR#agents_may_create_top_level_folders\"a\n" +
 	"\x1eUpdateSecuritySettingsResponse\x12?\n" +
 	"\bsettings\x18\x01 \x01(\v2#.sneakers.vault.v1.SecuritySettingsR\bsettings\"L\n" +
@@ -19146,7 +19260,7 @@ func file_sneakers_vault_v1_vault_proto_rawDescGZIP() []byte {
 }
 
 var file_sneakers_vault_v1_vault_proto_enumTypes = make([]protoimpl.EnumInfo, 14)
-var file_sneakers_vault_v1_vault_proto_msgTypes = make([]protoimpl.MessageInfo, 290)
+var file_sneakers_vault_v1_vault_proto_msgTypes = make([]protoimpl.MessageInfo, 291)
 var file_sneakers_vault_v1_vault_proto_goTypes = []any{
 	(FieldKind)(0),                                   // 0: sneakers.vault.v1.FieldKind
 	(PolicyEnforcement)(0),                           // 1: sneakers.vault.v1.PolicyEnforcement
@@ -19425,33 +19539,34 @@ var file_sneakers_vault_v1_vault_proto_goTypes = []any{
 	(*ListConnectorsResponse)(nil),                   // 274: sneakers.vault.v1.ListConnectorsResponse
 	(*PasswordPolicy)(nil),                           // 275: sneakers.vault.v1.PasswordPolicy
 	(*SecuritySettings)(nil),                         // 276: sneakers.vault.v1.SecuritySettings
-	(*ListPasswordPoliciesRequest)(nil),              // 277: sneakers.vault.v1.ListPasswordPoliciesRequest
-	(*ListPasswordPoliciesResponse)(nil),             // 278: sneakers.vault.v1.ListPasswordPoliciesResponse
-	(*SavePasswordPolicyRequest)(nil),                // 279: sneakers.vault.v1.SavePasswordPolicyRequest
-	(*SavePasswordPolicyResponse)(nil),               // 280: sneakers.vault.v1.SavePasswordPolicyResponse
-	(*DeletePasswordPolicyRequest)(nil),              // 281: sneakers.vault.v1.DeletePasswordPolicyRequest
-	(*DeletePasswordPolicyResponse)(nil),             // 282: sneakers.vault.v1.DeletePasswordPolicyResponse
-	(*GetSecuritySettingsRequest)(nil),               // 283: sneakers.vault.v1.GetSecuritySettingsRequest
-	(*GetSecuritySettingsResponse)(nil),              // 284: sneakers.vault.v1.GetSecuritySettingsResponse
-	(*UpdateSecuritySettingsRequest)(nil),            // 285: sneakers.vault.v1.UpdateSecuritySettingsRequest
-	(*UpdateSecuritySettingsResponse)(nil),           // 286: sneakers.vault.v1.UpdateSecuritySettingsResponse
-	(*SeedBuiltinsRequest)(nil),                      // 287: sneakers.vault.v1.SeedBuiltinsRequest
-	(*SeedBuiltinsResponse)(nil),                     // 288: sneakers.vault.v1.SeedBuiltinsResponse
-	nil,                                              // 289: sneakers.vault.v1.RaciRule.GrantsEntry
-	nil,                                              // 290: sneakers.vault.v1.CreateSecretRequest.FieldsEntry
-	nil,                                              // 291: sneakers.vault.v1.UpdateSecretRequest.FieldsEntry
-	nil,                                              // 292: sneakers.vault.v1.GetSecretFieldsResponse.FieldsEntry
-	nil,                                              // 293: sneakers.vault.v1.CreateSecretForPrincipalRequest.FieldsEntry
-	nil,                                              // 294: sneakers.vault.v1.GenerateSecretForPrincipalRequest.FieldsEntry
-	nil,                                              // 295: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldMappingEntry
-	nil,                                              // 296: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldsEntry
-	nil,                                              // 297: sneakers.vault.v1.ChangeSecretTypeRequest.FieldMappingEntry
-	nil,                                              // 298: sneakers.vault.v1.ChangeSecretTypeRequest.FieldsEntry
-	nil,                                              // 299: sneakers.vault.v1.PreviewSecretTypeChangeRequest.FieldMappingEntry
-	nil,                                              // 300: sneakers.vault.v1.PreviewSecretTypeChangeRequest.FieldsEntry
-	nil,                                              // 301: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.FieldsEntry
-	nil,                                              // 302: sneakers.vault.v1.SealForImportItem.FieldsEntry
-	nil,                                              // 303: sneakers.vault.v1.BreakGlassSecretResponse.FieldsEntry
+	(*NetworkList)(nil),                              // 277: sneakers.vault.v1.NetworkList
+	(*ListPasswordPoliciesRequest)(nil),              // 278: sneakers.vault.v1.ListPasswordPoliciesRequest
+	(*ListPasswordPoliciesResponse)(nil),             // 279: sneakers.vault.v1.ListPasswordPoliciesResponse
+	(*SavePasswordPolicyRequest)(nil),                // 280: sneakers.vault.v1.SavePasswordPolicyRequest
+	(*SavePasswordPolicyResponse)(nil),               // 281: sneakers.vault.v1.SavePasswordPolicyResponse
+	(*DeletePasswordPolicyRequest)(nil),              // 282: sneakers.vault.v1.DeletePasswordPolicyRequest
+	(*DeletePasswordPolicyResponse)(nil),             // 283: sneakers.vault.v1.DeletePasswordPolicyResponse
+	(*GetSecuritySettingsRequest)(nil),               // 284: sneakers.vault.v1.GetSecuritySettingsRequest
+	(*GetSecuritySettingsResponse)(nil),              // 285: sneakers.vault.v1.GetSecuritySettingsResponse
+	(*UpdateSecuritySettingsRequest)(nil),            // 286: sneakers.vault.v1.UpdateSecuritySettingsRequest
+	(*UpdateSecuritySettingsResponse)(nil),           // 287: sneakers.vault.v1.UpdateSecuritySettingsResponse
+	(*SeedBuiltinsRequest)(nil),                      // 288: sneakers.vault.v1.SeedBuiltinsRequest
+	(*SeedBuiltinsResponse)(nil),                     // 289: sneakers.vault.v1.SeedBuiltinsResponse
+	nil,                                              // 290: sneakers.vault.v1.RaciRule.GrantsEntry
+	nil,                                              // 291: sneakers.vault.v1.CreateSecretRequest.FieldsEntry
+	nil,                                              // 292: sneakers.vault.v1.UpdateSecretRequest.FieldsEntry
+	nil,                                              // 293: sneakers.vault.v1.GetSecretFieldsResponse.FieldsEntry
+	nil,                                              // 294: sneakers.vault.v1.CreateSecretForPrincipalRequest.FieldsEntry
+	nil,                                              // 295: sneakers.vault.v1.GenerateSecretForPrincipalRequest.FieldsEntry
+	nil,                                              // 296: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldMappingEntry
+	nil,                                              // 297: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldsEntry
+	nil,                                              // 298: sneakers.vault.v1.ChangeSecretTypeRequest.FieldMappingEntry
+	nil,                                              // 299: sneakers.vault.v1.ChangeSecretTypeRequest.FieldsEntry
+	nil,                                              // 300: sneakers.vault.v1.PreviewSecretTypeChangeRequest.FieldMappingEntry
+	nil,                                              // 301: sneakers.vault.v1.PreviewSecretTypeChangeRequest.FieldsEntry
+	nil,                                              // 302: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.FieldsEntry
+	nil,                                              // 303: sneakers.vault.v1.SealForImportItem.FieldsEntry
+	nil,                                              // 304: sneakers.vault.v1.BreakGlassSecretResponse.FieldsEntry
 }
 var file_sneakers_vault_v1_vault_proto_depIdxs = []int32{
 	0,   // 0: sneakers.vault.v1.SecretFieldDef.kind:type_name -> sneakers.vault.v1.FieldKind
@@ -19464,7 +19579,7 @@ var file_sneakers_vault_v1_vault_proto_depIdxs = []int32{
 	4,   // 7: sneakers.vault.v1.FolderAccessRule.role:type_name -> sneakers.vault.v1.FolderRole
 	17,  // 8: sneakers.vault.v1.InheritedFolderRule.rule:type_name -> sneakers.vault.v1.FolderAccessRule
 	5,   // 9: sneakers.vault.v1.RaciRule.subject_kind:type_name -> sneakers.vault.v1.SubjectKind
-	289, // 10: sneakers.vault.v1.RaciRule.grants:type_name -> sneakers.vault.v1.RaciRule.GrantsEntry
+	290, // 10: sneakers.vault.v1.RaciRule.grants:type_name -> sneakers.vault.v1.RaciRule.GrantsEntry
 	34,  // 11: sneakers.vault.v1.GetFolderRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	19,  // 12: sneakers.vault.v1.GetFolderRulesetResponse.rules:type_name -> sneakers.vault.v1.RaciRule
 	34,  // 13: sneakers.vault.v1.SetFolderRulesetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
@@ -19523,10 +19638,10 @@ var file_sneakers_vault_v1_vault_proto_depIdxs = []int32{
 	34,  // 66: sneakers.vault.v1.GetSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	32,  // 67: sneakers.vault.v1.GetSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
 	34,  // 68: sneakers.vault.v1.CreateSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	290, // 69: sneakers.vault.v1.CreateSecretRequest.fields:type_name -> sneakers.vault.v1.CreateSecretRequest.FieldsEntry
+	291, // 69: sneakers.vault.v1.CreateSecretRequest.fields:type_name -> sneakers.vault.v1.CreateSecretRequest.FieldsEntry
 	32,  // 70: sneakers.vault.v1.CreateSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
 	34,  // 71: sneakers.vault.v1.UpdateSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	291, // 72: sneakers.vault.v1.UpdateSecretRequest.fields:type_name -> sneakers.vault.v1.UpdateSecretRequest.FieldsEntry
+	292, // 72: sneakers.vault.v1.UpdateSecretRequest.fields:type_name -> sneakers.vault.v1.UpdateSecretRequest.FieldsEntry
 	32,  // 73: sneakers.vault.v1.UpdateSecretResponse.secret:type_name -> sneakers.vault.v1.Secret
 	34,  // 74: sneakers.vault.v1.AttachSecretTargetRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	32,  // 75: sneakers.vault.v1.AttachSecretTargetResponse.secret:type_name -> sneakers.vault.v1.Secret
@@ -19535,7 +19650,7 @@ var file_sneakers_vault_v1_vault_proto_depIdxs = []int32{
 	34,  // 78: sneakers.vault.v1.SetSecretAutomationRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	32,  // 79: sneakers.vault.v1.SetSecretAutomationResponse.secret:type_name -> sneakers.vault.v1.Secret
 	34,  // 80: sneakers.vault.v1.GetSecretFieldsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	292, // 81: sneakers.vault.v1.GetSecretFieldsResponse.fields:type_name -> sneakers.vault.v1.GetSecretFieldsResponse.FieldsEntry
+	293, // 81: sneakers.vault.v1.GetSecretFieldsResponse.fields:type_name -> sneakers.vault.v1.GetSecretFieldsResponse.FieldsEntry
 	34,  // 82: sneakers.vault.v1.RevealSecretFieldRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	34,  // 83: sneakers.vault.v1.RevealSecretFieldForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	34,  // 84: sneakers.vault.v1.ListSecretsForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
@@ -19543,10 +19658,10 @@ var file_sneakers_vault_v1_vault_proto_depIdxs = []int32{
 	34,  // 86: sneakers.vault.v1.GetSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	32,  // 87: sneakers.vault.v1.GetSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
 	34,  // 88: sneakers.vault.v1.CreateSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	293, // 89: sneakers.vault.v1.CreateSecretForPrincipalRequest.fields:type_name -> sneakers.vault.v1.CreateSecretForPrincipalRequest.FieldsEntry
+	294, // 89: sneakers.vault.v1.CreateSecretForPrincipalRequest.fields:type_name -> sneakers.vault.v1.CreateSecretForPrincipalRequest.FieldsEntry
 	32,  // 90: sneakers.vault.v1.CreateSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
 	34,  // 91: sneakers.vault.v1.GenerateSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	294, // 92: sneakers.vault.v1.GenerateSecretForPrincipalRequest.fields:type_name -> sneakers.vault.v1.GenerateSecretForPrincipalRequest.FieldsEntry
+	295, // 92: sneakers.vault.v1.GenerateSecretForPrincipalRequest.fields:type_name -> sneakers.vault.v1.GenerateSecretForPrincipalRequest.FieldsEntry
 	32,  // 93: sneakers.vault.v1.GenerateSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
 	34,  // 94: sneakers.vault.v1.RotateSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	32,  // 95: sneakers.vault.v1.RotateSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
@@ -19556,25 +19671,25 @@ var file_sneakers_vault_v1_vault_proto_depIdxs = []int32{
 	32,  // 99: sneakers.vault.v1.MoveSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
 	16,  // 100: sneakers.vault.v1.MoveSecretForPrincipalResponse.destination:type_name -> sneakers.vault.v1.Folder
 	34,  // 101: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	295, // 102: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.field_mapping:type_name -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldMappingEntry
-	296, // 103: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.fields:type_name -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldsEntry
+	296, // 102: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.field_mapping:type_name -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldMappingEntry
+	297, // 103: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.fields:type_name -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.FieldsEntry
 	11,  // 104: sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest.unmapped_fields:type_name -> sneakers.vault.v1.UnmappedFieldPolicy
 	32,  // 105: sneakers.vault.v1.ChangeSecretTypeForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
 	34,  // 106: sneakers.vault.v1.ChangeSecretTypeRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	297, // 107: sneakers.vault.v1.ChangeSecretTypeRequest.field_mapping:type_name -> sneakers.vault.v1.ChangeSecretTypeRequest.FieldMappingEntry
-	298, // 108: sneakers.vault.v1.ChangeSecretTypeRequest.fields:type_name -> sneakers.vault.v1.ChangeSecretTypeRequest.FieldsEntry
+	298, // 107: sneakers.vault.v1.ChangeSecretTypeRequest.field_mapping:type_name -> sneakers.vault.v1.ChangeSecretTypeRequest.FieldMappingEntry
+	299, // 108: sneakers.vault.v1.ChangeSecretTypeRequest.fields:type_name -> sneakers.vault.v1.ChangeSecretTypeRequest.FieldsEntry
 	11,  // 109: sneakers.vault.v1.ChangeSecretTypeRequest.unmapped_fields:type_name -> sneakers.vault.v1.UnmappedFieldPolicy
 	32,  // 110: sneakers.vault.v1.ChangeSecretTypeResponse.secret:type_name -> sneakers.vault.v1.Secret
 	12,  // 111: sneakers.vault.v1.SecretTypeChangeField.outcome:type_name -> sneakers.vault.v1.SecretTypeChangeFieldOutcome
 	34,  // 112: sneakers.vault.v1.PreviewSecretTypeChangeRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	299, // 113: sneakers.vault.v1.PreviewSecretTypeChangeRequest.field_mapping:type_name -> sneakers.vault.v1.PreviewSecretTypeChangeRequest.FieldMappingEntry
-	300, // 114: sneakers.vault.v1.PreviewSecretTypeChangeRequest.fields:type_name -> sneakers.vault.v1.PreviewSecretTypeChangeRequest.FieldsEntry
+	300, // 113: sneakers.vault.v1.PreviewSecretTypeChangeRequest.field_mapping:type_name -> sneakers.vault.v1.PreviewSecretTypeChangeRequest.FieldMappingEntry
+	301, // 114: sneakers.vault.v1.PreviewSecretTypeChangeRequest.fields:type_name -> sneakers.vault.v1.PreviewSecretTypeChangeRequest.FieldsEntry
 	11,  // 115: sneakers.vault.v1.PreviewSecretTypeChangeRequest.unmapped_fields:type_name -> sneakers.vault.v1.UnmappedFieldPolicy
 	113, // 116: sneakers.vault.v1.PreviewSecretTypeChangeResponse.field_changes:type_name -> sneakers.vault.v1.SecretTypeChangeField
 	34,  // 117: sneakers.vault.v1.RenameSecretForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	32,  // 118: sneakers.vault.v1.RenameSecretForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
 	34,  // 119: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	301, // 120: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.fields:type_name -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.FieldsEntry
+	302, // 120: sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.fields:type_name -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest.FieldsEntry
 	32,  // 121: sneakers.vault.v1.UpdateSecretFieldsForPrincipalResponse.secret:type_name -> sneakers.vault.v1.Secret
 	34,  // 122: sneakers.vault.v1.ListFoldersForPrincipalRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	16,  // 123: sneakers.vault.v1.ListFoldersForPrincipalResponse.folders:type_name -> sneakers.vault.v1.Folder
@@ -19589,7 +19704,7 @@ var file_sneakers_vault_v1_vault_proto_depIdxs = []int32{
 	34,  // 132: sneakers.vault.v1.RotateKekRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	34,  // 133: sneakers.vault.v1.SealForImportRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	133, // 134: sneakers.vault.v1.SealForImportRequest.items:type_name -> sneakers.vault.v1.SealForImportItem
-	302, // 135: sneakers.vault.v1.SealForImportItem.fields:type_name -> sneakers.vault.v1.SealForImportItem.FieldsEntry
+	303, // 135: sneakers.vault.v1.SealForImportItem.fields:type_name -> sneakers.vault.v1.SealForImportItem.FieldsEntry
 	34,  // 136: sneakers.vault.v1.ListSecretVersionsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	135, // 137: sneakers.vault.v1.ListSecretVersionsResponse.versions:type_name -> sneakers.vault.v1.SecretVersion
 	34,  // 138: sneakers.vault.v1.RevealSecretVersionFieldRequest.actor:type_name -> sneakers.vault.v1.ActorContext
@@ -19599,7 +19714,7 @@ var file_sneakers_vault_v1_vault_proto_depIdxs = []int32{
 	9,   // 142: sneakers.vault.v1.SetFolderRevealStepUpRequest.mode:type_name -> sneakers.vault.v1.StepUpMode
 	16,  // 143: sneakers.vault.v1.SetFolderRevealStepUpResponse.folder:type_name -> sneakers.vault.v1.Folder
 	34,  // 144: sneakers.vault.v1.BreakGlassSecretRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	303, // 145: sneakers.vault.v1.BreakGlassSecretResponse.fields:type_name -> sneakers.vault.v1.BreakGlassSecretResponse.FieldsEntry
+	304, // 145: sneakers.vault.v1.BreakGlassSecretResponse.fields:type_name -> sneakers.vault.v1.BreakGlassSecretResponse.FieldsEntry
 	147, // 146: sneakers.vault.v1.BreakGlassSession.reveals:type_name -> sneakers.vault.v1.BreakGlassReveal
 	34,  // 147: sneakers.vault.v1.OpenBreakGlassSessionRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	146, // 148: sneakers.vault.v1.OpenBreakGlassSessionResponse.session:type_name -> sneakers.vault.v1.BreakGlassSession
@@ -19732,253 +19847,254 @@ var file_sneakers_vault_v1_vault_proto_depIdxs = []int32{
 	34,  // 275: sneakers.vault.v1.DeletePasswordPolicyRequest.actor:type_name -> sneakers.vault.v1.ActorContext
 	276, // 276: sneakers.vault.v1.GetSecuritySettingsResponse.settings:type_name -> sneakers.vault.v1.SecuritySettings
 	34,  // 277: sneakers.vault.v1.UpdateSecuritySettingsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	276, // 278: sneakers.vault.v1.UpdateSecuritySettingsResponse.settings:type_name -> sneakers.vault.v1.SecuritySettings
-	34,  // 279: sneakers.vault.v1.SeedBuiltinsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
-	191, // 280: sneakers.vault.v1.VaultService.ListConnections:input_type -> sneakers.vault.v1.ListConnectionsRequest
-	193, // 281: sneakers.vault.v1.VaultService.SaveConnection:input_type -> sneakers.vault.v1.SaveConnectionRequest
-	195, // 282: sneakers.vault.v1.VaultService.DeleteConnection:input_type -> sneakers.vault.v1.DeleteConnectionRequest
-	197, // 283: sneakers.vault.v1.VaultService.ListTargets:input_type -> sneakers.vault.v1.ListTargetsRequest
-	199, // 284: sneakers.vault.v1.VaultService.SaveTarget:input_type -> sneakers.vault.v1.SaveTargetRequest
-	201, // 285: sneakers.vault.v1.VaultService.DeleteTarget:input_type -> sneakers.vault.v1.DeleteTargetRequest
-	203, // 286: sneakers.vault.v1.VaultService.GetTargetRuleset:input_type -> sneakers.vault.v1.GetTargetRulesetRequest
-	205, // 287: sneakers.vault.v1.VaultService.SetTargetRuleset:input_type -> sneakers.vault.v1.SetTargetRulesetRequest
-	207, // 288: sneakers.vault.v1.VaultService.ListSecretsByTarget:input_type -> sneakers.vault.v1.ListSecretsByTargetRequest
-	182, // 289: sneakers.vault.v1.VaultService.ImportCertificate:input_type -> sneakers.vault.v1.ImportCertificateRequest
-	184, // 290: sneakers.vault.v1.VaultService.ExportCertificate:input_type -> sneakers.vault.v1.ExportCertificateRequest
-	186, // 291: sneakers.vault.v1.VaultService.ReplaceCertificate:input_type -> sneakers.vault.v1.ReplaceCertificateRequest
-	35,  // 292: sneakers.vault.v1.VaultService.ListSecretTypes:input_type -> sneakers.vault.v1.ListSecretTypesRequest
-	37,  // 293: sneakers.vault.v1.VaultService.CreateSecretType:input_type -> sneakers.vault.v1.CreateSecretTypeRequest
-	39,  // 294: sneakers.vault.v1.VaultService.UpdateSecretType:input_type -> sneakers.vault.v1.UpdateSecretTypeRequest
-	41,  // 295: sneakers.vault.v1.VaultService.DeleteSecretType:input_type -> sneakers.vault.v1.DeleteSecretTypeRequest
-	43,  // 296: sneakers.vault.v1.VaultService.CloneSecretType:input_type -> sneakers.vault.v1.CloneSecretTypeRequest
-	45,  // 297: sneakers.vault.v1.VaultService.ListAvailableExtensions:input_type -> sneakers.vault.v1.ListAvailableExtensionsRequest
-	47,  // 298: sneakers.vault.v1.VaultService.ImportExtension:input_type -> sneakers.vault.v1.ImportExtensionRequest
-	49,  // 299: sneakers.vault.v1.VaultService.ImportExtensionFromJson:input_type -> sneakers.vault.v1.ImportExtensionFromJsonRequest
-	51,  // 300: sneakers.vault.v1.VaultService.ImportExtensionForPrincipal:input_type -> sneakers.vault.v1.ImportExtensionForPrincipalRequest
-	53,  // 301: sneakers.vault.v1.VaultService.ListFolders:input_type -> sneakers.vault.v1.ListFoldersRequest
-	55,  // 302: sneakers.vault.v1.VaultService.CreateFolder:input_type -> sneakers.vault.v1.CreateFolderRequest
-	57,  // 303: sneakers.vault.v1.VaultService.RenameFolder:input_type -> sneakers.vault.v1.RenameFolderRequest
-	59,  // 304: sneakers.vault.v1.VaultService.MoveFolder:input_type -> sneakers.vault.v1.MoveFolderRequest
-	61,  // 305: sneakers.vault.v1.VaultService.DeleteFolder:input_type -> sneakers.vault.v1.DeleteFolderRequest
-	63,  // 306: sneakers.vault.v1.VaultService.ReorderFolders:input_type -> sneakers.vault.v1.ReorderFoldersRequest
-	65,  // 307: sneakers.vault.v1.VaultService.ListFolderRules:input_type -> sneakers.vault.v1.ListFolderRulesRequest
-	67,  // 308: sneakers.vault.v1.VaultService.GetInheritedFolderRules:input_type -> sneakers.vault.v1.GetInheritedFolderRulesRequest
-	69,  // 309: sneakers.vault.v1.VaultService.AddFolderRule:input_type -> sneakers.vault.v1.AddFolderRuleRequest
-	71,  // 310: sneakers.vault.v1.VaultService.RemoveFolderRule:input_type -> sneakers.vault.v1.RemoveFolderRuleRequest
-	21,  // 311: sneakers.vault.v1.VaultService.GetFolderRuleset:input_type -> sneakers.vault.v1.GetFolderRulesetRequest
-	23,  // 312: sneakers.vault.v1.VaultService.SetFolderRuleset:input_type -> sneakers.vault.v1.SetFolderRulesetRequest
-	142, // 313: sneakers.vault.v1.VaultService.SetFolderRevealStepUp:input_type -> sneakers.vault.v1.SetFolderRevealStepUpRequest
-	25,  // 314: sneakers.vault.v1.VaultService.GetMyAccess:input_type -> sneakers.vault.v1.GetMyAccessRequest
-	28,  // 315: sneakers.vault.v1.VaultService.SimulateFolder:input_type -> sneakers.vault.v1.SimulateFolderRequest
-	30,  // 316: sneakers.vault.v1.VaultService.SimulateSecret:input_type -> sneakers.vault.v1.SimulateSecretRequest
-	75,  // 317: sneakers.vault.v1.VaultService.ListSecretsInFolder:input_type -> sneakers.vault.v1.ListSecretsInFolderRequest
-	73,  // 318: sneakers.vault.v1.VaultService.ReorderSecrets:input_type -> sneakers.vault.v1.ReorderSecretsRequest
-	77,  // 319: sneakers.vault.v1.VaultService.GetSecret:input_type -> sneakers.vault.v1.GetSecretRequest
-	79,  // 320: sneakers.vault.v1.VaultService.CreateSecret:input_type -> sneakers.vault.v1.CreateSecretRequest
-	81,  // 321: sneakers.vault.v1.VaultService.UpdateSecret:input_type -> sneakers.vault.v1.UpdateSecretRequest
-	83,  // 322: sneakers.vault.v1.VaultService.AttachSecretTarget:input_type -> sneakers.vault.v1.AttachSecretTargetRequest
-	85,  // 323: sneakers.vault.v1.VaultService.DetachSecretTarget:input_type -> sneakers.vault.v1.DetachSecretTargetRequest
-	87,  // 324: sneakers.vault.v1.VaultService.SetSecretAutomation:input_type -> sneakers.vault.v1.SetSecretAutomationRequest
-	89,  // 325: sneakers.vault.v1.VaultService.GetSecretFields:input_type -> sneakers.vault.v1.GetSecretFieldsRequest
-	91,  // 326: sneakers.vault.v1.VaultService.RevealSecretField:input_type -> sneakers.vault.v1.RevealSecretFieldRequest
-	93,  // 327: sneakers.vault.v1.VaultService.RevealSecretFieldForPrincipal:input_type -> sneakers.vault.v1.RevealSecretFieldForPrincipalRequest
-	95,  // 328: sneakers.vault.v1.VaultService.ListSecretsForPrincipal:input_type -> sneakers.vault.v1.ListSecretsForPrincipalRequest
-	97,  // 329: sneakers.vault.v1.VaultService.GetSecretForPrincipal:input_type -> sneakers.vault.v1.GetSecretForPrincipalRequest
-	99,  // 330: sneakers.vault.v1.VaultService.CreateSecretForPrincipal:input_type -> sneakers.vault.v1.CreateSecretForPrincipalRequest
-	101, // 331: sneakers.vault.v1.VaultService.GenerateSecretForPrincipal:input_type -> sneakers.vault.v1.GenerateSecretForPrincipalRequest
-	103, // 332: sneakers.vault.v1.VaultService.RotateSecretForPrincipal:input_type -> sneakers.vault.v1.RotateSecretForPrincipalRequest
-	105, // 333: sneakers.vault.v1.VaultService.RestoreSecretVersionForPrincipal:input_type -> sneakers.vault.v1.RestoreSecretVersionForPrincipalRequest
-	107, // 334: sneakers.vault.v1.VaultService.MoveSecretForPrincipal:input_type -> sneakers.vault.v1.MoveSecretForPrincipalRequest
-	109, // 335: sneakers.vault.v1.VaultService.ChangeSecretTypeForPrincipal:input_type -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest
-	111, // 336: sneakers.vault.v1.VaultService.ChangeSecretType:input_type -> sneakers.vault.v1.ChangeSecretTypeRequest
-	114, // 337: sneakers.vault.v1.VaultService.PreviewSecretTypeChange:input_type -> sneakers.vault.v1.PreviewSecretTypeChangeRequest
-	116, // 338: sneakers.vault.v1.VaultService.RenameSecretForPrincipal:input_type -> sneakers.vault.v1.RenameSecretForPrincipalRequest
-	118, // 339: sneakers.vault.v1.VaultService.UpdateSecretFieldsForPrincipal:input_type -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest
-	120, // 340: sneakers.vault.v1.VaultService.ListFoldersForPrincipal:input_type -> sneakers.vault.v1.ListFoldersForPrincipalRequest
-	122, // 341: sneakers.vault.v1.VaultService.CreateFolderForPrincipal:input_type -> sneakers.vault.v1.CreateFolderForPrincipalRequest
-	124, // 342: sneakers.vault.v1.VaultService.RenameFolderForPrincipal:input_type -> sneakers.vault.v1.RenameFolderForPrincipalRequest
-	126, // 343: sneakers.vault.v1.VaultService.MoveFolderForPrincipal:input_type -> sneakers.vault.v1.MoveFolderForPrincipalRequest
-	136, // 344: sneakers.vault.v1.VaultService.ListSecretVersions:input_type -> sneakers.vault.v1.ListSecretVersionsRequest
-	138, // 345: sneakers.vault.v1.VaultService.RevealSecretVersionField:input_type -> sneakers.vault.v1.RevealSecretVersionFieldRequest
-	140, // 346: sneakers.vault.v1.VaultService.RestoreSecretVersion:input_type -> sneakers.vault.v1.RestoreSecretVersionRequest
-	144, // 347: sneakers.vault.v1.VaultService.BreakGlassSecret:input_type -> sneakers.vault.v1.BreakGlassSecretRequest
-	148, // 348: sneakers.vault.v1.VaultService.OpenBreakGlassSession:input_type -> sneakers.vault.v1.OpenBreakGlassSessionRequest
-	150, // 349: sneakers.vault.v1.VaultService.GetBreakGlassSession:input_type -> sneakers.vault.v1.GetBreakGlassSessionRequest
-	152, // 350: sneakers.vault.v1.VaultService.ListBreakGlassItems:input_type -> sneakers.vault.v1.ListBreakGlassItemsRequest
-	154, // 351: sneakers.vault.v1.VaultService.CloseBreakGlassSession:input_type -> sneakers.vault.v1.CloseBreakGlassSessionRequest
-	156, // 352: sneakers.vault.v1.VaultService.ListBreakGlassSessions:input_type -> sneakers.vault.v1.ListBreakGlassSessionsRequest
-	158, // 353: sneakers.vault.v1.VaultService.CopySecret:input_type -> sneakers.vault.v1.CopySecretRequest
-	160, // 354: sneakers.vault.v1.VaultService.RetireSecret:input_type -> sneakers.vault.v1.RetireSecretRequest
-	162, // 355: sneakers.vault.v1.VaultService.RestoreSecret:input_type -> sneakers.vault.v1.RestoreSecretRequest
-	164, // 356: sneakers.vault.v1.VaultService.DeleteSecret:input_type -> sneakers.vault.v1.DeleteSecretRequest
-	167, // 357: sneakers.vault.v1.VaultService.GetSecretStats:input_type -> sneakers.vault.v1.GetSecretStatsRequest
-	169, // 358: sneakers.vault.v1.VaultService.GetTopAccessedSecrets:input_type -> sneakers.vault.v1.GetTopAccessedSecretsRequest
-	171, // 359: sneakers.vault.v1.VaultService.ListSecretsByStatus:input_type -> sneakers.vault.v1.ListSecretsByStatusRequest
-	173, // 360: sneakers.vault.v1.VaultService.FindSecretsByPublicKey:input_type -> sneakers.vault.v1.FindSecretsByPublicKeyRequest
-	175, // 361: sneakers.vault.v1.VaultService.GetSecretRuleset:input_type -> sneakers.vault.v1.GetSecretRulesetRequest
-	177, // 362: sneakers.vault.v1.VaultService.SetSecretRuleset:input_type -> sneakers.vault.v1.SetSecretRulesetRequest
-	179, // 363: sneakers.vault.v1.VaultService.GetMySecretAccess:input_type -> sneakers.vault.v1.GetMySecretAccessRequest
-	215, // 364: sneakers.vault.v1.VaultService.ClaimDueHeartbeats:input_type -> sneakers.vault.v1.ClaimDueHeartbeatsRequest
-	217, // 365: sneakers.vault.v1.VaultService.RevealForHeartbeat:input_type -> sneakers.vault.v1.RevealForHeartbeatRequest
-	219, // 366: sneakers.vault.v1.VaultService.ReportHeartbeat:input_type -> sneakers.vault.v1.ReportHeartbeatRequest
-	222, // 367: sneakers.vault.v1.VaultService.EnqueueRotation:input_type -> sneakers.vault.v1.EnqueueRotationRequest
-	224, // 368: sneakers.vault.v1.VaultService.ClaimDueRotations:input_type -> sneakers.vault.v1.ClaimDueRotationsRequest
-	226, // 369: sneakers.vault.v1.VaultService.RevealForRotation:input_type -> sneakers.vault.v1.RevealForRotationRequest
-	228, // 370: sneakers.vault.v1.VaultService.ReportRotation:input_type -> sneakers.vault.v1.ReportRotationRequest
-	272, // 371: sneakers.vault.v1.VaultService.ListConnectors:input_type -> sneakers.vault.v1.ListConnectorsRequest
-	277, // 372: sneakers.vault.v1.VaultService.ListPasswordPolicies:input_type -> sneakers.vault.v1.ListPasswordPoliciesRequest
-	279, // 373: sneakers.vault.v1.VaultService.SavePasswordPolicy:input_type -> sneakers.vault.v1.SavePasswordPolicyRequest
-	281, // 374: sneakers.vault.v1.VaultService.DeletePasswordPolicy:input_type -> sneakers.vault.v1.DeletePasswordPolicyRequest
-	283, // 375: sneakers.vault.v1.VaultService.GetSecuritySettings:input_type -> sneakers.vault.v1.GetSecuritySettingsRequest
-	285, // 376: sneakers.vault.v1.VaultService.UpdateSecuritySettings:input_type -> sneakers.vault.v1.UpdateSecuritySettingsRequest
-	287, // 377: sneakers.vault.v1.VaultService.SeedBuiltins:input_type -> sneakers.vault.v1.SeedBuiltinsRequest
-	128, // 378: sneakers.vault.v1.VaultService.GenerateKeyPair:input_type -> sneakers.vault.v1.GenerateKeyPairRequest
-	130, // 379: sneakers.vault.v1.VaultService.RotateKek:input_type -> sneakers.vault.v1.RotateKekRequest
-	132, // 380: sneakers.vault.v1.VaultService.SealForImport:input_type -> sneakers.vault.v1.SealForImportRequest
-	232, // 381: sneakers.vault.v1.VaultService.PrepareSecretUse:input_type -> sneakers.vault.v1.PrepareSecretUseRequest
-	238, // 382: sneakers.vault.v1.VaultService.GetSecretUse:input_type -> sneakers.vault.v1.GetSecretUseRequest
-	240, // 383: sneakers.vault.v1.VaultService.ListPendingSecretUses:input_type -> sneakers.vault.v1.ListPendingSecretUsesRequest
-	242, // 384: sneakers.vault.v1.VaultService.DecideSecretUse:input_type -> sneakers.vault.v1.DecideSecretUseRequest
-	234, // 385: sneakers.vault.v1.VaultService.ConfirmSecretUse:input_type -> sneakers.vault.v1.ConfirmSecretUseRequest
-	236, // 386: sneakers.vault.v1.VaultService.ListSecretUsesToDecide:input_type -> sneakers.vault.v1.ListSecretUsesToDecideRequest
-	244, // 387: sneakers.vault.v1.VaultService.RedeemSecretUse:input_type -> sneakers.vault.v1.RedeemSecretUseRequest
-	246, // 388: sneakers.vault.v1.VaultService.RedeemSecretShare:input_type -> sneakers.vault.v1.RedeemSecretShareRequest
-	248, // 389: sneakers.vault.v1.VaultService.RevokeSecretShare:input_type -> sneakers.vault.v1.RevokeSecretShareRequest
-	266, // 390: sneakers.vault.v1.VaultService.CreateUseGrant:input_type -> sneakers.vault.v1.CreateUseGrantRequest
-	268, // 391: sneakers.vault.v1.VaultService.ListUseGrants:input_type -> sneakers.vault.v1.ListUseGrantsRequest
-	270, // 392: sneakers.vault.v1.VaultService.RevokeUseGrant:input_type -> sneakers.vault.v1.RevokeUseGrantRequest
-	264, // 393: sneakers.vault.v1.VaultService.SetSecretTokenApproval:input_type -> sneakers.vault.v1.SetSecretTokenApprovalRequest
-	254, // 394: sneakers.vault.v1.VaultService.SetSecretTargetForPrincipal:input_type -> sneakers.vault.v1.SetSecretTargetForPrincipalRequest
-	256, // 395: sneakers.vault.v1.VaultService.AttachSecretTargetForPrincipal:input_type -> sneakers.vault.v1.AttachSecretTargetForPrincipalRequest
-	258, // 396: sneakers.vault.v1.VaultService.DetachSecretTargetForPrincipal:input_type -> sneakers.vault.v1.DetachSecretTargetForPrincipalRequest
-	252, // 397: sneakers.vault.v1.VaultService.SetSecretAutomationForPrincipal:input_type -> sneakers.vault.v1.SetSecretAutomationForPrincipalRequest
-	260, // 398: sneakers.vault.v1.VaultService.RequestHeartbeatForPrincipal:input_type -> sneakers.vault.v1.RequestHeartbeatForPrincipalRequest
-	262, // 399: sneakers.vault.v1.VaultService.GetHeartbeatStatusForPrincipal:input_type -> sneakers.vault.v1.GetHeartbeatStatusForPrincipalRequest
-	192, // 400: sneakers.vault.v1.VaultService.ListConnections:output_type -> sneakers.vault.v1.ListConnectionsResponse
-	194, // 401: sneakers.vault.v1.VaultService.SaveConnection:output_type -> sneakers.vault.v1.SaveConnectionResponse
-	196, // 402: sneakers.vault.v1.VaultService.DeleteConnection:output_type -> sneakers.vault.v1.DeleteConnectionResponse
-	198, // 403: sneakers.vault.v1.VaultService.ListTargets:output_type -> sneakers.vault.v1.ListTargetsResponse
-	200, // 404: sneakers.vault.v1.VaultService.SaveTarget:output_type -> sneakers.vault.v1.SaveTargetResponse
-	202, // 405: sneakers.vault.v1.VaultService.DeleteTarget:output_type -> sneakers.vault.v1.DeleteTargetResponse
-	204, // 406: sneakers.vault.v1.VaultService.GetTargetRuleset:output_type -> sneakers.vault.v1.GetTargetRulesetResponse
-	206, // 407: sneakers.vault.v1.VaultService.SetTargetRuleset:output_type -> sneakers.vault.v1.SetTargetRulesetResponse
-	208, // 408: sneakers.vault.v1.VaultService.ListSecretsByTarget:output_type -> sneakers.vault.v1.ListSecretsByTargetResponse
-	183, // 409: sneakers.vault.v1.VaultService.ImportCertificate:output_type -> sneakers.vault.v1.ImportCertificateResponse
-	185, // 410: sneakers.vault.v1.VaultService.ExportCertificate:output_type -> sneakers.vault.v1.ExportCertificateResponse
-	187, // 411: sneakers.vault.v1.VaultService.ReplaceCertificate:output_type -> sneakers.vault.v1.ReplaceCertificateResponse
-	36,  // 412: sneakers.vault.v1.VaultService.ListSecretTypes:output_type -> sneakers.vault.v1.ListSecretTypesResponse
-	38,  // 413: sneakers.vault.v1.VaultService.CreateSecretType:output_type -> sneakers.vault.v1.CreateSecretTypeResponse
-	40,  // 414: sneakers.vault.v1.VaultService.UpdateSecretType:output_type -> sneakers.vault.v1.UpdateSecretTypeResponse
-	42,  // 415: sneakers.vault.v1.VaultService.DeleteSecretType:output_type -> sneakers.vault.v1.DeleteSecretTypeResponse
-	44,  // 416: sneakers.vault.v1.VaultService.CloneSecretType:output_type -> sneakers.vault.v1.CloneSecretTypeResponse
-	46,  // 417: sneakers.vault.v1.VaultService.ListAvailableExtensions:output_type -> sneakers.vault.v1.ListAvailableExtensionsResponse
-	48,  // 418: sneakers.vault.v1.VaultService.ImportExtension:output_type -> sneakers.vault.v1.ImportExtensionResponse
-	50,  // 419: sneakers.vault.v1.VaultService.ImportExtensionFromJson:output_type -> sneakers.vault.v1.ImportExtensionFromJsonResponse
-	52,  // 420: sneakers.vault.v1.VaultService.ImportExtensionForPrincipal:output_type -> sneakers.vault.v1.ImportExtensionForPrincipalResponse
-	54,  // 421: sneakers.vault.v1.VaultService.ListFolders:output_type -> sneakers.vault.v1.ListFoldersResponse
-	56,  // 422: sneakers.vault.v1.VaultService.CreateFolder:output_type -> sneakers.vault.v1.CreateFolderResponse
-	58,  // 423: sneakers.vault.v1.VaultService.RenameFolder:output_type -> sneakers.vault.v1.RenameFolderResponse
-	60,  // 424: sneakers.vault.v1.VaultService.MoveFolder:output_type -> sneakers.vault.v1.MoveFolderResponse
-	62,  // 425: sneakers.vault.v1.VaultService.DeleteFolder:output_type -> sneakers.vault.v1.DeleteFolderResponse
-	64,  // 426: sneakers.vault.v1.VaultService.ReorderFolders:output_type -> sneakers.vault.v1.ReorderFoldersResponse
-	66,  // 427: sneakers.vault.v1.VaultService.ListFolderRules:output_type -> sneakers.vault.v1.ListFolderRulesResponse
-	68,  // 428: sneakers.vault.v1.VaultService.GetInheritedFolderRules:output_type -> sneakers.vault.v1.GetInheritedFolderRulesResponse
-	70,  // 429: sneakers.vault.v1.VaultService.AddFolderRule:output_type -> sneakers.vault.v1.AddFolderRuleResponse
-	72,  // 430: sneakers.vault.v1.VaultService.RemoveFolderRule:output_type -> sneakers.vault.v1.RemoveFolderRuleResponse
-	22,  // 431: sneakers.vault.v1.VaultService.GetFolderRuleset:output_type -> sneakers.vault.v1.GetFolderRulesetResponse
-	24,  // 432: sneakers.vault.v1.VaultService.SetFolderRuleset:output_type -> sneakers.vault.v1.SetFolderRulesetResponse
-	143, // 433: sneakers.vault.v1.VaultService.SetFolderRevealStepUp:output_type -> sneakers.vault.v1.SetFolderRevealStepUpResponse
-	26,  // 434: sneakers.vault.v1.VaultService.GetMyAccess:output_type -> sneakers.vault.v1.GetMyAccessResponse
-	29,  // 435: sneakers.vault.v1.VaultService.SimulateFolder:output_type -> sneakers.vault.v1.SimulateFolderResponse
-	31,  // 436: sneakers.vault.v1.VaultService.SimulateSecret:output_type -> sneakers.vault.v1.SimulateSecretResponse
-	76,  // 437: sneakers.vault.v1.VaultService.ListSecretsInFolder:output_type -> sneakers.vault.v1.ListSecretsInFolderResponse
-	74,  // 438: sneakers.vault.v1.VaultService.ReorderSecrets:output_type -> sneakers.vault.v1.ReorderSecretsResponse
-	78,  // 439: sneakers.vault.v1.VaultService.GetSecret:output_type -> sneakers.vault.v1.GetSecretResponse
-	80,  // 440: sneakers.vault.v1.VaultService.CreateSecret:output_type -> sneakers.vault.v1.CreateSecretResponse
-	82,  // 441: sneakers.vault.v1.VaultService.UpdateSecret:output_type -> sneakers.vault.v1.UpdateSecretResponse
-	84,  // 442: sneakers.vault.v1.VaultService.AttachSecretTarget:output_type -> sneakers.vault.v1.AttachSecretTargetResponse
-	86,  // 443: sneakers.vault.v1.VaultService.DetachSecretTarget:output_type -> sneakers.vault.v1.DetachSecretTargetResponse
-	88,  // 444: sneakers.vault.v1.VaultService.SetSecretAutomation:output_type -> sneakers.vault.v1.SetSecretAutomationResponse
-	90,  // 445: sneakers.vault.v1.VaultService.GetSecretFields:output_type -> sneakers.vault.v1.GetSecretFieldsResponse
-	92,  // 446: sneakers.vault.v1.VaultService.RevealSecretField:output_type -> sneakers.vault.v1.RevealSecretFieldResponse
-	94,  // 447: sneakers.vault.v1.VaultService.RevealSecretFieldForPrincipal:output_type -> sneakers.vault.v1.RevealSecretFieldForPrincipalResponse
-	96,  // 448: sneakers.vault.v1.VaultService.ListSecretsForPrincipal:output_type -> sneakers.vault.v1.ListSecretsForPrincipalResponse
-	98,  // 449: sneakers.vault.v1.VaultService.GetSecretForPrincipal:output_type -> sneakers.vault.v1.GetSecretForPrincipalResponse
-	100, // 450: sneakers.vault.v1.VaultService.CreateSecretForPrincipal:output_type -> sneakers.vault.v1.CreateSecretForPrincipalResponse
-	102, // 451: sneakers.vault.v1.VaultService.GenerateSecretForPrincipal:output_type -> sneakers.vault.v1.GenerateSecretForPrincipalResponse
-	104, // 452: sneakers.vault.v1.VaultService.RotateSecretForPrincipal:output_type -> sneakers.vault.v1.RotateSecretForPrincipalResponse
-	106, // 453: sneakers.vault.v1.VaultService.RestoreSecretVersionForPrincipal:output_type -> sneakers.vault.v1.RestoreSecretVersionForPrincipalResponse
-	108, // 454: sneakers.vault.v1.VaultService.MoveSecretForPrincipal:output_type -> sneakers.vault.v1.MoveSecretForPrincipalResponse
-	110, // 455: sneakers.vault.v1.VaultService.ChangeSecretTypeForPrincipal:output_type -> sneakers.vault.v1.ChangeSecretTypeForPrincipalResponse
-	112, // 456: sneakers.vault.v1.VaultService.ChangeSecretType:output_type -> sneakers.vault.v1.ChangeSecretTypeResponse
-	115, // 457: sneakers.vault.v1.VaultService.PreviewSecretTypeChange:output_type -> sneakers.vault.v1.PreviewSecretTypeChangeResponse
-	117, // 458: sneakers.vault.v1.VaultService.RenameSecretForPrincipal:output_type -> sneakers.vault.v1.RenameSecretForPrincipalResponse
-	119, // 459: sneakers.vault.v1.VaultService.UpdateSecretFieldsForPrincipal:output_type -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalResponse
-	121, // 460: sneakers.vault.v1.VaultService.ListFoldersForPrincipal:output_type -> sneakers.vault.v1.ListFoldersForPrincipalResponse
-	123, // 461: sneakers.vault.v1.VaultService.CreateFolderForPrincipal:output_type -> sneakers.vault.v1.CreateFolderForPrincipalResponse
-	125, // 462: sneakers.vault.v1.VaultService.RenameFolderForPrincipal:output_type -> sneakers.vault.v1.RenameFolderForPrincipalResponse
-	127, // 463: sneakers.vault.v1.VaultService.MoveFolderForPrincipal:output_type -> sneakers.vault.v1.MoveFolderForPrincipalResponse
-	137, // 464: sneakers.vault.v1.VaultService.ListSecretVersions:output_type -> sneakers.vault.v1.ListSecretVersionsResponse
-	139, // 465: sneakers.vault.v1.VaultService.RevealSecretVersionField:output_type -> sneakers.vault.v1.RevealSecretVersionFieldResponse
-	141, // 466: sneakers.vault.v1.VaultService.RestoreSecretVersion:output_type -> sneakers.vault.v1.RestoreSecretVersionResponse
-	145, // 467: sneakers.vault.v1.VaultService.BreakGlassSecret:output_type -> sneakers.vault.v1.BreakGlassSecretResponse
-	149, // 468: sneakers.vault.v1.VaultService.OpenBreakGlassSession:output_type -> sneakers.vault.v1.OpenBreakGlassSessionResponse
-	151, // 469: sneakers.vault.v1.VaultService.GetBreakGlassSession:output_type -> sneakers.vault.v1.GetBreakGlassSessionResponse
-	153, // 470: sneakers.vault.v1.VaultService.ListBreakGlassItems:output_type -> sneakers.vault.v1.ListBreakGlassItemsResponse
-	155, // 471: sneakers.vault.v1.VaultService.CloseBreakGlassSession:output_type -> sneakers.vault.v1.CloseBreakGlassSessionResponse
-	157, // 472: sneakers.vault.v1.VaultService.ListBreakGlassSessions:output_type -> sneakers.vault.v1.ListBreakGlassSessionsResponse
-	159, // 473: sneakers.vault.v1.VaultService.CopySecret:output_type -> sneakers.vault.v1.CopySecretResponse
-	161, // 474: sneakers.vault.v1.VaultService.RetireSecret:output_type -> sneakers.vault.v1.RetireSecretResponse
-	163, // 475: sneakers.vault.v1.VaultService.RestoreSecret:output_type -> sneakers.vault.v1.RestoreSecretResponse
-	165, // 476: sneakers.vault.v1.VaultService.DeleteSecret:output_type -> sneakers.vault.v1.DeleteSecretResponse
-	168, // 477: sneakers.vault.v1.VaultService.GetSecretStats:output_type -> sneakers.vault.v1.GetSecretStatsResponse
-	170, // 478: sneakers.vault.v1.VaultService.GetTopAccessedSecrets:output_type -> sneakers.vault.v1.GetTopAccessedSecretsResponse
-	172, // 479: sneakers.vault.v1.VaultService.ListSecretsByStatus:output_type -> sneakers.vault.v1.ListSecretsByStatusResponse
-	174, // 480: sneakers.vault.v1.VaultService.FindSecretsByPublicKey:output_type -> sneakers.vault.v1.FindSecretsByPublicKeyResponse
-	176, // 481: sneakers.vault.v1.VaultService.GetSecretRuleset:output_type -> sneakers.vault.v1.GetSecretRulesetResponse
-	178, // 482: sneakers.vault.v1.VaultService.SetSecretRuleset:output_type -> sneakers.vault.v1.SetSecretRulesetResponse
-	180, // 483: sneakers.vault.v1.VaultService.GetMySecretAccess:output_type -> sneakers.vault.v1.GetMySecretAccessResponse
-	216, // 484: sneakers.vault.v1.VaultService.ClaimDueHeartbeats:output_type -> sneakers.vault.v1.ClaimDueHeartbeatsResponse
-	218, // 485: sneakers.vault.v1.VaultService.RevealForHeartbeat:output_type -> sneakers.vault.v1.RevealForHeartbeatResponse
-	220, // 486: sneakers.vault.v1.VaultService.ReportHeartbeat:output_type -> sneakers.vault.v1.ReportHeartbeatResponse
-	223, // 487: sneakers.vault.v1.VaultService.EnqueueRotation:output_type -> sneakers.vault.v1.EnqueueRotationResponse
-	225, // 488: sneakers.vault.v1.VaultService.ClaimDueRotations:output_type -> sneakers.vault.v1.ClaimDueRotationsResponse
-	227, // 489: sneakers.vault.v1.VaultService.RevealForRotation:output_type -> sneakers.vault.v1.RevealForRotationResponse
-	229, // 490: sneakers.vault.v1.VaultService.ReportRotation:output_type -> sneakers.vault.v1.ReportRotationResponse
-	274, // 491: sneakers.vault.v1.VaultService.ListConnectors:output_type -> sneakers.vault.v1.ListConnectorsResponse
-	278, // 492: sneakers.vault.v1.VaultService.ListPasswordPolicies:output_type -> sneakers.vault.v1.ListPasswordPoliciesResponse
-	280, // 493: sneakers.vault.v1.VaultService.SavePasswordPolicy:output_type -> sneakers.vault.v1.SavePasswordPolicyResponse
-	282, // 494: sneakers.vault.v1.VaultService.DeletePasswordPolicy:output_type -> sneakers.vault.v1.DeletePasswordPolicyResponse
-	284, // 495: sneakers.vault.v1.VaultService.GetSecuritySettings:output_type -> sneakers.vault.v1.GetSecuritySettingsResponse
-	286, // 496: sneakers.vault.v1.VaultService.UpdateSecuritySettings:output_type -> sneakers.vault.v1.UpdateSecuritySettingsResponse
-	288, // 497: sneakers.vault.v1.VaultService.SeedBuiltins:output_type -> sneakers.vault.v1.SeedBuiltinsResponse
-	129, // 498: sneakers.vault.v1.VaultService.GenerateKeyPair:output_type -> sneakers.vault.v1.GenerateKeyPairResponse
-	131, // 499: sneakers.vault.v1.VaultService.RotateKek:output_type -> sneakers.vault.v1.RotateKekResponse
-	134, // 500: sneakers.vault.v1.VaultService.SealForImport:output_type -> sneakers.vault.v1.SealForImportResponse
-	233, // 501: sneakers.vault.v1.VaultService.PrepareSecretUse:output_type -> sneakers.vault.v1.PrepareSecretUseResponse
-	239, // 502: sneakers.vault.v1.VaultService.GetSecretUse:output_type -> sneakers.vault.v1.GetSecretUseResponse
-	241, // 503: sneakers.vault.v1.VaultService.ListPendingSecretUses:output_type -> sneakers.vault.v1.ListPendingSecretUsesResponse
-	243, // 504: sneakers.vault.v1.VaultService.DecideSecretUse:output_type -> sneakers.vault.v1.DecideSecretUseResponse
-	235, // 505: sneakers.vault.v1.VaultService.ConfirmSecretUse:output_type -> sneakers.vault.v1.ConfirmSecretUseResponse
-	237, // 506: sneakers.vault.v1.VaultService.ListSecretUsesToDecide:output_type -> sneakers.vault.v1.ListSecretUsesToDecideResponse
-	245, // 507: sneakers.vault.v1.VaultService.RedeemSecretUse:output_type -> sneakers.vault.v1.RedeemSecretUseResponse
-	247, // 508: sneakers.vault.v1.VaultService.RedeemSecretShare:output_type -> sneakers.vault.v1.RedeemSecretShareResponse
-	249, // 509: sneakers.vault.v1.VaultService.RevokeSecretShare:output_type -> sneakers.vault.v1.RevokeSecretShareResponse
-	267, // 510: sneakers.vault.v1.VaultService.CreateUseGrant:output_type -> sneakers.vault.v1.CreateUseGrantResponse
-	269, // 511: sneakers.vault.v1.VaultService.ListUseGrants:output_type -> sneakers.vault.v1.ListUseGrantsResponse
-	271, // 512: sneakers.vault.v1.VaultService.RevokeUseGrant:output_type -> sneakers.vault.v1.RevokeUseGrantResponse
-	265, // 513: sneakers.vault.v1.VaultService.SetSecretTokenApproval:output_type -> sneakers.vault.v1.SetSecretTokenApprovalResponse
-	255, // 514: sneakers.vault.v1.VaultService.SetSecretTargetForPrincipal:output_type -> sneakers.vault.v1.SetSecretTargetForPrincipalResponse
-	257, // 515: sneakers.vault.v1.VaultService.AttachSecretTargetForPrincipal:output_type -> sneakers.vault.v1.AttachSecretTargetForPrincipalResponse
-	259, // 516: sneakers.vault.v1.VaultService.DetachSecretTargetForPrincipal:output_type -> sneakers.vault.v1.DetachSecretTargetForPrincipalResponse
-	253, // 517: sneakers.vault.v1.VaultService.SetSecretAutomationForPrincipal:output_type -> sneakers.vault.v1.SetSecretAutomationForPrincipalResponse
-	261, // 518: sneakers.vault.v1.VaultService.RequestHeartbeatForPrincipal:output_type -> sneakers.vault.v1.RequestHeartbeatForPrincipalResponse
-	263, // 519: sneakers.vault.v1.VaultService.GetHeartbeatStatusForPrincipal:output_type -> sneakers.vault.v1.GetHeartbeatStatusForPrincipalResponse
-	400, // [400:520] is the sub-list for method output_type
-	280, // [280:400] is the sub-list for method input_type
-	280, // [280:280] is the sub-list for extension type_name
-	280, // [280:280] is the sub-list for extension extendee
-	0,   // [0:280] is the sub-list for field type_name
+	277, // 278: sneakers.vault.v1.UpdateSecuritySettingsRequest.allowed_networks:type_name -> sneakers.vault.v1.NetworkList
+	276, // 279: sneakers.vault.v1.UpdateSecuritySettingsResponse.settings:type_name -> sneakers.vault.v1.SecuritySettings
+	34,  // 280: sneakers.vault.v1.SeedBuiltinsRequest.actor:type_name -> sneakers.vault.v1.ActorContext
+	191, // 281: sneakers.vault.v1.VaultService.ListConnections:input_type -> sneakers.vault.v1.ListConnectionsRequest
+	193, // 282: sneakers.vault.v1.VaultService.SaveConnection:input_type -> sneakers.vault.v1.SaveConnectionRequest
+	195, // 283: sneakers.vault.v1.VaultService.DeleteConnection:input_type -> sneakers.vault.v1.DeleteConnectionRequest
+	197, // 284: sneakers.vault.v1.VaultService.ListTargets:input_type -> sneakers.vault.v1.ListTargetsRequest
+	199, // 285: sneakers.vault.v1.VaultService.SaveTarget:input_type -> sneakers.vault.v1.SaveTargetRequest
+	201, // 286: sneakers.vault.v1.VaultService.DeleteTarget:input_type -> sneakers.vault.v1.DeleteTargetRequest
+	203, // 287: sneakers.vault.v1.VaultService.GetTargetRuleset:input_type -> sneakers.vault.v1.GetTargetRulesetRequest
+	205, // 288: sneakers.vault.v1.VaultService.SetTargetRuleset:input_type -> sneakers.vault.v1.SetTargetRulesetRequest
+	207, // 289: sneakers.vault.v1.VaultService.ListSecretsByTarget:input_type -> sneakers.vault.v1.ListSecretsByTargetRequest
+	182, // 290: sneakers.vault.v1.VaultService.ImportCertificate:input_type -> sneakers.vault.v1.ImportCertificateRequest
+	184, // 291: sneakers.vault.v1.VaultService.ExportCertificate:input_type -> sneakers.vault.v1.ExportCertificateRequest
+	186, // 292: sneakers.vault.v1.VaultService.ReplaceCertificate:input_type -> sneakers.vault.v1.ReplaceCertificateRequest
+	35,  // 293: sneakers.vault.v1.VaultService.ListSecretTypes:input_type -> sneakers.vault.v1.ListSecretTypesRequest
+	37,  // 294: sneakers.vault.v1.VaultService.CreateSecretType:input_type -> sneakers.vault.v1.CreateSecretTypeRequest
+	39,  // 295: sneakers.vault.v1.VaultService.UpdateSecretType:input_type -> sneakers.vault.v1.UpdateSecretTypeRequest
+	41,  // 296: sneakers.vault.v1.VaultService.DeleteSecretType:input_type -> sneakers.vault.v1.DeleteSecretTypeRequest
+	43,  // 297: sneakers.vault.v1.VaultService.CloneSecretType:input_type -> sneakers.vault.v1.CloneSecretTypeRequest
+	45,  // 298: sneakers.vault.v1.VaultService.ListAvailableExtensions:input_type -> sneakers.vault.v1.ListAvailableExtensionsRequest
+	47,  // 299: sneakers.vault.v1.VaultService.ImportExtension:input_type -> sneakers.vault.v1.ImportExtensionRequest
+	49,  // 300: sneakers.vault.v1.VaultService.ImportExtensionFromJson:input_type -> sneakers.vault.v1.ImportExtensionFromJsonRequest
+	51,  // 301: sneakers.vault.v1.VaultService.ImportExtensionForPrincipal:input_type -> sneakers.vault.v1.ImportExtensionForPrincipalRequest
+	53,  // 302: sneakers.vault.v1.VaultService.ListFolders:input_type -> sneakers.vault.v1.ListFoldersRequest
+	55,  // 303: sneakers.vault.v1.VaultService.CreateFolder:input_type -> sneakers.vault.v1.CreateFolderRequest
+	57,  // 304: sneakers.vault.v1.VaultService.RenameFolder:input_type -> sneakers.vault.v1.RenameFolderRequest
+	59,  // 305: sneakers.vault.v1.VaultService.MoveFolder:input_type -> sneakers.vault.v1.MoveFolderRequest
+	61,  // 306: sneakers.vault.v1.VaultService.DeleteFolder:input_type -> sneakers.vault.v1.DeleteFolderRequest
+	63,  // 307: sneakers.vault.v1.VaultService.ReorderFolders:input_type -> sneakers.vault.v1.ReorderFoldersRequest
+	65,  // 308: sneakers.vault.v1.VaultService.ListFolderRules:input_type -> sneakers.vault.v1.ListFolderRulesRequest
+	67,  // 309: sneakers.vault.v1.VaultService.GetInheritedFolderRules:input_type -> sneakers.vault.v1.GetInheritedFolderRulesRequest
+	69,  // 310: sneakers.vault.v1.VaultService.AddFolderRule:input_type -> sneakers.vault.v1.AddFolderRuleRequest
+	71,  // 311: sneakers.vault.v1.VaultService.RemoveFolderRule:input_type -> sneakers.vault.v1.RemoveFolderRuleRequest
+	21,  // 312: sneakers.vault.v1.VaultService.GetFolderRuleset:input_type -> sneakers.vault.v1.GetFolderRulesetRequest
+	23,  // 313: sneakers.vault.v1.VaultService.SetFolderRuleset:input_type -> sneakers.vault.v1.SetFolderRulesetRequest
+	142, // 314: sneakers.vault.v1.VaultService.SetFolderRevealStepUp:input_type -> sneakers.vault.v1.SetFolderRevealStepUpRequest
+	25,  // 315: sneakers.vault.v1.VaultService.GetMyAccess:input_type -> sneakers.vault.v1.GetMyAccessRequest
+	28,  // 316: sneakers.vault.v1.VaultService.SimulateFolder:input_type -> sneakers.vault.v1.SimulateFolderRequest
+	30,  // 317: sneakers.vault.v1.VaultService.SimulateSecret:input_type -> sneakers.vault.v1.SimulateSecretRequest
+	75,  // 318: sneakers.vault.v1.VaultService.ListSecretsInFolder:input_type -> sneakers.vault.v1.ListSecretsInFolderRequest
+	73,  // 319: sneakers.vault.v1.VaultService.ReorderSecrets:input_type -> sneakers.vault.v1.ReorderSecretsRequest
+	77,  // 320: sneakers.vault.v1.VaultService.GetSecret:input_type -> sneakers.vault.v1.GetSecretRequest
+	79,  // 321: sneakers.vault.v1.VaultService.CreateSecret:input_type -> sneakers.vault.v1.CreateSecretRequest
+	81,  // 322: sneakers.vault.v1.VaultService.UpdateSecret:input_type -> sneakers.vault.v1.UpdateSecretRequest
+	83,  // 323: sneakers.vault.v1.VaultService.AttachSecretTarget:input_type -> sneakers.vault.v1.AttachSecretTargetRequest
+	85,  // 324: sneakers.vault.v1.VaultService.DetachSecretTarget:input_type -> sneakers.vault.v1.DetachSecretTargetRequest
+	87,  // 325: sneakers.vault.v1.VaultService.SetSecretAutomation:input_type -> sneakers.vault.v1.SetSecretAutomationRequest
+	89,  // 326: sneakers.vault.v1.VaultService.GetSecretFields:input_type -> sneakers.vault.v1.GetSecretFieldsRequest
+	91,  // 327: sneakers.vault.v1.VaultService.RevealSecretField:input_type -> sneakers.vault.v1.RevealSecretFieldRequest
+	93,  // 328: sneakers.vault.v1.VaultService.RevealSecretFieldForPrincipal:input_type -> sneakers.vault.v1.RevealSecretFieldForPrincipalRequest
+	95,  // 329: sneakers.vault.v1.VaultService.ListSecretsForPrincipal:input_type -> sneakers.vault.v1.ListSecretsForPrincipalRequest
+	97,  // 330: sneakers.vault.v1.VaultService.GetSecretForPrincipal:input_type -> sneakers.vault.v1.GetSecretForPrincipalRequest
+	99,  // 331: sneakers.vault.v1.VaultService.CreateSecretForPrincipal:input_type -> sneakers.vault.v1.CreateSecretForPrincipalRequest
+	101, // 332: sneakers.vault.v1.VaultService.GenerateSecretForPrincipal:input_type -> sneakers.vault.v1.GenerateSecretForPrincipalRequest
+	103, // 333: sneakers.vault.v1.VaultService.RotateSecretForPrincipal:input_type -> sneakers.vault.v1.RotateSecretForPrincipalRequest
+	105, // 334: sneakers.vault.v1.VaultService.RestoreSecretVersionForPrincipal:input_type -> sneakers.vault.v1.RestoreSecretVersionForPrincipalRequest
+	107, // 335: sneakers.vault.v1.VaultService.MoveSecretForPrincipal:input_type -> sneakers.vault.v1.MoveSecretForPrincipalRequest
+	109, // 336: sneakers.vault.v1.VaultService.ChangeSecretTypeForPrincipal:input_type -> sneakers.vault.v1.ChangeSecretTypeForPrincipalRequest
+	111, // 337: sneakers.vault.v1.VaultService.ChangeSecretType:input_type -> sneakers.vault.v1.ChangeSecretTypeRequest
+	114, // 338: sneakers.vault.v1.VaultService.PreviewSecretTypeChange:input_type -> sneakers.vault.v1.PreviewSecretTypeChangeRequest
+	116, // 339: sneakers.vault.v1.VaultService.RenameSecretForPrincipal:input_type -> sneakers.vault.v1.RenameSecretForPrincipalRequest
+	118, // 340: sneakers.vault.v1.VaultService.UpdateSecretFieldsForPrincipal:input_type -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalRequest
+	120, // 341: sneakers.vault.v1.VaultService.ListFoldersForPrincipal:input_type -> sneakers.vault.v1.ListFoldersForPrincipalRequest
+	122, // 342: sneakers.vault.v1.VaultService.CreateFolderForPrincipal:input_type -> sneakers.vault.v1.CreateFolderForPrincipalRequest
+	124, // 343: sneakers.vault.v1.VaultService.RenameFolderForPrincipal:input_type -> sneakers.vault.v1.RenameFolderForPrincipalRequest
+	126, // 344: sneakers.vault.v1.VaultService.MoveFolderForPrincipal:input_type -> sneakers.vault.v1.MoveFolderForPrincipalRequest
+	136, // 345: sneakers.vault.v1.VaultService.ListSecretVersions:input_type -> sneakers.vault.v1.ListSecretVersionsRequest
+	138, // 346: sneakers.vault.v1.VaultService.RevealSecretVersionField:input_type -> sneakers.vault.v1.RevealSecretVersionFieldRequest
+	140, // 347: sneakers.vault.v1.VaultService.RestoreSecretVersion:input_type -> sneakers.vault.v1.RestoreSecretVersionRequest
+	144, // 348: sneakers.vault.v1.VaultService.BreakGlassSecret:input_type -> sneakers.vault.v1.BreakGlassSecretRequest
+	148, // 349: sneakers.vault.v1.VaultService.OpenBreakGlassSession:input_type -> sneakers.vault.v1.OpenBreakGlassSessionRequest
+	150, // 350: sneakers.vault.v1.VaultService.GetBreakGlassSession:input_type -> sneakers.vault.v1.GetBreakGlassSessionRequest
+	152, // 351: sneakers.vault.v1.VaultService.ListBreakGlassItems:input_type -> sneakers.vault.v1.ListBreakGlassItemsRequest
+	154, // 352: sneakers.vault.v1.VaultService.CloseBreakGlassSession:input_type -> sneakers.vault.v1.CloseBreakGlassSessionRequest
+	156, // 353: sneakers.vault.v1.VaultService.ListBreakGlassSessions:input_type -> sneakers.vault.v1.ListBreakGlassSessionsRequest
+	158, // 354: sneakers.vault.v1.VaultService.CopySecret:input_type -> sneakers.vault.v1.CopySecretRequest
+	160, // 355: sneakers.vault.v1.VaultService.RetireSecret:input_type -> sneakers.vault.v1.RetireSecretRequest
+	162, // 356: sneakers.vault.v1.VaultService.RestoreSecret:input_type -> sneakers.vault.v1.RestoreSecretRequest
+	164, // 357: sneakers.vault.v1.VaultService.DeleteSecret:input_type -> sneakers.vault.v1.DeleteSecretRequest
+	167, // 358: sneakers.vault.v1.VaultService.GetSecretStats:input_type -> sneakers.vault.v1.GetSecretStatsRequest
+	169, // 359: sneakers.vault.v1.VaultService.GetTopAccessedSecrets:input_type -> sneakers.vault.v1.GetTopAccessedSecretsRequest
+	171, // 360: sneakers.vault.v1.VaultService.ListSecretsByStatus:input_type -> sneakers.vault.v1.ListSecretsByStatusRequest
+	173, // 361: sneakers.vault.v1.VaultService.FindSecretsByPublicKey:input_type -> sneakers.vault.v1.FindSecretsByPublicKeyRequest
+	175, // 362: sneakers.vault.v1.VaultService.GetSecretRuleset:input_type -> sneakers.vault.v1.GetSecretRulesetRequest
+	177, // 363: sneakers.vault.v1.VaultService.SetSecretRuleset:input_type -> sneakers.vault.v1.SetSecretRulesetRequest
+	179, // 364: sneakers.vault.v1.VaultService.GetMySecretAccess:input_type -> sneakers.vault.v1.GetMySecretAccessRequest
+	215, // 365: sneakers.vault.v1.VaultService.ClaimDueHeartbeats:input_type -> sneakers.vault.v1.ClaimDueHeartbeatsRequest
+	217, // 366: sneakers.vault.v1.VaultService.RevealForHeartbeat:input_type -> sneakers.vault.v1.RevealForHeartbeatRequest
+	219, // 367: sneakers.vault.v1.VaultService.ReportHeartbeat:input_type -> sneakers.vault.v1.ReportHeartbeatRequest
+	222, // 368: sneakers.vault.v1.VaultService.EnqueueRotation:input_type -> sneakers.vault.v1.EnqueueRotationRequest
+	224, // 369: sneakers.vault.v1.VaultService.ClaimDueRotations:input_type -> sneakers.vault.v1.ClaimDueRotationsRequest
+	226, // 370: sneakers.vault.v1.VaultService.RevealForRotation:input_type -> sneakers.vault.v1.RevealForRotationRequest
+	228, // 371: sneakers.vault.v1.VaultService.ReportRotation:input_type -> sneakers.vault.v1.ReportRotationRequest
+	272, // 372: sneakers.vault.v1.VaultService.ListConnectors:input_type -> sneakers.vault.v1.ListConnectorsRequest
+	278, // 373: sneakers.vault.v1.VaultService.ListPasswordPolicies:input_type -> sneakers.vault.v1.ListPasswordPoliciesRequest
+	280, // 374: sneakers.vault.v1.VaultService.SavePasswordPolicy:input_type -> sneakers.vault.v1.SavePasswordPolicyRequest
+	282, // 375: sneakers.vault.v1.VaultService.DeletePasswordPolicy:input_type -> sneakers.vault.v1.DeletePasswordPolicyRequest
+	284, // 376: sneakers.vault.v1.VaultService.GetSecuritySettings:input_type -> sneakers.vault.v1.GetSecuritySettingsRequest
+	286, // 377: sneakers.vault.v1.VaultService.UpdateSecuritySettings:input_type -> sneakers.vault.v1.UpdateSecuritySettingsRequest
+	288, // 378: sneakers.vault.v1.VaultService.SeedBuiltins:input_type -> sneakers.vault.v1.SeedBuiltinsRequest
+	128, // 379: sneakers.vault.v1.VaultService.GenerateKeyPair:input_type -> sneakers.vault.v1.GenerateKeyPairRequest
+	130, // 380: sneakers.vault.v1.VaultService.RotateKek:input_type -> sneakers.vault.v1.RotateKekRequest
+	132, // 381: sneakers.vault.v1.VaultService.SealForImport:input_type -> sneakers.vault.v1.SealForImportRequest
+	232, // 382: sneakers.vault.v1.VaultService.PrepareSecretUse:input_type -> sneakers.vault.v1.PrepareSecretUseRequest
+	238, // 383: sneakers.vault.v1.VaultService.GetSecretUse:input_type -> sneakers.vault.v1.GetSecretUseRequest
+	240, // 384: sneakers.vault.v1.VaultService.ListPendingSecretUses:input_type -> sneakers.vault.v1.ListPendingSecretUsesRequest
+	242, // 385: sneakers.vault.v1.VaultService.DecideSecretUse:input_type -> sneakers.vault.v1.DecideSecretUseRequest
+	234, // 386: sneakers.vault.v1.VaultService.ConfirmSecretUse:input_type -> sneakers.vault.v1.ConfirmSecretUseRequest
+	236, // 387: sneakers.vault.v1.VaultService.ListSecretUsesToDecide:input_type -> sneakers.vault.v1.ListSecretUsesToDecideRequest
+	244, // 388: sneakers.vault.v1.VaultService.RedeemSecretUse:input_type -> sneakers.vault.v1.RedeemSecretUseRequest
+	246, // 389: sneakers.vault.v1.VaultService.RedeemSecretShare:input_type -> sneakers.vault.v1.RedeemSecretShareRequest
+	248, // 390: sneakers.vault.v1.VaultService.RevokeSecretShare:input_type -> sneakers.vault.v1.RevokeSecretShareRequest
+	266, // 391: sneakers.vault.v1.VaultService.CreateUseGrant:input_type -> sneakers.vault.v1.CreateUseGrantRequest
+	268, // 392: sneakers.vault.v1.VaultService.ListUseGrants:input_type -> sneakers.vault.v1.ListUseGrantsRequest
+	270, // 393: sneakers.vault.v1.VaultService.RevokeUseGrant:input_type -> sneakers.vault.v1.RevokeUseGrantRequest
+	264, // 394: sneakers.vault.v1.VaultService.SetSecretTokenApproval:input_type -> sneakers.vault.v1.SetSecretTokenApprovalRequest
+	254, // 395: sneakers.vault.v1.VaultService.SetSecretTargetForPrincipal:input_type -> sneakers.vault.v1.SetSecretTargetForPrincipalRequest
+	256, // 396: sneakers.vault.v1.VaultService.AttachSecretTargetForPrincipal:input_type -> sneakers.vault.v1.AttachSecretTargetForPrincipalRequest
+	258, // 397: sneakers.vault.v1.VaultService.DetachSecretTargetForPrincipal:input_type -> sneakers.vault.v1.DetachSecretTargetForPrincipalRequest
+	252, // 398: sneakers.vault.v1.VaultService.SetSecretAutomationForPrincipal:input_type -> sneakers.vault.v1.SetSecretAutomationForPrincipalRequest
+	260, // 399: sneakers.vault.v1.VaultService.RequestHeartbeatForPrincipal:input_type -> sneakers.vault.v1.RequestHeartbeatForPrincipalRequest
+	262, // 400: sneakers.vault.v1.VaultService.GetHeartbeatStatusForPrincipal:input_type -> sneakers.vault.v1.GetHeartbeatStatusForPrincipalRequest
+	192, // 401: sneakers.vault.v1.VaultService.ListConnections:output_type -> sneakers.vault.v1.ListConnectionsResponse
+	194, // 402: sneakers.vault.v1.VaultService.SaveConnection:output_type -> sneakers.vault.v1.SaveConnectionResponse
+	196, // 403: sneakers.vault.v1.VaultService.DeleteConnection:output_type -> sneakers.vault.v1.DeleteConnectionResponse
+	198, // 404: sneakers.vault.v1.VaultService.ListTargets:output_type -> sneakers.vault.v1.ListTargetsResponse
+	200, // 405: sneakers.vault.v1.VaultService.SaveTarget:output_type -> sneakers.vault.v1.SaveTargetResponse
+	202, // 406: sneakers.vault.v1.VaultService.DeleteTarget:output_type -> sneakers.vault.v1.DeleteTargetResponse
+	204, // 407: sneakers.vault.v1.VaultService.GetTargetRuleset:output_type -> sneakers.vault.v1.GetTargetRulesetResponse
+	206, // 408: sneakers.vault.v1.VaultService.SetTargetRuleset:output_type -> sneakers.vault.v1.SetTargetRulesetResponse
+	208, // 409: sneakers.vault.v1.VaultService.ListSecretsByTarget:output_type -> sneakers.vault.v1.ListSecretsByTargetResponse
+	183, // 410: sneakers.vault.v1.VaultService.ImportCertificate:output_type -> sneakers.vault.v1.ImportCertificateResponse
+	185, // 411: sneakers.vault.v1.VaultService.ExportCertificate:output_type -> sneakers.vault.v1.ExportCertificateResponse
+	187, // 412: sneakers.vault.v1.VaultService.ReplaceCertificate:output_type -> sneakers.vault.v1.ReplaceCertificateResponse
+	36,  // 413: sneakers.vault.v1.VaultService.ListSecretTypes:output_type -> sneakers.vault.v1.ListSecretTypesResponse
+	38,  // 414: sneakers.vault.v1.VaultService.CreateSecretType:output_type -> sneakers.vault.v1.CreateSecretTypeResponse
+	40,  // 415: sneakers.vault.v1.VaultService.UpdateSecretType:output_type -> sneakers.vault.v1.UpdateSecretTypeResponse
+	42,  // 416: sneakers.vault.v1.VaultService.DeleteSecretType:output_type -> sneakers.vault.v1.DeleteSecretTypeResponse
+	44,  // 417: sneakers.vault.v1.VaultService.CloneSecretType:output_type -> sneakers.vault.v1.CloneSecretTypeResponse
+	46,  // 418: sneakers.vault.v1.VaultService.ListAvailableExtensions:output_type -> sneakers.vault.v1.ListAvailableExtensionsResponse
+	48,  // 419: sneakers.vault.v1.VaultService.ImportExtension:output_type -> sneakers.vault.v1.ImportExtensionResponse
+	50,  // 420: sneakers.vault.v1.VaultService.ImportExtensionFromJson:output_type -> sneakers.vault.v1.ImportExtensionFromJsonResponse
+	52,  // 421: sneakers.vault.v1.VaultService.ImportExtensionForPrincipal:output_type -> sneakers.vault.v1.ImportExtensionForPrincipalResponse
+	54,  // 422: sneakers.vault.v1.VaultService.ListFolders:output_type -> sneakers.vault.v1.ListFoldersResponse
+	56,  // 423: sneakers.vault.v1.VaultService.CreateFolder:output_type -> sneakers.vault.v1.CreateFolderResponse
+	58,  // 424: sneakers.vault.v1.VaultService.RenameFolder:output_type -> sneakers.vault.v1.RenameFolderResponse
+	60,  // 425: sneakers.vault.v1.VaultService.MoveFolder:output_type -> sneakers.vault.v1.MoveFolderResponse
+	62,  // 426: sneakers.vault.v1.VaultService.DeleteFolder:output_type -> sneakers.vault.v1.DeleteFolderResponse
+	64,  // 427: sneakers.vault.v1.VaultService.ReorderFolders:output_type -> sneakers.vault.v1.ReorderFoldersResponse
+	66,  // 428: sneakers.vault.v1.VaultService.ListFolderRules:output_type -> sneakers.vault.v1.ListFolderRulesResponse
+	68,  // 429: sneakers.vault.v1.VaultService.GetInheritedFolderRules:output_type -> sneakers.vault.v1.GetInheritedFolderRulesResponse
+	70,  // 430: sneakers.vault.v1.VaultService.AddFolderRule:output_type -> sneakers.vault.v1.AddFolderRuleResponse
+	72,  // 431: sneakers.vault.v1.VaultService.RemoveFolderRule:output_type -> sneakers.vault.v1.RemoveFolderRuleResponse
+	22,  // 432: sneakers.vault.v1.VaultService.GetFolderRuleset:output_type -> sneakers.vault.v1.GetFolderRulesetResponse
+	24,  // 433: sneakers.vault.v1.VaultService.SetFolderRuleset:output_type -> sneakers.vault.v1.SetFolderRulesetResponse
+	143, // 434: sneakers.vault.v1.VaultService.SetFolderRevealStepUp:output_type -> sneakers.vault.v1.SetFolderRevealStepUpResponse
+	26,  // 435: sneakers.vault.v1.VaultService.GetMyAccess:output_type -> sneakers.vault.v1.GetMyAccessResponse
+	29,  // 436: sneakers.vault.v1.VaultService.SimulateFolder:output_type -> sneakers.vault.v1.SimulateFolderResponse
+	31,  // 437: sneakers.vault.v1.VaultService.SimulateSecret:output_type -> sneakers.vault.v1.SimulateSecretResponse
+	76,  // 438: sneakers.vault.v1.VaultService.ListSecretsInFolder:output_type -> sneakers.vault.v1.ListSecretsInFolderResponse
+	74,  // 439: sneakers.vault.v1.VaultService.ReorderSecrets:output_type -> sneakers.vault.v1.ReorderSecretsResponse
+	78,  // 440: sneakers.vault.v1.VaultService.GetSecret:output_type -> sneakers.vault.v1.GetSecretResponse
+	80,  // 441: sneakers.vault.v1.VaultService.CreateSecret:output_type -> sneakers.vault.v1.CreateSecretResponse
+	82,  // 442: sneakers.vault.v1.VaultService.UpdateSecret:output_type -> sneakers.vault.v1.UpdateSecretResponse
+	84,  // 443: sneakers.vault.v1.VaultService.AttachSecretTarget:output_type -> sneakers.vault.v1.AttachSecretTargetResponse
+	86,  // 444: sneakers.vault.v1.VaultService.DetachSecretTarget:output_type -> sneakers.vault.v1.DetachSecretTargetResponse
+	88,  // 445: sneakers.vault.v1.VaultService.SetSecretAutomation:output_type -> sneakers.vault.v1.SetSecretAutomationResponse
+	90,  // 446: sneakers.vault.v1.VaultService.GetSecretFields:output_type -> sneakers.vault.v1.GetSecretFieldsResponse
+	92,  // 447: sneakers.vault.v1.VaultService.RevealSecretField:output_type -> sneakers.vault.v1.RevealSecretFieldResponse
+	94,  // 448: sneakers.vault.v1.VaultService.RevealSecretFieldForPrincipal:output_type -> sneakers.vault.v1.RevealSecretFieldForPrincipalResponse
+	96,  // 449: sneakers.vault.v1.VaultService.ListSecretsForPrincipal:output_type -> sneakers.vault.v1.ListSecretsForPrincipalResponse
+	98,  // 450: sneakers.vault.v1.VaultService.GetSecretForPrincipal:output_type -> sneakers.vault.v1.GetSecretForPrincipalResponse
+	100, // 451: sneakers.vault.v1.VaultService.CreateSecretForPrincipal:output_type -> sneakers.vault.v1.CreateSecretForPrincipalResponse
+	102, // 452: sneakers.vault.v1.VaultService.GenerateSecretForPrincipal:output_type -> sneakers.vault.v1.GenerateSecretForPrincipalResponse
+	104, // 453: sneakers.vault.v1.VaultService.RotateSecretForPrincipal:output_type -> sneakers.vault.v1.RotateSecretForPrincipalResponse
+	106, // 454: sneakers.vault.v1.VaultService.RestoreSecretVersionForPrincipal:output_type -> sneakers.vault.v1.RestoreSecretVersionForPrincipalResponse
+	108, // 455: sneakers.vault.v1.VaultService.MoveSecretForPrincipal:output_type -> sneakers.vault.v1.MoveSecretForPrincipalResponse
+	110, // 456: sneakers.vault.v1.VaultService.ChangeSecretTypeForPrincipal:output_type -> sneakers.vault.v1.ChangeSecretTypeForPrincipalResponse
+	112, // 457: sneakers.vault.v1.VaultService.ChangeSecretType:output_type -> sneakers.vault.v1.ChangeSecretTypeResponse
+	115, // 458: sneakers.vault.v1.VaultService.PreviewSecretTypeChange:output_type -> sneakers.vault.v1.PreviewSecretTypeChangeResponse
+	117, // 459: sneakers.vault.v1.VaultService.RenameSecretForPrincipal:output_type -> sneakers.vault.v1.RenameSecretForPrincipalResponse
+	119, // 460: sneakers.vault.v1.VaultService.UpdateSecretFieldsForPrincipal:output_type -> sneakers.vault.v1.UpdateSecretFieldsForPrincipalResponse
+	121, // 461: sneakers.vault.v1.VaultService.ListFoldersForPrincipal:output_type -> sneakers.vault.v1.ListFoldersForPrincipalResponse
+	123, // 462: sneakers.vault.v1.VaultService.CreateFolderForPrincipal:output_type -> sneakers.vault.v1.CreateFolderForPrincipalResponse
+	125, // 463: sneakers.vault.v1.VaultService.RenameFolderForPrincipal:output_type -> sneakers.vault.v1.RenameFolderForPrincipalResponse
+	127, // 464: sneakers.vault.v1.VaultService.MoveFolderForPrincipal:output_type -> sneakers.vault.v1.MoveFolderForPrincipalResponse
+	137, // 465: sneakers.vault.v1.VaultService.ListSecretVersions:output_type -> sneakers.vault.v1.ListSecretVersionsResponse
+	139, // 466: sneakers.vault.v1.VaultService.RevealSecretVersionField:output_type -> sneakers.vault.v1.RevealSecretVersionFieldResponse
+	141, // 467: sneakers.vault.v1.VaultService.RestoreSecretVersion:output_type -> sneakers.vault.v1.RestoreSecretVersionResponse
+	145, // 468: sneakers.vault.v1.VaultService.BreakGlassSecret:output_type -> sneakers.vault.v1.BreakGlassSecretResponse
+	149, // 469: sneakers.vault.v1.VaultService.OpenBreakGlassSession:output_type -> sneakers.vault.v1.OpenBreakGlassSessionResponse
+	151, // 470: sneakers.vault.v1.VaultService.GetBreakGlassSession:output_type -> sneakers.vault.v1.GetBreakGlassSessionResponse
+	153, // 471: sneakers.vault.v1.VaultService.ListBreakGlassItems:output_type -> sneakers.vault.v1.ListBreakGlassItemsResponse
+	155, // 472: sneakers.vault.v1.VaultService.CloseBreakGlassSession:output_type -> sneakers.vault.v1.CloseBreakGlassSessionResponse
+	157, // 473: sneakers.vault.v1.VaultService.ListBreakGlassSessions:output_type -> sneakers.vault.v1.ListBreakGlassSessionsResponse
+	159, // 474: sneakers.vault.v1.VaultService.CopySecret:output_type -> sneakers.vault.v1.CopySecretResponse
+	161, // 475: sneakers.vault.v1.VaultService.RetireSecret:output_type -> sneakers.vault.v1.RetireSecretResponse
+	163, // 476: sneakers.vault.v1.VaultService.RestoreSecret:output_type -> sneakers.vault.v1.RestoreSecretResponse
+	165, // 477: sneakers.vault.v1.VaultService.DeleteSecret:output_type -> sneakers.vault.v1.DeleteSecretResponse
+	168, // 478: sneakers.vault.v1.VaultService.GetSecretStats:output_type -> sneakers.vault.v1.GetSecretStatsResponse
+	170, // 479: sneakers.vault.v1.VaultService.GetTopAccessedSecrets:output_type -> sneakers.vault.v1.GetTopAccessedSecretsResponse
+	172, // 480: sneakers.vault.v1.VaultService.ListSecretsByStatus:output_type -> sneakers.vault.v1.ListSecretsByStatusResponse
+	174, // 481: sneakers.vault.v1.VaultService.FindSecretsByPublicKey:output_type -> sneakers.vault.v1.FindSecretsByPublicKeyResponse
+	176, // 482: sneakers.vault.v1.VaultService.GetSecretRuleset:output_type -> sneakers.vault.v1.GetSecretRulesetResponse
+	178, // 483: sneakers.vault.v1.VaultService.SetSecretRuleset:output_type -> sneakers.vault.v1.SetSecretRulesetResponse
+	180, // 484: sneakers.vault.v1.VaultService.GetMySecretAccess:output_type -> sneakers.vault.v1.GetMySecretAccessResponse
+	216, // 485: sneakers.vault.v1.VaultService.ClaimDueHeartbeats:output_type -> sneakers.vault.v1.ClaimDueHeartbeatsResponse
+	218, // 486: sneakers.vault.v1.VaultService.RevealForHeartbeat:output_type -> sneakers.vault.v1.RevealForHeartbeatResponse
+	220, // 487: sneakers.vault.v1.VaultService.ReportHeartbeat:output_type -> sneakers.vault.v1.ReportHeartbeatResponse
+	223, // 488: sneakers.vault.v1.VaultService.EnqueueRotation:output_type -> sneakers.vault.v1.EnqueueRotationResponse
+	225, // 489: sneakers.vault.v1.VaultService.ClaimDueRotations:output_type -> sneakers.vault.v1.ClaimDueRotationsResponse
+	227, // 490: sneakers.vault.v1.VaultService.RevealForRotation:output_type -> sneakers.vault.v1.RevealForRotationResponse
+	229, // 491: sneakers.vault.v1.VaultService.ReportRotation:output_type -> sneakers.vault.v1.ReportRotationResponse
+	274, // 492: sneakers.vault.v1.VaultService.ListConnectors:output_type -> sneakers.vault.v1.ListConnectorsResponse
+	279, // 493: sneakers.vault.v1.VaultService.ListPasswordPolicies:output_type -> sneakers.vault.v1.ListPasswordPoliciesResponse
+	281, // 494: sneakers.vault.v1.VaultService.SavePasswordPolicy:output_type -> sneakers.vault.v1.SavePasswordPolicyResponse
+	283, // 495: sneakers.vault.v1.VaultService.DeletePasswordPolicy:output_type -> sneakers.vault.v1.DeletePasswordPolicyResponse
+	285, // 496: sneakers.vault.v1.VaultService.GetSecuritySettings:output_type -> sneakers.vault.v1.GetSecuritySettingsResponse
+	287, // 497: sneakers.vault.v1.VaultService.UpdateSecuritySettings:output_type -> sneakers.vault.v1.UpdateSecuritySettingsResponse
+	289, // 498: sneakers.vault.v1.VaultService.SeedBuiltins:output_type -> sneakers.vault.v1.SeedBuiltinsResponse
+	129, // 499: sneakers.vault.v1.VaultService.GenerateKeyPair:output_type -> sneakers.vault.v1.GenerateKeyPairResponse
+	131, // 500: sneakers.vault.v1.VaultService.RotateKek:output_type -> sneakers.vault.v1.RotateKekResponse
+	134, // 501: sneakers.vault.v1.VaultService.SealForImport:output_type -> sneakers.vault.v1.SealForImportResponse
+	233, // 502: sneakers.vault.v1.VaultService.PrepareSecretUse:output_type -> sneakers.vault.v1.PrepareSecretUseResponse
+	239, // 503: sneakers.vault.v1.VaultService.GetSecretUse:output_type -> sneakers.vault.v1.GetSecretUseResponse
+	241, // 504: sneakers.vault.v1.VaultService.ListPendingSecretUses:output_type -> sneakers.vault.v1.ListPendingSecretUsesResponse
+	243, // 505: sneakers.vault.v1.VaultService.DecideSecretUse:output_type -> sneakers.vault.v1.DecideSecretUseResponse
+	235, // 506: sneakers.vault.v1.VaultService.ConfirmSecretUse:output_type -> sneakers.vault.v1.ConfirmSecretUseResponse
+	237, // 507: sneakers.vault.v1.VaultService.ListSecretUsesToDecide:output_type -> sneakers.vault.v1.ListSecretUsesToDecideResponse
+	245, // 508: sneakers.vault.v1.VaultService.RedeemSecretUse:output_type -> sneakers.vault.v1.RedeemSecretUseResponse
+	247, // 509: sneakers.vault.v1.VaultService.RedeemSecretShare:output_type -> sneakers.vault.v1.RedeemSecretShareResponse
+	249, // 510: sneakers.vault.v1.VaultService.RevokeSecretShare:output_type -> sneakers.vault.v1.RevokeSecretShareResponse
+	267, // 511: sneakers.vault.v1.VaultService.CreateUseGrant:output_type -> sneakers.vault.v1.CreateUseGrantResponse
+	269, // 512: sneakers.vault.v1.VaultService.ListUseGrants:output_type -> sneakers.vault.v1.ListUseGrantsResponse
+	271, // 513: sneakers.vault.v1.VaultService.RevokeUseGrant:output_type -> sneakers.vault.v1.RevokeUseGrantResponse
+	265, // 514: sneakers.vault.v1.VaultService.SetSecretTokenApproval:output_type -> sneakers.vault.v1.SetSecretTokenApprovalResponse
+	255, // 515: sneakers.vault.v1.VaultService.SetSecretTargetForPrincipal:output_type -> sneakers.vault.v1.SetSecretTargetForPrincipalResponse
+	257, // 516: sneakers.vault.v1.VaultService.AttachSecretTargetForPrincipal:output_type -> sneakers.vault.v1.AttachSecretTargetForPrincipalResponse
+	259, // 517: sneakers.vault.v1.VaultService.DetachSecretTargetForPrincipal:output_type -> sneakers.vault.v1.DetachSecretTargetForPrincipalResponse
+	253, // 518: sneakers.vault.v1.VaultService.SetSecretAutomationForPrincipal:output_type -> sneakers.vault.v1.SetSecretAutomationForPrincipalResponse
+	261, // 519: sneakers.vault.v1.VaultService.RequestHeartbeatForPrincipal:output_type -> sneakers.vault.v1.RequestHeartbeatForPrincipalResponse
+	263, // 520: sneakers.vault.v1.VaultService.GetHeartbeatStatusForPrincipal:output_type -> sneakers.vault.v1.GetHeartbeatStatusForPrincipalResponse
+	401, // [401:521] is the sub-list for method output_type
+	281, // [281:401] is the sub-list for method input_type
+	281, // [281:281] is the sub-list for extension type_name
+	281, // [281:281] is the sub-list for extension extendee
+	0,   // [0:281] is the sub-list for field type_name
 }
 
 func init() { file_sneakers_vault_v1_vault_proto_init() }
@@ -19989,14 +20105,14 @@ func file_sneakers_vault_v1_vault_proto_init() {
 	file_sneakers_vault_v1_vault_proto_msgTypes[205].OneofWrappers = []any{}
 	file_sneakers_vault_v1_vault_proto_msgTypes[214].OneofWrappers = []any{}
 	file_sneakers_vault_v1_vault_proto_msgTypes[261].OneofWrappers = []any{}
-	file_sneakers_vault_v1_vault_proto_msgTypes[271].OneofWrappers = []any{}
+	file_sneakers_vault_v1_vault_proto_msgTypes[272].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sneakers_vault_v1_vault_proto_rawDesc), len(file_sneakers_vault_v1_vault_proto_rawDesc)),
 			NumEnums:      14,
-			NumMessages:   290,
+			NumMessages:   291,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
