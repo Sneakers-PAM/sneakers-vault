@@ -64,7 +64,9 @@ type Server struct {
 	// log is the service logger; nil discards (tests that build a bare Server).
 	log log.Logger
 
-	mu          sync.RWMutex
+	mu sync.RWMutex
+	// shareMu makes a share's check-and-redeem one step, so a link opens once.
+	shareMu     sync.Mutex
 	types       []*vaultv1.SecretType
 	folders     []*vaultv1.Folder
 	rules       []*vaultv1.FolderAccessRule

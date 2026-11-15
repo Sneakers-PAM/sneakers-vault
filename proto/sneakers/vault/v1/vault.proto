@@ -1552,6 +1552,11 @@ message SecretUse {
   bool confirm = 16;
   int64 confirmed_at_unix = 17;         // set when the requester confirmed it
   string decided_by_user_id = 18;       // the owner or approver who approved or denied it
+  // Set on a one-time share: the SHA-256 (lower-case hex) of the link's token,
+  // which only the person holding the link knows. Such a use is redeemed by
+  // RedeemSecretShare, never by RedeemSecretUse, and keeps its own lifetime
+  // when it is approved.
+  string share_hash = 19;
 }
 
 // The people identity reports as active (not disabled, able to sign in), as
@@ -1572,6 +1577,13 @@ message PrepareSecretUseRequest {
   string run_id = 7;                    // optional; [A-Za-z0-9_-]{1,64}, else InvalidArgument
   string purpose = 8;                   // optional; at most 200 characters of plain text, else InvalidArgument
   ActiveUsers active_users = 9;         // optional; see ActiveUsers
+  // A one-time share of the field through a link: a person's reveal only. The
+  // SHA-256 (lower-case hex) of the link's token, and how long the link lives
+  // (60 seconds to 7 days, 0 = one day). The use then follows the normal rules
+  // (read access, the reveal step-up, the owner's approval) and is redeemed with
+  // RedeemSecretShare.
+  string share_hash = 10;
+  int64 share_ttl_seconds = 11;
 }
 message PrepareSecretUseResponse { SecretUse use = 1; }
 
@@ -1615,6 +1627,18 @@ message RedeemSecretUseResponse {
   SecretUse use = 1;
   string value = 2;
 }
+
+message RedeemSecretShareRequest {
+  ActorContext actor = 1;   // the calling service; the share's creator is the use's user_id
+  string use_id = 2;
+  string share_hash = 3;
+}
+message RedeemSecretShareResponse {
+  SecretUse use = 1;
+  string value = 2;
+}
+message RevokeSecretShareRequest { ActorContext actor = 1; string use_id = 2; }
+message RevokeSecretShareResponse { SecretUse use = 1; }
 
 // A program the grant allows and a glob its space-joined arguments must match.
 message UseGrantProgram {
@@ -1940,6 +1964,11 @@ service VaultService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc RedeemSecretUse(RedeemSecretUseRequest) returns (RedeemSecretUseResponse);
+  // Releases a one-time share's value once, to whoever presents the hash of its
+  // token, while the use is approved and unexpired.
+  rpc RedeemSecretShare(RedeemSecretShareRequest) returns (RedeemSecretShareResponse);
+  // Ends a share early. The creator or a site admin.
+  rpc RevokeSecretShare(RevokeSecretShareRequest) returns (RevokeSecretShareResponse);
   rpc CreateUseGrant(CreateUseGrantRequest) returns (CreateUseGrantResponse);
   rpc ListUseGrants(ListUseGrantsRequest) returns (ListUseGrantsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;

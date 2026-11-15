@@ -23,6 +23,11 @@ const (
 	ReasonNotRequester     = "NOT_REQUESTER"
 	ReasonOtherApprover    = "OTHER_APPROVER"
 	ReasonNoApprover       = "NO_APPROVER"
+	// A one-time share that can't be redeemed, and why.
+	ReasonShareNotApproved = "SHARE_NOT_APPROVED"
+	ReasonShareDenied      = "SHARE_DENIED"
+	ReasonShareUsed        = "SHARE_USED"
+	ReasonShareExpired     = "SHARE_EXPIRED"
 )
 
 // runConfirmSpan is how long one confirmation covers later uses in the same

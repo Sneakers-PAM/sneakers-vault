@@ -51,7 +51,7 @@ var maintenanceGolden = map[maintenance.Class][]string{
 		"BreakGlassSecret", "OpenBreakGlassSession", "RetireSecret",
 		"RestoreSecret", "DeleteSecret", "SetSecretRuleset", "EnqueueRotation", "RevealForRotation",
 		"SavePasswordPolicy", "DeletePasswordPolicy", "UpdateSecuritySettings", "SeedBuiltins",
-		"RotateKek", "SealForImport", "PrepareSecretUse", "DecideSecretUse", "ConfirmSecretUse", "RedeemSecretUse",
+		"RotateKek", "SealForImport", "PrepareSecretUse", "DecideSecretUse", "ConfirmSecretUse", "RedeemSecretUse", "RedeemSecretShare", "RevokeSecretShare",
 		"CreateUseGrant", "RevokeUseGrant", "SetSecretTokenApproval", "SetSecretTargetForPrincipal",
 		"SetSecretAutomationForPrincipal", "RequestHeartbeatForPrincipal",
 		"AttachSecretTarget", "DetachSecretTarget", "AttachSecretTargetForPrincipal", "DetachSecretTargetForPrincipal",
