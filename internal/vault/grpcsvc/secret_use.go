@@ -17,6 +17,7 @@ import (
 
 	log "github.com/Bugs5382/go-log"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -108,6 +109,9 @@ func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecre
 	if apiErr != nil {
 		return nil, apiErr
 	}
+	if req.GetShareHash() != "" && !isHumanUser(actor) {
+		return nil, status.Error(codes.PermissionDenied, "a secret is shared by a signed-in person")
+	}
 	attempt := map[string]string{"field": req.GetFieldKey(), "argv": strings.Join(argv, " "), "client_label": req.GetClientLabel(), "run_id": req.GetRunId()}
 	if !readable {
 		s.useRefused(ctx, actor, "secret.use.prepare", req.GetSecretId(), "denied", "no read access", attempt)
@@ -128,6 +132,10 @@ func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecre
 		State: vaultv1.SecretUseState_SECRET_USE_STATE_PENDING, CreatedAtUnix: now.Unix(),
 		ExpiresAtUnix: now.Add(secretUseTTL).Unix(), ClientLabel: req.GetClientLabel(), Reveal: req.GetReveal(),
 		RunId: req.GetRunId(), Purpose: req.GetPurpose(), Confirm: confirm,
+	}
+	if req.GetShareHash() != "" {
+		use.ShareHash = req.GetShareHash()
+		use.ExpiresAtUnix = now.Add(shareLifetime(req.GetShareTtlSeconds())).Unix()
 	}
 	if err := s.approveAtPrepare(ctx, st, use, sec, needsApproval, now); err != nil {
 		return nil, err
@@ -150,7 +158,7 @@ func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecre
 func (s *Server) approveAtPrepare(ctx context.Context, st useStore, use *vaultv1.SecretUse, sec *vaultv1.Secret, needsApproval bool, now time.Time) error {
 	approve := func() {
 		use.State = vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED
-		use.ExpiresAtUnix = now.Add(redeemAfterApproval).Unix()
+		use.ExpiresAtUnix = approvedUntil(use, now)
 	}
 	if !needsApproval {
 		approve()
@@ -211,6 +219,11 @@ func (s *Server) prepareChecks(ctx context.Context, actor *vaultv1.ActorContext,
 	if err := s.checkAPIForSensitive(ctx, actor, sec, req.GetFieldKey(), "use.prepare"); err != nil {
 		return sec, c, err
 	}
+	if req.GetShareHash() != "" {
+		if err := s.checkRevealStepUp(ctx, actor, sec, "share"); err != nil {
+			return sec, c, err
+		}
+	}
 	_, c.hasField = s.records[sec.GetId()].Fields[req.GetFieldKey()]
 	if req.GetReveal() {
 		c.hasField = c.hasField && s.isSensitiveField(s.findType(sec.TypeId), req.GetFieldKey())
@@ -229,7 +242,10 @@ func checkPrepareRequest(req *vaultv1.PrepareSecretUseRequest) error {
 	if err := checkUseRunID(req.GetRunId()); err != nil {
 		return err
 	}
-	return checkUsePurpose(req.GetPurpose())
+	if err := checkUsePurpose(req.GetPurpose()); err != nil {
+		return err
+	}
+	return checkShareRequest(req)
 }
 
 func checkUseArgv(reveal bool, argv []string) error {
@@ -408,7 +424,7 @@ func (s *Server) DecideSecretUse(ctx context.Context, req *vaultv1.DecideSecretU
 	if req.GetApprove() {
 		action = "secret.use.approve"
 		use.State = vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED
-		use.ExpiresAtUnix = s.clock().Add(redeemAfterApproval).Unix()
+		use.ExpiresAtUnix = approvedUntil(use, s.clock())
 	}
 	use.DecidedByUserId = actor.GetUserId()
 	if err := st.PutUse(ctx, use); err != nil {
@@ -469,7 +485,7 @@ func (s *Server) ConfirmSecretUse(ctx context.Context, req *vaultv1.ConfirmSecre
 	}
 	now := s.clock()
 	use.State = vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED
-	use.ExpiresAtUnix = now.Add(redeemAfterApproval).Unix()
+	use.ExpiresAtUnix = approvedUntil(use, now)
 	use.ConfirmedAtUnix = now.Unix()
 	if err := st.PutUse(ctx, use); err != nil {
 		return nil, status.Errorf(codes.Internal, "store secret use: %v", err)
@@ -523,6 +539,9 @@ func (s *Server) RedeemSecretUse(ctx context.Context, req *vaultv1.RedeemSecretU
 	if err != nil {
 		return nil, err
 	}
+	if use.GetShareHash() != "" {
+		return nil, status.Error(codes.FailedPrecondition, "a shared secret is redeemed through its link")
+	}
 	webUse := use.GetTokenId() == ""
 	if !sameRequester(actor, use) {
 		s.useRefused(ctx, actor, "secret.use.redeem", use.GetSecretId(), "denied", "not the preparing requester", map[string]string{"use_id": use.GetId(), "run_id": use.GetRunId()})
@@ -532,18 +551,7 @@ func (s *Server) RedeemSecretUse(ctx context.Context, req *vaultv1.RedeemSecretU
 		s.useRefused(ctx, actor, "secret.use.redeem", use.GetSecretId(), "failed", "use is "+use.GetState().String(), useAttrs(use, nil))
 		return nil, status.Errorf(codes.FailedPrecondition, "secret use is %s", use.GetState())
 	}
-	s.mu.RLock()
-	sec := s.findSecret(use.GetSecretId())
-	readable := sec != nil && !sec.GetRetired() && s.canRead(actor, sec)
-	rec := s.records[use.GetSecretId()]
-	var apiErr error
-	if readable {
-		apiErr = s.checkAPIForSensitive(ctx, actor, sec, use.GetFieldKey(), "use.redeem")
-		if apiErr == nil {
-			apiErr = s.checkRevealStepUp(ctx, actor, sec, "reveal")
-		}
-	}
-	s.mu.RUnlock()
+	readable, rec, apiErr := s.redeemChecks(ctx, actor, use)
 	if apiErr != nil {
 		return nil, apiErr
 	}
@@ -692,4 +700,23 @@ func (s *Server) RevokeUseGrant(ctx context.Context, req *vaultv1.RevokeUseGrant
 	}
 	s.emitAttrs(ctx, actor.GetUserId(), "use_grant.revoke", g.GetId(), false, map[string]string{"token_id": g.GetTokenId()})
 	return &vaultv1.RevokeUseGrantResponse{Grant: g}, nil
+}
+
+// redeemChecks reads, under the lock, what RedeemSecretUse decides on: whether
+// the requester can still read the secret, its record, and any API-sensitive or
+// step-up refusal.
+func (s *Server) redeemChecks(ctx context.Context, actor *vaultv1.ActorContext, use *vaultv1.SecretUse) (bool, crypto.Record, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	sec := s.findSecret(use.GetSecretId())
+	readable := sec != nil && !sec.GetRetired() && s.canRead(actor, sec)
+	rec := s.records[use.GetSecretId()]
+	if !readable {
+		return false, rec, nil
+	}
+	apiErr := s.checkAPIForSensitive(ctx, actor, sec, use.GetFieldKey(), "use.redeem")
+	if apiErr == nil {
+		apiErr = s.checkRevealStepUp(ctx, actor, sec, "reveal")
+	}
+	return true, rec, apiErr
 }
