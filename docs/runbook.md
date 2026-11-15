@@ -28,6 +28,17 @@ The workflow service applies its own migrations (version table `workflow_schema_
 the saga engine's, connects to Postgres and the vault, starts the lease reaper (every minute) and
 the history purge (at start, then daily), and serves gRPC on `GRPC_PORT`.
 
+## Migrate only
+
+`vault migrate` and `workflow migrate` run just the migrations and exit, for a release job or an
+init container that should finish the schema before any instance serves. They read the same
+settings as a normal start (`DATABASE_DSN`, `MIGRATE_DSN`, `MIGRATIONS_DIR`). `vault migrate` runs
+the same root key check first (`VAULT_ROOT_KEK`, or the dev seed in `dev`), so a missing or wrong
+root key exits non-zero with the schema untouched; `workflow migrate` also creates the saga
+engine's tables. Migrations take a Postgres advisory lock, so concurrent runs are safe. Neither
+command starts a server, a health port or telemetry export. They exit 0 when the schema is at
+head (also when it already was) and non-zero on any failure.
+
 ## Health
 
 ```bash

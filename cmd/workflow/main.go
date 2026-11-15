@@ -41,6 +41,10 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	if maybeMigrate(ctx, os.Args) {
+		return
+	}
+
 	svcLog, logger := telemetry.NewLoggers(serviceName, os.Getenv)
 	cfg, err := config.Load()
 	if err != nil {
