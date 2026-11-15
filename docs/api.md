@@ -300,6 +300,12 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   out of rotation or heartbeat; an opted-out secret has no schedule row. Rotation and heartbeat are
   scheduled only for a secret whose target has a connection; a manual rotation or heartbeat
   request without one answers `FailedPrecondition`.
+- **Heartbeat with no connector:** `RequestHeartbeatForPrincipal` answers `FAILED_PRECONDITION`
+  with reason `NO_CONNECTOR` when no connector can serve a check in this environment, so a caller
+  tests the reason, not the message.
+- **Moves that need a site admin:** `UpdateSecret` and `MoveFolder` refuse a move that puts shared
+  content into a personal folder, from anyone but a site admin, with `PERMISSION_DENIED` and
+  reason `MOVE_APPROVAL_REQUIRED`; the gateway files the approval.
 - **What can rotate:** `EnqueueRotation` refuses a secret whose type has no rotation
   (`FailedPrecondition`, reason `ROTATION_NOT_SUPPORTED`) or that is opted out
   (`ROTATION_OPTED_OUT`). Nothing is queued, and the refusal is audited as `rotate.refused`. A

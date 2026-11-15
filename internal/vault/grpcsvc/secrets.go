@@ -219,7 +219,7 @@ func (s *Server) UpdateSecret(ctx context.Context, req *vaultv1.UpdateSecretRequ
 			src := s.findFolder(sec.FolderId)
 			alreadyYours := src.GetScope() == vaultv1.FolderScope_FOLDER_SCOPE_PERSONAL && src.GetOwnerUserId() == destOwner
 			if !alreadyYours && !isHumanAdmin(req.GetActor()) {
-				return nil, status.Error(codes.PermissionDenied, "moving a secret into a personal folder requires site-admin approval")
+				return nil, refuseCode(codes.PermissionDenied, ReasonMoveApprovalRequired, "moving a secret into a personal folder requires site-admin approval")
 			}
 		}
 		from := sec.FolderId

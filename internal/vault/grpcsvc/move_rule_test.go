@@ -77,8 +77,8 @@ func TestMoveSecret_SharedToOwnPersonalNonAdminDenied(t *testing.T) {
 	_, err := s.UpdateSecret(context.Background(), &vaultv1.UpdateSecretRequest{
 		Actor: carol, Id: secID, DestFolderId: "folder-personal-carol",
 	})
-	if code(err) != codes.PermissionDenied {
-		t.Fatalf("shared->personal by non-admin: want PermissionDenied, got %v", err)
+	if got := reasonOf(t, err, codes.PermissionDenied); got != ReasonMoveApprovalRequired {
+		t.Fatalf("shared->personal by non-admin: reason = %q, want %q (err %v)", got, ReasonMoveApprovalRequired, err)
 	}
 	if got := s.findSecret(secID).GetFolderId(); got != shared {
 		t.Errorf("secret moved despite denial: folderId = %q, want %q (unchanged)", got, shared)
@@ -215,8 +215,8 @@ func TestMoveFolder_SharedToPersonalNonAdminDenied(t *testing.T) {
 	_, err := s.MoveFolder(context.Background(), &vaultv1.MoveFolderRequest{
 		Actor: carol, Id: shared, NewParentId: "folder-personal-grace",
 	})
-	if code(err) != codes.PermissionDenied {
-		t.Fatalf("shared->personal folder move by non-admin: want PermissionDenied, got %v", err)
+	if got := reasonOf(t, err, codes.PermissionDenied); got != ReasonMoveApprovalRequired {
+		t.Fatalf("shared->personal folder move by non-admin: reason = %q, want %q (err %v)", got, ReasonMoveApprovalRequired, err)
 	}
 	if got := s.findFolder(shared).GetScope(); got != vaultv1.FolderScope_FOLDER_SCOPE_GROUP {
 		t.Errorf("folder rescoped despite denial: scope = %v, want GROUP (unchanged)", got)

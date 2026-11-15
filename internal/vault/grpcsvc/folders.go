@@ -249,7 +249,7 @@ func (s *Server) MoveFolder(ctx context.Context, req *vaultv1.MoveFolderRequest)
 	if destPersonal {
 		alreadyOwned := f.GetScope() == vaultv1.FolderScope_FOLDER_SCOPE_PERSONAL && f.GetOwnerUserId() == destOwner
 		if !alreadyOwned && !isHumanAdmin(actor) {
-			return nil, status.Error(codes.PermissionDenied, "moving content into a personal folder requires site-admin approval")
+			return nil, refuseCode(codes.PermissionDenied, ReasonMoveApprovalRequired, "moving content into a personal folder requires site-admin approval")
 		}
 	}
 

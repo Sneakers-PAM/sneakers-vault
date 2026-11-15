@@ -135,9 +135,8 @@ func TestRequestHeartbeatWithoutVerifierFailsFastAndLeavesTheRow(t *testing.T) {
 	s.wid = nil
 	before := readHBRow(t, s, id)
 	err := requestHB(s, hbReader, id)
-	if status.Code(err) != codes.FailedPrecondition ||
-		!strings.HasPrefix(status.Convert(err).Message(), "no connector is available in this environment") {
-		t.Fatalf("no verifier: want FailedPrecondition \"no connector is available in this environment...\", got %v", err)
+	if got := reasonOf(t, err, codes.FailedPrecondition); got != ReasonNoConnector {
+		t.Fatalf("no verifier: reason = %q, want %q (err %v)", got, ReasonNoConnector, err)
 	}
 	if after := readHBRow(t, s, id); after != before {
 		t.Fatalf("heartbeat row changed with no verifier: before %+v after %+v", before, after)
