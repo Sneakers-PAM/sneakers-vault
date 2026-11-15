@@ -57,7 +57,7 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 | Break-glass browse | `OpenBreakGlassSession`, `GetBreakGlassSession`, `ListBreakGlassItems`, `CloseBreakGlassSession`, `ListBreakGlassSessions` |
 | Dashboard | `GetSecretStats`, `GetTopAccessedSecrets`, `ListSecretsByStatus`, `FindSecretsByPublicKey` |
 | Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `GetSecretForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `ImportExtensionForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
-| Secret uses and approvals | `PrepareSecretUse`, `GetSecretUse`, `ListPendingSecretUses`, `ListSecretUsesToDecide`, `DecideSecretUse`, `ConfirmSecretUse`, `RedeemSecretUse`, `CreateUseGrant`, `ListUseGrants`, `RevokeUseGrant`, `SetSecretTokenApproval` |
+| Secret uses and approvals | `PrepareSecretUse`, `GetSecretUse`, `ListPendingSecretUses`, `ListSecretUsesToDecide`, `DecideSecretUse`, `ConfirmSecretUse`, `RedeemSecretUse`, `RedeemSecretShare`, `RevokeSecretShare`, `CreateUseGrant`, `ListUseGrants`, `RevokeUseGrant`, `SetSecretTokenApproval` |
 | Certificates | `ImportCertificate`, `ExportCertificate`, `ReplaceCertificate` |
 | Connections and targets | `ListConnections`, `SaveConnection`, `DeleteConnection`, `ListTargets`, `SaveTarget`, `DeleteTarget` |
 | Connector | `ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeartbeat`, `EnqueueRotation`, `ClaimDueRotations`, `RevealForRotation`, `ReportRotation` |
@@ -460,6 +460,21 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   by `SetFolderRevealStepUp`, site admin only) refuses a person's `RevealSecretField` or
   `CopySecret` without an MFA within `MFA_MAX_AGE` (`STEP_UP_REQUIRED`, audited as
   `secret.reveal.step_up_required`). See [configuration.md](configuration.md#security-settings).
+- **One-time shares:** a person can share one field of a secret through a link with someone who
+  has no account. `PrepareSecretUse` takes `share_hash` (the lower-case hex SHA-256 of the link's
+  token, which the vault never sees) and `share_ttl_seconds` (60 seconds to 7 days, 0 = one day) on
+  a reveal by a person; a token or service account is refused. The use then follows the ordinary
+  rules: read access, the field, the reveal step-up (`STEP_UP_REQUIRED` at prepare, since the
+  person who redeems has no session), and the owner's approval, decided by an owner or approver
+  like any other use. An approval doesn't shorten a share's lifetime. `RedeemSecretShare(use_id,
+  share_hash)` releases the value once, to whoever presents the matching hash: an unknown use or a
+  wrong hash is `NotFound`, and a share that can't be redeemed says why (`FailedPrecondition`,
+  reason `SHARE_NOT_APPROVED`, `SHARE_DENIED`, `SHARE_USED` or `SHARE_EXPIRED`) without burning
+  it. `RevokeSecretShare` ends one that hasn't been opened, for its creator or a site admin. A
+  share is never redeemed through `RedeemSecretUse`. A redeem is audited as `secret.reveal` by the
+  creator with `via` = `share_link`, and refusals as `secret.share.redeem`; a revoke is
+  `secret.share.revoke`. Read access is checked when the share is prepared and approved, not again
+  at redeem, so a creator who loses access should revoke their open shares.
 - **Security settings:** before first-run setup has stored any (a store outside `dev`, `local`
   and `development` starts empty), `GetSecuritySettings` returns the defaults setup installs, and
   `UpdateSecuritySettings` starts from them. A setting a stored row predates reads as its
