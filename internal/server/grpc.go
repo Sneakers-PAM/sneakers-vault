@@ -1,7 +1,7 @@
 // Copyright 2026 The Sneakers-PAM Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// Package server provides a Run helper that boots a gRPC server with the
+// Package server provides a RunWithLogger helper that boots a gRPC server with the
 // standard health + reflection services and graceful shutdown on context
 // cancellation.
 package server
@@ -20,24 +20,19 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-// gracefulStopTimeout bounds how long Run will wait for in-flight RPCs to
+// gracefulStopTimeout bounds how long the server will wait for in-flight RPCs to
 // drain before forcibly stopping the server. Without it, a hung peer could
 // keep GracefulStop blocked indefinitely.
 const gracefulStopTimeout = 10 * time.Second
 
-// Run boots a gRPC server listening on :port, registers the health and
-// reflection services, calls register to attach caller-owned services, then
-// serves until ctx is cancelled. On cancellation it performs a graceful stop
-// and returns nil. A non-nil error indicates a fatal startup or serve failure.
+// RunWithLogger boots a gRPC server listening on :port, registers the health
+// and reflection services, calls register to attach caller-owned services,
+// then serves until ctx is cancelled. On cancellation it performs a graceful
+// stop and returns nil. A non-nil error indicates a fatal startup or serve
+// failure. lg logs the panics the recovery interceptors catch.
 //
 // Optional grpc.ServerOptions (e.g. interceptors) are passed through to
-// grpc.NewServer; callers that pass none get the previous behaviour.
-func Run(ctx context.Context, port string, register func(*grpc.Server), opts ...grpc.ServerOption) error {
-	return RunWithLogger(ctx, port, log.Nop(), register, opts...)
-}
-
-// RunWithLogger is Run with lg logging the panics the recovery interceptors
-// catch. Run itself discards them.
+// grpc.NewServer.
 func RunWithLogger(ctx context.Context, port string, lg log.Logger, register func(*grpc.Server), opts ...grpc.ServerOption) error {
 	return RunWithHealth(ctx, port, lg, nil, register, opts...)
 }

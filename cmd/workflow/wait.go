@@ -7,9 +7,9 @@ import (
 	"context"
 
 	postgres "github.com/Bugs5382/go-postgres"
-	otelpg "github.com/Bugs5382/go-postgres/otel"
 	sagapg "github.com/Bugs5382/go-saga-orchestration/store/postgres"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/telemetry"
 )
 
 // openPostgres runs the service and saga-store migrations and opens the pool
@@ -34,7 +34,7 @@ func openPostgres(ctx context.Context, boot *server.BootHealth, migrateDSN, migr
 	var db *postgres.DB
 	if err := postgres.WaitFor(ctx, func(ctx context.Context) error {
 		var err error
-		db, err = postgres.New(ctx, dsn, otelpg.WithTracing())
+		db, err = postgres.New(ctx, dsn, telemetry.DBTracing())
 		return err
 	}, wait...); err != nil {
 		return nil, nil, err

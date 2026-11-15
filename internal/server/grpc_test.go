@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/Bugs5382/go-log"
 	"google.golang.org/grpc"
 )
 
@@ -27,14 +28,14 @@ func freePort(t *testing.T) string {
 	return strconv.Itoa(port)
 }
 
-// TestRun_GracefulShutdownOnCancel verifies Run returns nil shortly after
+// TestRunWithLogger_GracefulShutdownOnCancel verifies RunWithLogger returns nil shortly after
 // its context is cancelled.
-func TestRun_GracefulShutdownOnCancel(t *testing.T) {
+func TestRunWithLogger_GracefulShutdownOnCancel(t *testing.T) {
 	port := freePort(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, port, func(*grpc.Server) {})
+		done <- RunWithLogger(ctx, port, log.Nop(), func(*grpc.Server) {})
 	}()
 
 	// Give the server a moment to bind.
@@ -44,9 +45,9 @@ func TestRun_GracefulShutdownOnCancel(t *testing.T) {
 	select {
 	case err := <-done:
 		if err != nil {
-			t.Fatalf("Run returned error: %v", err)
+			t.Fatalf("RunWithLogger returned error: %v", err)
 		}
 	case <-time.After(5 * time.Second):
-		t.Fatal("Run did not exit within 5s of cancellation")
+		t.Fatal("RunWithLogger did not exit within 5s of cancellation")
 	}
 }

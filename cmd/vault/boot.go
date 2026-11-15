@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/Bugs5382/go-log"
 	postgres "github.com/Bugs5382/go-postgres"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
@@ -194,4 +195,16 @@ func mustMFAMaxAge(logger zerolog.Logger) time.Duration {
 		logger.Fatal().Err(err).Msg("MFA freshness window")
 	}
 	return d
+}
+
+// logBootBuiltins logs the built-ins this start-up added to the store (the
+// secret types, extension packs, connections and password policies a newer
+// release ships), at info so an upgrade shows what it brought in.
+func logBootBuiltins(ctx context.Context, lg log.Logger, added []string) {
+	l := lg.Ctx(ctx)
+	if len(added) == 0 {
+		l.Debug("vault built-ins already current")
+		return
+	}
+	l.Info("vault added built-ins on start-up", log.F("count", len(added)), log.F("added", added))
 }

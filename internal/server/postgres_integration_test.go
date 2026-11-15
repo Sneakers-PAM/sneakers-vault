@@ -85,6 +85,34 @@ func (p *proxy) resume() {
 	p.serve(ln)
 }
 
+// slowVersion delays the version read past the ping, the order a busy CI runner
+// can produce, so the wait below is exercised on every run.
+func slowVersion(dep health.Dependency, delay time.Duration) health.Dependency {
+	read := dep.Version
+	dep.Version = func(ctx context.Context) (string, error) {
+		time.Sleep(delay)
+		return read(ctx)
+	}
+	return dep
+}
+
+// awaitVersion waits for the first version read, which the background refresh
+// runs alongside the check: a settled check says nothing about it.
+func awaitVersion(t *testing.T, c *health.Checker) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		r := c.Report(context.Background())
+		if r.Dependencies[0].Version != "unknown" {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the version read never settled: %+v", r)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 // TestPostgres_ReadinessFollowsARealDatabase runs against TEST_DATABASE_DSN
 // through a proxy the test cuts mid-test.
 func TestPostgres_ReadinessFollowsARealDatabase(t *testing.T) {
@@ -105,7 +133,8 @@ func TestPostgres_ReadinessFollowsARealDatabase(t *testing.T) {
 	}
 	defer db.Close()
 
-	ch := refreshed(t, newTestChecker(t, Postgres(db)))
+	ch := refreshed(t, newTestChecker(t, slowVersion(Postgres(db), 200*time.Millisecond)))
+	awaitVersion(t, ch)
 	if r := ch.Report(ctx); r.Status != health.StateOK || r.Dependencies[0].Version == "unknown" {
 		t.Fatalf("database up: %+v", r)
 	}

@@ -10,6 +10,7 @@ import (
 
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // seedSecret adds a bare secret stub with the given id, so a SaveConnection
@@ -234,5 +235,35 @@ func TestRotationGuardHoldsPrivilegedSecretLinkedByUpdate(t *testing.T) {
 	}
 	if !claimJobs()[privID] {
 		t.Fatal("privileged secret was not handed out once its peers settled")
+	}
+}
+
+// A directory whose KDC isn't on 88 keeps its port across an edit, and jobs
+// carry it so the connector can validate a rotated password there.
+func TestConnectionKdcPort(t *testing.T) {
+	s := newServer(t)
+	conn := linkedConnection(t, s)
+	save := func(port int32) error {
+		_, err := s.SaveConnection(context.Background(), &vaultv1.SaveConnectionRequest{
+			Actor: siteAdmin, Connection: &vaultv1.Connection{
+				Id: conn.GetId(), Name: "AD LDAPS", Protocol: "ldap", Port: 636, UseTls: true, KdcPort: port,
+			},
+		})
+		return err
+	}
+	if err := save(1088); err != nil {
+		t.Fatalf("SaveConnection: %v", err)
+	}
+	if got := listedConnection(t, s, conn.GetId()).GetKdcPort(); got != 1088 {
+		t.Fatalf("kdc_port = %d, want 1088", got)
+	}
+	s.targets = []*vaultv1.Target{{Id: "t1", Kind: "ad", Hostname: "dc01.example.org", ConnectionId: conn.GetId()}}
+	if job, _ := s.connTargetFor(&vaultv1.Secret{TargetId: "t1"}); job.GetKdcPort() != 1088 {
+		t.Fatalf("job connection = %+v, want kdc_port 1088", job)
+	}
+	for _, bad := range []int32{-1, 65536} {
+		if err := save(bad); status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("save(%d) = %v, want InvalidArgument", bad, err)
+		}
 	}
 }

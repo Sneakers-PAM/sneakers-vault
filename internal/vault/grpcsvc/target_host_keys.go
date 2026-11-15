@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	log "github.com/Bugs5382/go-log"
 	postgres "github.com/Bugs5382/go-postgres"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"golang.org/x/crypto/ssh"
@@ -101,9 +102,10 @@ func hostKeyDiff(before, after []string) (added, removed []string) {
 }
 
 // applyHostKeys validates the requested pins against the stored ones, gates a
-// change to site admins, and returns the canonical list plus the audit
-// attributes of the change (nil when the pins are unchanged).
-func applyHostKeys(actor *vaultv1.ActorContext, before, requested []string) ([]string, map[string]string, error) {
+// change to a person who may pin (see mayPinHostKeys), and returns the
+// canonical list plus the audit attributes of the change (nil when the pins
+// are unchanged). ownerUserID is the target's owner: empty for a shared one.
+func applyHostKeys(actor *vaultv1.ActorContext, ownerUserID string, before, requested []string) ([]string, map[string]string, error) {
 	keys, afterFPs, err := normalizeHostKeys(requested)
 	if err != nil {
 		return nil, nil, err
@@ -112,13 +114,43 @@ func applyHostKeys(actor *vaultv1.ActorContext, before, requested []string) ([]s
 	if len(added) == 0 && len(removed) == 0 {
 		return keys, nil, nil
 	}
-	if !isHumanAdmin(actor) {
-		return nil, nil, status.Error(codes.PermissionDenied, "SSH host keys are set by a site admin")
+	if !isHumanUser(actor) {
+		// Not "you're missing a role": even an admin's token can't do this —
+		// pinning decides which server a credential may be sent to, so it
+		// stays with a person, on purpose (#164).
+		return nil, nil, refuse(ReasonHostKeysPersonOnly,
+			"SSH host keys are pinned by a person in the web app (Scan and pin host key). "+
+				"An agent's token can't change them, even an admin's.")
+	}
+	if !mayPinHostKeys(actor, ownerUserID) {
+		return nil, nil, refuse(ReasonHostKeysNotOwner,
+			"SSH host keys on a personal target are pinned by its owner, and on a shared target by a site admin.")
 	}
 	return keys, map[string]string{
 		"added":   strings.Join(added, ","),
 		"removed": strings.Join(removed, ","),
 	}, nil
+}
+
+// mayPinHostKeys reports whether a person may change a target's pins: a site
+// admin on any target, or the owner of a personal target (#318). A token
+// never may; callers check isHumanUser first.
+func mayPinHostKeys(actor *vaultv1.ActorContext, ownerUserID string) bool {
+	if isHumanAdmin(actor) {
+		return true
+	}
+	return isHumanUser(actor) && ownerUserID != "" && ownerUserID == actor.GetUserId()
+}
+
+// auditHostKeyChange records a pin change as target.host_keys.change, with the
+// fingerprints added and removed. A nil change records nothing.
+func (s *Server) auditHostKeyChange(ctx context.Context, actor *vaultv1.ActorContext, targetID string, change map[string]string) {
+	if change == nil {
+		return
+	}
+	s.lg(ctx).Info("target SSH host keys changed", log.F("target_id", targetID), log.F("actor_user_id", actor.GetUserId()),
+		log.F("added", change["added"]), log.F("removed", change["removed"]))
+	s.emitAttrs(ctx, actor.GetUserId(), "target.host_keys.change", targetID, false, change)
 }
 
 // ---- persistence ------------------------------------------------------------
@@ -170,17 +202,18 @@ func persistTargetHostKeys(ctx context.Context, tx postgres.Tx, st *state) error
 	return nil
 }
 
-// targetsWithoutHostKeys returns copies of targets with the pins cleared, for
-// the targets table's JSON documents (the pins are stored separately).
+// targetsWithoutHostKeys returns copies of targets with the SSH host key and
+// TLS certificate pins cleared, for the targets table's JSON documents (the
+// pins are stored separately).
 func targetsWithoutHostKeys(targets []*vaultv1.Target) []*vaultv1.Target {
 	out := make([]*vaultv1.Target, len(targets))
 	for i, t := range targets {
-		if len(t.GetSshHostKeys()) == 0 {
+		if len(t.GetSshHostKeys()) == 0 && len(t.GetTlsCertPins()) == 0 {
 			out[i] = t
 			continue
 		}
 		cp := proto.Clone(t).(*vaultv1.Target)
-		cp.SshHostKeys = nil
+		cp.SshHostKeys, cp.TlsCertPins = nil, nil
 		out[i] = cp
 	}
 	return out

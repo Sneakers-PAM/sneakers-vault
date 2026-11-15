@@ -11,7 +11,7 @@ import (
 	"context"
 	"errors"
 	"math"
-	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -43,10 +43,18 @@ func hostKeyRefused(r vaultv1.HeartbeatResult) bool {
 		r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_HOST_KEY_MISMATCH
 }
 
+// certificateRefused reports a TLS heartbeat the connector didn't finish
+// because the target's certificate failed verification or matched none of
+// its pins.
+func certificateRefused(r vaultv1.HeartbeatResult) bool {
+	return r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE ||
+		r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_CERTIFICATE_MISMATCH
+}
+
 // heartbeatFailed reports a failed check: a wrong credential, or a host the
 // connector refused to trust.
 func heartbeatFailed(r vaultv1.HeartbeatResult) bool {
-	return r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED || hostKeyRefused(r)
+	return r == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED || hostKeyRefused(r) || certificateRefused(r)
 }
 
 // nextDue computes the next scheduled time: interval on valid/invalid;
@@ -140,19 +148,21 @@ func (s *Server) ClaimDueHeartbeats(ctx context.Context, req *vaultv1.ClaimDueHe
 		if sec == nil || sec.GetRetired() {
 			continue
 		}
-		conn, tgt := s.connTargetFor(sec)
-		if conn == nil {
-			// The connector can only report UNREACHABLE here, which alerts.
-			// Dropping the row stops the re-claim; attaching a target
-			// schedules it again.
+		if !s.heartbeatReachable(sec) {
+			// The connector can only report UNREACHABLE (or, for SSH, refuse
+			// the host key) here, which alerts. Dropping the row stops the
+			// re-claim; attaching a target or pinning a host key schedules it
+			// again.
 			s.dropUnreachableHeartbeat(ctx, sec)
 			continue
 		}
+		conn, tgt := s.connTargetFor(sec)
 		jobs = append(jobs, &vaultv1.HeartbeatJob{
 			SecretId: id, SecretName: sec.GetName(),
 			Username:   s.nonSensitiveField(id, "username"),
 			Connection: conn, Target: tgt,
-			Logon: s.jobLogonFormat(id),
+			Logon:   s.jobLogonFormat(id),
+			Targets: s.targetJobsFor(sec),
 		})
 	}
 	return &vaultv1.ClaimDueHeartbeatsResponse{Jobs: jobs}, nil
@@ -170,7 +180,13 @@ func (s *Server) dropUnreachableHeartbeat(ctx context.Context, sec *vaultv1.Secr
 }
 
 // RevealForHeartbeat releases the managed account's current credential to a
-// verified worker for exactly one bind attempt. Audited like any reveal.
+// verified worker for exactly one bind attempt. The fetch itself is not
+// audited on its own: it is always followed by a ReportHeartbeat call, which
+// folds the fetch-plus-report pair into the secret's daily rollup when the
+// check is routine (#161), or audits them together when it is not. A fetch
+// the connector never reports back for (a crash, a dropped report) leaves no
+// trace here, which is the one case this folding cannot see; that is outside
+// this fix's scope.
 func (s *Server) RevealForHeartbeat(ctx context.Context, req *vaultv1.RevealForHeartbeatRequest) (*vaultv1.RevealForHeartbeatResponse, error) {
 	principal, err := s.verifyWorker(ctx, req.GetIdentity())
 	if err != nil {
@@ -212,7 +228,7 @@ func (s *Server) RevealForHeartbeat(ctx context.Context, req *vaultv1.RevealForH
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "reveal: %v", err)
 	}
-	s.emit(ctx, "connector:"+principal.WorkerID, "heartbeat", req.GetSecretId(), true)
+	s.lg(ctx).Debug("heartbeat credential fetched", log.F("secret_id", req.GetSecretId()), log.F("worker_id", principal.WorkerID))
 	// Key-based types (ssh) carry key material and no password; password
 	// types carry the password and no key material.
 	if sec.GetTypeId() == "type-ssh-key" {
@@ -228,8 +244,30 @@ func (s *Server) RevealForHeartbeat(ctx context.Context, req *vaultv1.RevealForH
 // ReportHeartbeat records the worker's validation outcome, reschedules the
 // next attempt (interval, backoff on unreachable, paused on failed), and — for drift or
 // sustained unreachability — fans out an Informed notification.
+// applyHeartbeatReport sets sec's heartbeat-result fields from req (folding
+// in the per-target aggregation, #168, via resolveHeartbeatResult) and
+// returns the resolved result plus whether it's FAILED, for the caller's
+// scheduling/notify decisions. Caller holds s.mu (write lock).
+func applyHeartbeatReport(sec *vaultv1.Secret, req *vaultv1.ReportHeartbeatRequest, now time.Time) (result vaultv1.HeartbeatResult, failed bool) {
+	result, targetOutcomes := resolveHeartbeatResult(req.GetResult(), req.GetTargetResults(), now)
+	sec.LastHeartbeatResult = result
+	if targetOutcomes != nil {
+		sec.TargetHeartbeatOutcomes = targetOutcomes
+	}
+	sec.VerifiedAt = now.Format(time.RFC3339)
+	// A FAILED bind means the stored credential is wrong; retrying it every
+	// interval can lock the account out, so the schedule pauses instead.
+	failed = result == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED
+	sec.LastHeartbeatDetail = truncate(req.GetDetail(), maxHeartbeatDetail)
+	if failed {
+		sec.LastHeartbeatDetail = withPausedNote(req.GetDetail())
+	}
+	return result, failed
+}
+
 func (s *Server) ReportHeartbeat(ctx context.Context, req *vaultv1.ReportHeartbeatRequest) (*vaultv1.ReportHeartbeatResponse, error) {
-	if _, err := s.verifyWorker(ctx, req.GetIdentity()); err != nil {
+	principal, err := s.verifyWorker(ctx, req.GetIdentity())
+	if err != nil {
 		return nil, err
 	}
 
@@ -263,15 +301,7 @@ func (s *Server) ReportHeartbeat(ctx context.Context, req *vaultv1.ReportHeartbe
 	}
 	now := time.Now().UTC()
 	prevResult := sec.GetLastHeartbeatResult() // captured before overwrite, for the drift transition check
-	sec.LastHeartbeatResult = req.GetResult()
-	sec.VerifiedAt = now.Format(time.RFC3339)
-	// A FAILED bind means the stored credential is wrong; retrying it every
-	// interval can lock the account out, so the schedule pauses instead.
-	failed := req.GetResult() == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_FAILED
-	sec.LastHeartbeatDetail = truncate(req.GetDetail(), maxHeartbeatDetail)
-	if failed {
-		sec.LastHeartbeatDetail = withPausedNote(req.GetDetail())
-	}
+	result, failed := applyHeartbeatReport(sec, req, now)
 	interval := int(sec.GetHeartbeatIntervalSeconds())
 	secID, secName := sec.GetId(), sec.GetName()
 	// Snapshot everything notifyHeartbeat/secretChain need (the secret's own
@@ -288,7 +318,7 @@ func (s *Server) ReportHeartbeat(ctx context.Context, req *vaultv1.ReportHeartbe
 	}
 
 	consec := 0
-	if req.GetResult() == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNREACHABLE {
+	if result == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNREACHABLE {
 		consec = s.bumpUnreachable(ctx, req.GetSecretId())
 	} else {
 		_ = s.clearUnreachable(ctx, req.GetSecretId())
@@ -296,58 +326,179 @@ func (s *Server) ReportHeartbeat(ctx context.Context, req *vaultv1.ReportHeartbe
 	if failed {
 		s.pauseHeartbeat(ctx, req.GetSecretId())
 	} else {
-		_ = s.hb.Reschedule(ctx, req.GetSecretId(), nextDue(now, interval, req.GetResult(), consec))
+		_ = s.hb.Reschedule(ctx, req.GetSecretId(), nextDue(now, interval, result, consec))
 	}
 
-	s.emit(ctx, "connector", "heartbeat.report", req.GetSecretId(), false)
-	s.auditHostKeyRefusal(ctx, secID, req.GetResult(), req.GetDetail())
+	s.auditHeartbeatCheck(ctx, secID, principal.WorkerID, result, req.GetDetail())
 	// Notify only on the TRANSITION into a bad state, never on every poll — a
 	// target that stays down/drifted must not flood the inbox each interval.
 	//   drift: fire when the result first becomes FAILED (prev wasn't FAILED).
 	//   unreachable: fire on the poll that reaches N consecutive (transient
 	//     blips below N stay quiet); clearUnreachable() re-arms on recovery.
-	driftAlert := heartbeatFailed(req.GetResult()) && prevResult != req.GetResult()
-	unreachableAlert := req.GetResult() == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNREACHABLE &&
+	driftAlert := heartbeatFailed(result) && prevResult != result
+	unreachableAlert := result == vaultv1.HeartbeatResult_HEARTBEAT_RESULT_UNREACHABLE &&
 		consec == hbAlertAfterN
 	if driftAlert || unreachableAlert {
-		s.notifyHeartbeat(ctx, secID, secName, chain, req.GetResult(), req.GetDetail())
+		s.notifyHeartbeat(ctx, secID, secName, chain, result, req.GetDetail())
 	}
 	return &vaultv1.ReportHeartbeatResponse{Ok: true}, nil
 }
 
-// auditHostKeyRefusal logs and audits a heartbeat the connector refused
-// because the target's host key couldn't be verified. Other results are a
-// no-op.
-func (s *Server) auditHostKeyRefusal(ctx context.Context, secID string, result vaultv1.HeartbeatResult, detail string) {
-	if !hostKeyRefused(result) {
+// auditTrustRefusal logs and audits a heartbeat the connector refused because
+// it couldn't trust the target: its SSH host key or its TLS certificate.
+// Other results are a no-op.
+func (s *Server) auditTrustRefusal(ctx context.Context, secID string, result vaultv1.HeartbeatResult, detail string) {
+	var action string
+	switch {
+	case hostKeyRefused(result):
+		action = "secret.heartbeat.host_key"
+		s.lg(ctx).Warn("SSH heartbeat refused: the target's host key could not be verified",
+			log.F("secret_id", secID), log.F("result", result.String()))
+	case certificateRefused(result):
+		action = "secret.heartbeat.tls_certificate"
+		s.lg(ctx).Warn("TLS heartbeat refused: the target's certificate could not be verified",
+			log.F("secret_id", secID), log.F("result", result.String()))
+	default:
 		return
 	}
-	s.lg(ctx).Warn("SSH heartbeat refused: the target's host key could not be verified",
-		log.F("secret_id", secID), log.F("result", result.String()))
-	s.emitAttrs(ctx, "connector", "secret.heartbeat.host_key", secID, false,
+	s.emitAttrs(ctx, "connector", action, secID, false,
 		map[string]string{"result": result.String(), "detail": truncate(detail, maxHeartbeatDetail)})
 }
 
-// connTargetFor resolves a secret's target and the target's connection into
-// the connector-facing (protocol/host/port) shapes. Nil-safe: an unset or
-// dangling target/connection yields nil fields rather than an error — the
-// job just carries less connection detail. Caller must hold at least s.mu.RLock.
+// auditHeartbeatCheck records one heartbeat check (#161). A routine, OK check
+// that matches the day and result of a rollup already open for this secret
+// just extends it — no audit event for this check. Everything else flushes
+// any pending rollup as its own summary record and is itself audited
+// individually: a non-OK result (always, never folded — auditTrustRefusal
+// adds its own record for a host-key or certificate refusal on top of the
+// generic one, same as before this fix), or the first OK check that follows a different
+// result (a recovery). A plain day rollover with the result staying OK is
+// not a transition, so it opens the next day's rollup silently.
+func (s *Server) auditHeartbeatCheck(ctx context.Context, secID, workerID string, result vaultv1.HeartbeatResult, detail string) {
+	actor := "connector:" + workerID
+	if result != HB_VALID {
+		s.flushHeartbeatSummary(ctx, secID)
+		s.emit(ctx, "connector", "heartbeat.report", secID, false)
+		s.auditTrustRefusal(ctx, secID, result, detail)
+		return
+	}
+	if s.hbSummary == nil {
+		// No rollup store wired (e.g. a mem-only server): fall back to the
+		// pre-fold behavior rather than silently dropping the audit record.
+		s.emit(ctx, "connector", "heartbeat.report", secID, false)
+		return
+	}
+	l := s.lg(ctx)
+	now := time.Now().UTC()
+	today := now.Truncate(24 * time.Hour)
+	pending, open, err := s.hbSummary.Get(ctx, secID)
+	if err != nil {
+		l.Error(err, "read pending heartbeat rollup failed", log.F("secret_id", secID))
+		s.emit(ctx, "connector", "heartbeat.report", secID, false)
+		return
+	}
+	if open && pending.Result == HB_VALID.String() && pending.Day.Equal(today) {
+		if err := s.hbSummary.Bump(ctx, secID, now, detail); err != nil {
+			l.Error(err, "extend heartbeat rollup failed", log.F("secret_id", secID))
+		}
+		return
+	}
+	recovering := open && pending.Result != HB_VALID.String()
+	s.flushHeartbeatSummary(ctx, secID)
+	if recovering {
+		s.emit(ctx, "connector", "heartbeat.report", secID, false)
+	}
+	if err := s.hbSummary.Start(ctx, secID, today, now, HB_VALID.String(), detail, actor); err != nil {
+		l.Error(err, "start heartbeat rollup failed", log.F("secret_id", secID))
+	}
+}
+
+// flushHeartbeatSummary emits the secret's pending rollup (if any) as one
+// audit record carrying how many checks it covers and the window they span,
+// then clears it. A no-op when there is nothing pending.
+func (s *Server) flushHeartbeatSummary(ctx context.Context, secID string) {
+	if s.hbSummary == nil {
+		return
+	}
+	pending, open, err := s.hbSummary.Get(ctx, secID)
+	if err != nil {
+		s.lg(ctx).Error(err, "read pending heartbeat rollup failed", log.F("secret_id", secID))
+		return
+	}
+	if !open {
+		return
+	}
+	s.emitAttrs(ctx, pending.Actor, "heartbeat.summary", secID, false, map[string]string{
+		"result": pending.Result,
+		"checks": strconv.Itoa(pending.Checks),
+		"first":  pending.StartedAt.Format(time.RFC3339),
+		"last":   pending.LastAt.Format(time.RFC3339),
+		"detail": truncate(pending.Detail, maxHeartbeatDetail),
+	})
+	if err := s.hbSummary.Clear(ctx, secID); err != nil {
+		s.lg(ctx).Error(err, "clear heartbeat rollup failed", log.F("secret_id", secID))
+	}
+}
+
+// connTargetFor resolves a secret's PRIMARY (first) target and its
+// connection into the connector-facing (protocol/host/port) shapes, for the
+// legacy singular connection/target job fields a connector that hasn't
+// moved to the per-target targets list (#168) still reads. Nil-safe: an
+// unset or dangling target/connection yields nil fields rather than an
+// error — the job just carries less connection detail. Caller must hold at
+// least s.mu.RLock.
 func (s *Server) connTargetFor(sec *vaultv1.Secret) (*vaultv1.HeartbeatConn, *vaultv1.HeartbeatTarget) {
-	tgt := findByID(s.targets, sec.GetTargetId())
-	if tgt == nil {
+	id := primaryTargetID(sec)
+	if id == "" {
 		return nil, nil
 	}
-	target := &vaultv1.HeartbeatTarget{
-		Kind: tgt.GetKind(), Domain: tgt.GetDomain(), Realm: tgt.GetRealm(), Hostname: tgt.GetHostname(),
-		SshHostKeys: slices.Clone(tgt.GetSshHostKeys()),
+	job := s.targetJobFor(id)
+	return job.GetConnection(), job.GetTarget()
+}
+
+// typeNeedsHostKeyPin reports whether a secret's type binds over SSH, so its
+// target's host identity must be pinned before the broker will send a
+// credential to it. Only SSH Key secrets need this; an AD or local Windows
+// account's heartbeat binds over LDAP/SMB, which this vault doesn't pin a
+// host key for.
+func typeNeedsHostKeyPin(typeID string) bool { return typeID == "type-ssh-key" }
+
+// heartbeatReachable reports whether a secret has everything its heartbeat
+// needs to actually run: at least one attached target (#168) that is fully
+// usable — a connection, and, for an SSH Key secret only, at least one
+// pinned host key on that target (host-key pins stay per target), since the
+// broker refuses to send a credential to an unpinned host. Permissive by
+// design: a secret with several targets, only some usable, is still
+// reachable — ClaimDueHeartbeats hands the connector every attached target
+// and the connector's ReportHeartbeat.target_results says which succeeded.
+// Caller holds at least s.mu.RLock.
+func (s *Server) heartbeatReachable(sec *vaultv1.Secret) bool {
+	return s.anyTargetUsable(sec)
+}
+
+// heartbeatUnreadyReason names what's missing for sec's heartbeat to run, for
+// a heartbeat-capable secret that isn't heartbeatReachable — "" if it is (or
+// the type isn't heartbeat-capable at all). With several attached targets
+// this reports on the PRIMARY (first) one, the common single-target case;
+// a partially-usable multi-target secret is still heartbeatReachable (see
+// above), so this reason is shown only when NONE of them are usable. Caller
+// holds at least s.mu.RLock.
+func (s *Server) heartbeatUnreadyReason(sec *vaultv1.Secret) string {
+	if !s.typeHasHeartbeat(sec.GetTypeId()) || s.anyTargetUsable(sec) {
+		return ""
 	}
-	conn := findByID(s.connections, tgt.GetConnectionId())
-	if conn == nil {
-		return nil, target
+	id := primaryTargetID(sec)
+	tgt := findByID(s.targets, id)
+	switch {
+	case id == "" || tgt == nil:
+		return "no target"
+	case findByID(s.connections, tgt.GetConnectionId()) == nil:
+		return "no connection"
+	case typeNeedsHostKeyPin(sec.GetTypeId()) && len(tgt.GetSshHostKeys()) == 0:
+		return "no pinned host key"
+	default:
+		return ""
 	}
-	return &vaultv1.HeartbeatConn{
-		Protocol: conn.GetProtocol(), Host: tgt.GetHostname(), Port: conn.GetPort(), UseTls: conn.GetUseTls(),
-	}, target
 }
 
 // nonSensitiveField reads one non-sensitive field's plaintext value for a

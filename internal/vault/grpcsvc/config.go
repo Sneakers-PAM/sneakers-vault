@@ -6,7 +6,6 @@ package grpcsvc
 import (
 	"context"
 
-	log "github.com/Bugs5382/go-log"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -55,6 +54,9 @@ func (s *Server) SaveConnection(ctx context.Context, req *vaultv1.SaveConnection
 	if in == nil || in.GetName() == "" {
 		return nil, status.Error(codes.InvalidArgument, "connection name is required")
 	}
+	if p := in.GetKdcPort(); p < 0 || p > 65535 {
+		return nil, status.Error(codes.InvalidArgument, "kdc_port must be between 1 and 65535, or 0 for the default")
+	}
 	// Connections are shared infrastructure, managed in the admin app only.
 	if err := s.requireSiteAdmin(ctx, req.GetActor(), "SaveConnection"); err != nil {
 		return nil, err
@@ -74,6 +76,7 @@ func (s *Server) SaveConnection(ctx context.Context, req *vaultv1.SaveConnection
 		}
 		existing.Name, existing.Protocol, existing.Port = in.GetName(), in.GetProtocol(), in.GetPort()
 		existing.UseTls, existing.Description = in.GetUseTls(), in.GetDescription()
+		existing.KdcPort = in.GetKdcPort()
 		// The gateway's ConnectionInput has no linkage fields, so every edit from
 		// the admin app arrives with them empty; empty must keep the stored value.
 		if id := in.GetTargetId(); id != "" {
@@ -147,27 +150,27 @@ func (s *Server) SaveTarget(ctx context.Context, req *vaultv1.SaveTargetRequest)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var hostKeyChange map[string]string
+	var hostKeyChange, tlsPinChange map[string]string
 	if in.GetId() == "" {
 		conns, defaultConnID, err := resolveTargetConnections(s.connections, nil, in)
 		if err != nil {
 			return nil, err
 		}
-		keys, change, err := applyHostKeys(actor, nil, in.GetSshHostKeys())
+		// A non-admin's new target is personal to them, so they pin it as its owner.
+		newOwner := ""
+		if !admin {
+			newOwner = actor.GetUserId()
+		}
+		p, err := s.applyTargetPins(ctx, actor, &vaultv1.Target{OwnerUserId: newOwner}, in)
 		if err != nil {
-			s.lg(ctx).Warn("target save refused: SSH host keys", log.F("actor_user_id", actor.GetUserId()), log.F("reason", status.Convert(err).Message()))
 			return nil, err
 		}
-		in.SshHostKeys, hostKeyChange = keys, change
+		in.SshHostKeys, in.TlsCertPins, hostKeyChange, tlsPinChange = p.keys, p.tlsPins, p.keyChange, p.tlsChange
 		in.Id = s.nextID("target")
 		in.Connections, in.ConnectionId = conns, defaultConnID //nolint:staticcheck // the deprecated field is the intentional alias this keeps in sync
 		// A non-admin's target is personal (owned by the actor); an admin's is
 		// shared (owner left empty). The caller cannot spoof another owner.
-		if admin {
-			in.OwnerUserId = ""
-		} else {
-			in.OwnerUserId = actor.GetUserId()
-		}
+		in.OwnerUserId = newOwner
 		s.targets = append(s.targets, in)
 	} else {
 		existing := findByID(s.targets, in.GetId())
@@ -183,13 +186,11 @@ func (s *Server) SaveTarget(ctx context.Context, req *vaultv1.SaveTargetRequest)
 		if err != nil {
 			return nil, err
 		}
-		keys, change, err := applyHostKeys(actor, existing.GetSshHostKeys(), in.GetSshHostKeys())
+		p, err := s.applyTargetPins(ctx, actor, existing, in)
 		if err != nil {
-			s.lg(ctx).Warn("target save refused: SSH host keys", log.F("target_id", existing.GetId()),
-				log.F("actor_user_id", actor.GetUserId()), log.F("reason", status.Convert(err).Message()))
 			return nil, err
 		}
-		existing.SshHostKeys, hostKeyChange = keys, change
+		existing.SshHostKeys, existing.TlsCertPins, hostKeyChange, tlsPinChange = p.keys, p.tlsPins, p.keyChange, p.tlsChange
 		existing.Name, existing.Hostname = in.GetName(), in.GetHostname()
 		existing.Connections, existing.ConnectionId = conns, defaultConnID //nolint:staticcheck // the deprecated field is the intentional alias this keeps in sync
 		existing.Description = in.GetDescription()
@@ -197,11 +198,8 @@ func (s *Server) SaveTarget(ctx context.Context, req *vaultv1.SaveTargetRequest)
 		in = existing
 	}
 	s.emit(ctx, req.GetActor().GetUserId(), "target.save", in.GetId(), false)
-	if hostKeyChange != nil {
-		s.lg(ctx).Info("target SSH host keys changed", log.F("target_id", in.GetId()), log.F("actor_user_id", actor.GetUserId()),
-			log.F("added", hostKeyChange["added"]), log.F("removed", hostKeyChange["removed"]))
-		s.emitAttrs(ctx, actor.GetUserId(), "target.host_keys.change", in.GetId(), false, hostKeyChange)
-	}
+	s.auditHostKeyChange(ctx, actor, in.GetId(), hostKeyChange)
+	s.auditTLSPinChange(ctx, actor, in.GetId(), tlsPinChange)
 	return &vaultv1.SaveTargetResponse{Target: in}, nil
 }
 

@@ -5,6 +5,7 @@ package grpcsvc
 
 import (
 	"context"
+	"maps"
 	"testing"
 	"time"
 
@@ -72,6 +73,7 @@ func cloneState(st *state) *state {
 	for k, v := range st.records {
 		cp.records[k] = v
 	}
+	cp.builtinLedger = maps.Clone(st.builtinLedger)
 	return cp
 }
 
@@ -121,6 +123,7 @@ func createSecretVia(t *testing.T, s *Server) string {
 	}
 	sec, err := s.CreateSecret(ctx, &vaultv1.CreateSecretRequest{
 		Actor: carol, Name: "db creds", FolderId: f.GetFolder().GetId(), TypeId: "type-password",
+		Fields: map[string]string{"username": "app", "password": "Init1alP@ss-2026"},
 	})
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)

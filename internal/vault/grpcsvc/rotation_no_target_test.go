@@ -222,7 +222,7 @@ func TestClaimDueRotations_RemovesRowWithoutTargetOrConnection(t *testing.T) {
 	cases := map[string]func(t *testing.T, fx *noTargetFixture, id string){
 		"target detached": func(t *testing.T, fx *noTargetFixture, id string) {
 			fx.s.mu.Lock()
-			fx.s.findSecret(id).TargetId = ""
+			setSecretTargets(fx.s.findSecret(id), nil)
 			fx.s.mu.Unlock()
 		},
 		"connection gone": func(_ *testing.T, fx *noTargetFixture, _ string) { fx.dropConnection() },

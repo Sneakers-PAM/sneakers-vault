@@ -42,6 +42,10 @@ func (s *Server) readableHeartbeatSecret(actor *vaultv1.ActorContext, id string)
 	return sec, nil
 }
 
+// ReasonNoConnector marks a check or rotation request refused because no
+// connector can serve it in this environment.
+const ReasonNoConnector = "NO_CONNECTOR"
+
 func (s *Server) RequestHeartbeatForPrincipal(ctx context.Context, req *vaultv1.RequestHeartbeatForPrincipalRequest) (*vaultv1.RequestHeartbeatForPrincipalResponse, error) {
 	actor := req.GetActor()
 	sec, err := s.readableHeartbeatSecret(actor, req.GetSecretId())
@@ -53,7 +57,7 @@ func (s *Server) RequestHeartbeatForPrincipal(ctx context.Context, req *vaultv1.
 	// never be served and the caller would wait on it forever.
 	if s.wid == nil {
 		l.Info("heartbeat request refused: no worker-identity verifier, so no connector can serve it", log.F("secret_id", sec.GetId()))
-		return nil, status.Error(codes.FailedPrecondition, "no connector is available in this environment, so a heartbeat check cannot run")
+		return nil, refuseCode(codes.FailedPrecondition, ReasonNoConnector, "no connector is available in this environment, so a heartbeat check cannot run")
 	}
 	s.mu.RLock()
 	reachable, targetID := s.rotationReachable(sec), sec.GetTargetId()

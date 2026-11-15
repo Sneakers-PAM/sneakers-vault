@@ -188,10 +188,12 @@ func TestChangeSecretType_NotesRefusals(t *testing.T) {
 	f := authorFolder(t, s)
 	addType(s, &vaultv1.SecretType{Id: "type-org-short-notes", Name: "Short", Fields: []*vaultv1.SecretFieldDef{
 		{Key: "username", Kind: vaultv1.FieldKind_FIELD_KIND_TEXT},
+		{Key: "password", Kind: vaultv1.FieldKind_FIELD_KIND_PASSWORD, Sensitive: true},
 		{Key: "notes", Kind: vaultv1.FieldKind_FIELD_KIND_MULTILINE, MaxLength: 30},
 	}})
 	addType(s, &vaultv1.SecretType{Id: "type-org-no-notes", Name: "NoNotes", Fields: []*vaultv1.SecretFieldDef{
 		{Key: "username", Kind: vaultv1.FieldKind_FIELD_KIND_TEXT},
+		{Key: "password", Kind: vaultv1.FieldKind_FIELD_KIND_PASSWORD, Sensitive: true},
 	}})
 	cases := map[string]struct {
 		newType string
@@ -203,7 +205,7 @@ func TestChangeSecretType_NotesRefusals(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			id := retypeSecret(t, s, f, "type-web-password", map[string]string{"url": "https://a-long-url.example.test/path", "username": "u"})
+			id := retypeSecret(t, s, f, "type-web-password", map[string]string{"url": "https://a-long-url.example.test/path", "username": "u", "password": "p"})
 			before := s.records[id]
 			_, err := s.ChangeSecretTypeForPrincipal(context.Background(), &vaultv1.ChangeSecretTypeForPrincipalRequest{
 				Actor: agentGroupActor("sa-1"), Id: id, NewTypeId: tc.newType, UnmappedFields: tc.policy,

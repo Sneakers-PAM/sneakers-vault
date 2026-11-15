@@ -26,6 +26,7 @@ import (
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/maintenance"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/telemetry"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/auditclient"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/crypto"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
@@ -169,11 +170,9 @@ func dialRedis(ctx context.Context, l zerolog.Logger, url string) *bredis.Client
 	return rc
 }
 
-func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	logger := log.New(serviceName)
+// mustLoadConfig loads the settings and refuses removed ones; either failure
+// is fatal.
+func mustLoadConfig(logger zerolog.Logger) config.Config {
 	cfg, err := config.Load()
 	if err == nil {
 		err = refuseRemovedSettings(os.Getenv)
@@ -181,10 +180,23 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("config")
 	}
+	return cfg
+}
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	if maybeMigrate(ctx, os.Args) {
+		return
+	}
+
+	svcLog, logger := telemetry.NewLoggers(serviceName, os.Getenv)
+	cfg := mustLoadConfig(logger)
 
 	maint := mustMaintenance(logger)
 
-	otelShutdown, err := otel.Init(ctx, serviceName, cfg.OTLPEndpoint)
+	otelShutdown, err := otel.InitWithOptions(ctx, serviceName, cfg.OTLPEndpoint, telemetry.Options(os.Getenv)...)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("otel init")
 	}
@@ -215,7 +227,6 @@ func main() {
 	}
 	defer func() { _ = notifyConn.Close() }()
 
-	svcLog := log.NewLogger(serviceName)
 	// The port answers health from here on, while the boot waits for
 	// Postgres and runs the preflight and migrations: liveness SERVING, so
 	// the startup probe passes on a slow boot, and readiness NOT_SERVING with
@@ -255,6 +266,7 @@ func main() {
 		logger.Fatal().Err(err).Msg("vault init")
 	}
 	srv.SetLogger(svcLog)
+	logBootBuiltins(ctx, svcLog, srv.BootAddedBuiltins())
 	srv.SetMaintenance(maint)
 	srv.SetMFAMaxAge(mustMFAMaxAge(logger))
 	srv.SetNotifier(notifyclient.New(notifyv1.NewNotifyServiceClient(notifyConn)))
@@ -303,7 +315,7 @@ func main() {
 		logger.Fatal().Err(err).Msg("workload auth")
 	}
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
-	checker := mustChecker(logger, svcLog, dependencies(db, auditConn, notifyConn, valkeyPing, workloadVerifier))
+	checker := mustChecker(logger, svcLog, append(dependencies(db, auditConn, notifyConn, valkeyPing, workloadVerifier), telemetry.Dependencies(cfg.OTLPEndpoint, os.Getenv)...))
 	maintUnary, maintStream := grpcsvc.MaintenanceInterceptors(maint, svcLog)
 	// PersonSessionUnary runs after the caller-auth chain (and its
 	// SelfActorUnary), with or without service-to-service authentication.

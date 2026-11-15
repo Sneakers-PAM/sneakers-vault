@@ -92,12 +92,20 @@ func createScheduledSSHSecret(t *testing.T, s *Server) (actor *vaultv1.ActorCont
 		Actor: actor, Name: "deploy key", FolderId: fid, TypeId: "type-ssh-key", TargetId: tgt,
 		Fields: map[string]string{
 			"username":   "svc-deploy",
+			"keyFormat":  "Ed25519",
 			"privateKey": "-----BEGIN OPENSSH PRIVATE KEY-----\nSYNTHETIC\n-----END OPENSSH PRIVATE KEY-----", // gitleaks:allow -- a synthetic placeholder, not a key
 			"passphrase": "",
 		},
 	})
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
+	}
+	// The target has no pinned host key, so #162's gating leaves this secret's
+	// heartbeat off at create (see heartbeat_no_target_test.go for that
+	// behavior); this fixture is about RevealForHeartbeat's response shape,
+	// so it schedules the row directly rather than pinning a key.
+	if err := s.hb.Ensure(context.Background(), created.GetSecret().GetId(), 300); err != nil {
+		t.Fatalf("Ensure: %v", err)
 	}
 	return actor, created.GetSecret().GetId()
 }

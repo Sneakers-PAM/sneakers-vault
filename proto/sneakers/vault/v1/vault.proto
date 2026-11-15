@@ -73,6 +73,15 @@ enum HeartbeatResult {
   // SSH: the host offered a key that isn't one of the target's pins.
   // Recorded as a failed check.
   HEARTBEAT_RESULT_HOST_KEY_MISMATCH = 6;
+  // TLS: the target answered, but its certificate failed verification (an
+  // unknown CA, expired or not yet valid, or issued for another host name),
+  // so the connector never sent the credential. The detail names why.
+  // Recorded as a failed check.
+  HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE = 7;
+  // TLS: the target presented a certificate that matches none of its pins
+  // (Target.tls_cert_pins), so the connector never sent the credential. The
+  // detail names the fingerprint it saw. Recorded as a failed check.
+  HEARTBEAT_RESULT_CERTIFICATE_MISMATCH = 8;
 }
 
 enum RotationPhase {
@@ -132,7 +141,7 @@ message Folder {
   bool is_master_personal = 8;
   int32 order = 9;
   repeated string owners = 10;          // RACI owners (user ids): auto read+approve+author, inherit down
-  int32 subtree_secret_count = 11;      // output-only: secrets in this folder + all descendants (drives delete UX)
+  int32 subtree_secret_count = 11;      // output-only: active secrets the caller sees in this folder + all descendants (drives delete UX)
   bool can_manage = 12;                 // output-only: whether the requesting actor may manage/create-under this folder (= isFolderOwner incl. site-admin/root, personal owner, and inherited ancestor ownership). Drives UI affordances (context menu, create-subfolder). Empty/false unless ListFolders computed it for the actor.
   // Step-up MFA before a reveal in this folder and below. UNSPECIFIED inherits:
   // the nearest ancestor that sets one, and at the top the global
@@ -168,6 +177,11 @@ message InheritedFolderRule {
 // keys are "C" (read+reveal), "R" (manage/create/edit/rotate), "A" (approve
 // access requests), "I" (informed / metadata-only); values "allow"|"deny";
 // a missing key = blank (fall through). Mirrors the authz engine's Rule.
+// The "C" cell also accepts "own": contribute, own reveal — the subject may
+// create/update anywhere "R" allows, but reveals only a secret whose
+// creator_principal_id is its own. Never valid on "R"/"A"/"I". Combine with
+// "R": "allow" for the full "contribute, own reveal" grant the server
+// validates on save (own on any cell but C is refused).
 message RaciRule {
   string id = 1;
   string folder_id = 2;
@@ -316,6 +330,56 @@ message Secret {
   // close the gap. ReorderSecrets sets the whole order. ListSecretsInFolder
   // returns secrets in this order.
   int32 position = 33;
+  // Output only, on the *ForPrincipal responses (computed, never stored;
+  // empty elsewhere, same convention as heartbeat_enabled): why heartbeat
+  // can't be switched on right now, for a heartbeat-capable type whose
+  // heartbeat isn't running — "no target", "no connection" or, for an SSH
+  // Key secret, "no pinned host key" on the target. Empty when heartbeat is
+  // already running, when it's switched off on purpose (heartbeat_opt_out),
+  // or when the type isn't heartbeat-capable at all.
+  string heartbeat_blocked_reason = 34;
+  // The principal that created this secret (a human user id or a non-human
+  // principal id) — set once, at creation, never on edit/move/retype. Used by
+  // a folder grant's "own reveal" cell (RaciRule's C=own) to decide whether
+  // THIS secret, specifically, is readable: own-reveal checks this against
+  // the caller's principal id, never a blanket folder read. Empty on a
+  // secret created before this field existed; such a secret is readable
+  // under an own-reveal grant only once explicitly reassigned (not yet
+  // built — today it simply stays unreadable under that grant, the same as
+  // any other secret the caller didn't create).
+  string creator_principal_id = 35;
+  // The secret's attached targets, in attach order (#168: one secret may
+  // open sessions on several pinned targets — one SSH key rotated once,
+  // used on every host it's attached to). target_id (above) stays the
+  // first/primary entry, kept in sync, so a consumer that hasn't moved to
+  // this list still reads a sensible single value: a secret saved before
+  // this field existed is read back as a one-item list built from
+  // target_id, the same normalize-on-read AttachSecretTarget/
+  // DetachSecretTarget and the migration backfill both rely on. Replacing
+  // target_id wholesale (UpdateSecret/SetSecretTargetForPrincipal) still
+  // means "replace the whole list with just this one" — Attach/Detach are
+  // the only paths that add or remove one target without touching the
+  // others.
+  repeated string target_ids = 36;
+  // Output only: each attached target's last reported rotation/heartbeat
+  // outcome (#168's "reports which ones failed"). last_rotation_result/
+  // last_heartbeat_result (+ detail) above stay the AGGREGATE — OK only once
+  // every target succeeded — so an old reader keeps seeing a single clear
+  // status; these lists add the per-target breakdown for the secret's own
+  // page. Empty when the secret has one target (or none), or before any
+  // multi-target-aware connector report arrives.
+  repeated TargetOutcome target_rotation_outcomes = 37;
+  repeated TargetOutcome target_heartbeat_outcomes = 38;
+}
+
+// One target's last reported outcome, for a secret attached to more than
+// one (#168). Shared shape for both rotation and heartbeat reporting —
+// which list it's in says which.
+message TargetOutcome {
+  string target_id = 1;
+  bool ok = 2;
+  string detail = 3;
+  string at = 4; // RFC3339
 }
 
 // ---- Request/response messages ----------------------------------------------
@@ -358,6 +422,19 @@ message ActorContext {
   // (never the session token itself). A break-glass browse session is bound to
   // the reference it was opened with.
   string session_ref = 12;
+  // PRINCIPAL_KIND_USER_TOKEN only: the token's owner holds the site-admin
+  // (or root) role, resolved by the gateway from the owner's identity. A
+  // token never acts with admin authority (is_site_admin and is_root are
+  // ignored for it); the vault reads this flag for two things only: creating
+  // a top-level folder while SecuritySettings.restrict_top_level_folders is
+  // on, and ImportExtensionForPrincipal. Ignored for every other principal
+  // kind.
+  bool token_owner_is_site_admin = 13;
+  // PRINCIPAL_KIND_USER_TOKEN only: the kind of client the token was minted
+  // for, as identity recorded it ("mcp" for an MCP agent token). Set by the
+  // gateway from the verified token. Grants nothing; it says where a change
+  // came from in the audit log.
+  string token_client_kind = 14;
 }
 
 message ListSecretTypesRequest {}
@@ -392,6 +469,16 @@ message ImportExtensionResponse { SecretType type = 1; }
 message ImportExtensionFromJsonRequest { ActorContext actor = 1; string json = 2; } // install a pasted pack
 message ImportExtensionFromJsonResponse { SecretType type = 1; }
 
+// Install a catalogued pack by id as a personal token whose owner is a site
+// admin or root (ActorContext.token_owner_is_site_admin). A person is refused
+// with PERMISSION_DENIED and no reason, as on every *ForPrincipal call; any
+// other machine with PERMISSION_DENIED, reason NOT_SITE_ADMIN, audited as
+// authz.denied. A pack that isn't catalogued is NOT_FOUND, and one already
+// installed is ALREADY_EXISTS. There's no machine equivalent of
+// ImportExtensionFromJson: only catalogued packs can be activated this way.
+message ImportExtensionForPrincipalRequest { ActorContext actor = 1; string id = 2; }
+message ImportExtensionForPrincipalResponse { SecretType type = 1; }
+
 // Actor-scoped: returns shared folders plus only the actor's OWN personal
 // folders (never other users' personal folders). The master personal root is
 // always included so the personal tree renders.
@@ -400,7 +487,7 @@ message ListFoldersResponse { repeated Folder folders = 1; }
 
 message CreateFolderRequest {
   ActorContext actor = 1;
-  string parent_id = 2;                 // empty = new top-level shared folder
+  string parent_id = 2;                 // empty = new top-level shared folder (see SecuritySettings.restrict_top_level_folders)
   string name = 3;
 }
 message CreateFolderResponse { Folder folder = 1; }
@@ -470,6 +557,16 @@ message UpdateSecretRequest {
   string dest_folder_id = 7;
 }
 message UpdateSecretResponse { Secret secret = 1; }
+
+// Attach/detach one target on a secret's target_ids list (#168), never
+// touching the others — unlike UpdateSecret's target_id, which replaces the
+// whole list with just the one it names. Detaching the secret's only target
+// (or one it was never attached to) is a no-op, not an error: idempotent,
+// same convention as SetFolderRuleset-style saves.
+message AttachSecretTargetRequest { ActorContext actor = 1; string secret_id = 2; string target_id = 3; }
+message AttachSecretTargetResponse { Secret secret = 1; }
+message DetachSecretTargetRequest { ActorContext actor = 1; string secret_id = 2; string target_id = 3; }
+message DetachSecretTargetResponse { Secret secret = 1; }
 
 // Per-secret automation override. Disabling is audited and surfaced with a notice
 // in the UI (these should be rare, deliberate exceptions).
@@ -551,6 +648,40 @@ message GenerateSecretForPrincipalResponse {
   string generated_value = 2;     // set only when return_value=true
 }
 
+// Regenerate an EXISTING secret's password-kind field under its policy and
+// store it as a new version, as a non-human principal. Requires RACI-Author
+// (R) on the secret's folder chain — the same grant CreateSecretForPrincipal/
+// GenerateSecretForPrincipal require — never RACI-C: a principal that may
+// only reveal, not author, may not rotate. Refused (audited) while a
+// scheduled rotation of the secret is queued or running (mirrors
+// RestoreSecretVersion's ROTATION_IN_PROGRESS guard). Unlike
+// GenerateSecretForPrincipal's generated_value, the new value is always
+// returned: the caller's whole reason to rotate (e.g. a local-admin-password
+// broker) is to push it to the target next, store-then-set.
+message RotateSecretForPrincipalRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  string policy_id = 3; // optional password policy override; else the field's/default
+}
+message RotateSecretForPrincipalResponse {
+  Secret secret = 1;
+  string new_value = 2;
+}
+
+// Make a prior version current again, as a non-human principal. Requires
+// RACI-Author (R) on the secret's folder chain (never the human-only
+// recovery role RestoreSecretVersion needs). Refused (audited) while a
+// scheduled rotation is queued or running. Only the vault's copy changes —
+// never pushed to a target — mirroring RestoreSecretVersion.
+message RestoreSecretVersionForPrincipalRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  int32 version_no = 3;
+}
+message RestoreSecretVersionForPrincipalResponse {
+  Secret secret = 1;
+}
+
 // Move a secret to another folder as a non-human principal. Same rule as the
 // human UpdateSecret dest_folder_id move: RACI-Author (R) on the secret's
 // current location AND on the destination folder chain. A move into a personal
@@ -576,8 +707,9 @@ message MoveSecretForPrincipalResponse {
   Folder destination = 3;
 }
 
-// What ChangeSecretTypeForPrincipal does with a non-empty value that has no
-// field under the new type (neither the same key nor a field_mapping entry).
+// What a type change (ChangeSecretType, ChangeSecretTypeForPrincipal) does with
+// a non-empty value that has no field under the new type (neither the same key
+// nor a field_mapping entry).
 enum UnmappedFieldPolicy {
   // Default: same as NOTES.
   UNMAPPED_FIELD_POLICY_UNSPECIFIED = 0;
@@ -630,6 +762,104 @@ message ChangeSecretTypeForPrincipalResponse {
   repeated string field_keys = 2; // field keys populated under the new type (never values)
   repeated string moved_to_notes_keys = 3; // old keys appended to the notes field (never values)
   string notes_field_key = 4;     // the notes field used, when moved_to_notes_keys is non-empty
+  // Describes the change itself (old type name -> new type name, fields
+  // added, renamed and carried over), the same text recorded on the new
+  // version (SecretVersion.change_label) — #165, so a type change never
+  // reads in history as just "Changed: <field>".
+  string change_label = 5;
+}
+
+// Change a secret's type as a signed-in person. A person's version of
+// ChangeSecretTypeForPrincipal with the same value, certificate and automation
+// rules and the same refusal while a rotation is in flight, plus one thing a
+// machine may not do: drop checkout from a plain checkout type. Needs Author on
+// the secret (a per-secret deny holds) or ownership of its folder, and refuses
+// any non-human actor (PERMISSION_DENIED) and a retired secret
+// (FAILED_PRECONDITION, RETIRED). Audited as secret.type_change with field keys
+// only. Refusals carry an ErrorInfo (domain sneakers.vault); see
+// docs/type-change.md.
+message ChangeSecretTypeRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  string new_type_id = 3;
+  // Old field key -> new field key. Keys not listed carry over by identical key.
+  map<string, string> field_mapping = 4;
+  // Values for new-type fields the mapping leaves empty (e.g. a field the new
+  // type requires). May not overwrite a carried-over value.
+  map<string, string> fields = 5;
+  // NOTES (the default) moves a value with no field into the notes field;
+  // REFUSE fails the change naming the keys. Nothing is dropped under either.
+  UnmappedFieldPolicy unmapped_fields = 6;
+}
+message ChangeSecretTypeResponse {
+  Secret secret = 1;
+  repeated string field_keys = 2; // field keys populated under the new type (never values)
+  repeated string moved_to_notes_keys = 3; // old keys appended to the notes field (never values)
+  string notes_field_key = 4; // the notes field used, when moved_to_notes_keys is non-empty
+  string change_label = 5; // the text recorded on the new version and in the audit event
+}
+
+// What a type change would do with one stored value.
+enum SecretTypeChangeFieldOutcome {
+  SECRET_TYPE_CHANGE_FIELD_OUTCOME_UNSPECIFIED = 0;
+  // Stays under the same key.
+  SECRET_TYPE_CHANGE_FIELD_OUTCOME_CARRIED = 1;
+  // Moves to another key through field_mapping.
+  SECRET_TYPE_CHANGE_FIELD_OUTCOME_RENAMED = 2;
+  // No field for it: appended to the notes field.
+  SECRET_TYPE_CHANGE_FIELD_OUTCOME_MOVED_TO_NOTES = 3;
+  // It can't move, so the change would be refused; reason says why.
+  SECRET_TYPE_CHANGE_FIELD_OUTCOME_BLOCKED = 4;
+}
+
+// One stored non-empty field in a preview. Keys only, never values.
+message SecretTypeChangeField {
+  string from_key = 1;
+  // The new type's field, or the notes field. Empty when BLOCKED with no place
+  // to go.
+  string to_key = 2;
+  SecretTypeChangeFieldOutcome outcome = 3;
+  // When BLOCKED: the refusal reason for this field.
+  string reason = 4;
+}
+
+// Runs a person's type change through the same rules without writing anything:
+// no new version, no audit event, no schedule change. Takes the same access and
+// the same inputs as ChangeSecretType, so a call that previews as allowed
+// succeeds unless the secret changes first. Access, a retired secret, a missing
+// secret or type and the type the secret already has are still gRPC errors; a
+// change the rules refuse is a normal response with allowed false.
+message PreviewSecretTypeChangeRequest {
+  ActorContext actor = 1;
+  string id = 2;
+  string new_type_id = 3;
+  map<string, string> field_mapping = 4;
+  map<string, string> fields = 5;
+  UnmappedFieldPolicy unmapped_fields = 6;
+}
+message PreviewSecretTypeChangeResponse {
+  bool allowed = 1;
+  // When not allowed: the ErrorInfo reason and message ChangeSecretType would
+  // refuse with. Messages name field keys, never values.
+  string refusal_reason = 2;
+  string refusal_message = 3;
+  // One entry per stored non-empty field, in key order, also when refused.
+  repeated SecretTypeChangeField field_changes = 4;
+  // Required fields of the new type that nothing fills yet.
+  repeated string missing_required_keys = 5;
+  // The notes field values would move into, when any would.
+  string notes_field_key = 6;
+  // When allowed: the keys the new type would hold, and the change label.
+  repeated string field_keys = 7;
+  string change_label = 8;
+  // What automation would do, the same values as the audit attributes.
+  // rotation: none | off. heartbeat: none | scheduled | no_target | opted_out.
+  // target: none | kept | detached.
+  string rotation = 9;
+  string heartbeat = 10;
+  string target = 11;
+  string from_target_id = 12;
+  string target_id = 13;
 }
 
 // ---- Organize verbs for non-human principals --------------------------------
@@ -696,13 +926,18 @@ message ListFoldersForPrincipalResponse {
   repeated Folder folders = 1;
 }
 
-// Create a subfolder. parent_id is required: a machine cannot create a
-// top-level folder (the human route makes the creator its owner, and a machine
-// cannot own). Requires RACI-Author (R) on the parent's chain (the machine
-// equivalent of the human owner gate, which a machine can never meet). A parent
-// in a personal subtree is refused (PERMISSION_DENIED). A sibling with the same
-// name (case-insensitive) is refused (ALREADY_EXISTS). The folder inherits its
-// parent's scope and RACI chain and gets no owners of its own.
+// Create a subfolder. Requires RACI-Author (R) on the parent's chain (the
+// machine equivalent of the human owner gate, which a machine can never meet).
+// A parent in a personal subtree is refused (PERMISSION_DENIED). A sibling with
+// the same name (case-insensitive) is refused (ALREADY_EXISTS). The folder
+// inherits its parent's scope and RACI chain and gets no owners of its own.
+//
+// An empty parent_id asks for a top-level folder, owned by the token's user as
+// when that person makes one in the web. A service account or workload is
+// refused (INVALID_ARGUMENT): it has no user to own the folder. While
+// SecuritySettings.restrict_top_level_folders is on, a personal token whose
+// owner isn't a site admin (ActorContext.token_owner_is_site_admin) is refused
+// with PERMISSION_DENIED, reason TOP_LEVEL_FOLDERS_RESTRICTED.
 message CreateFolderForPrincipalRequest {
   ActorContext actor = 1;
   string parent_id = 2;
@@ -804,6 +1039,13 @@ message SecretVersion {
   // versions counts as changed. Computed server-side by comparing value hashes,
   // so still NEVER exposes any value. Empty means a re-save with no value change.
   repeated string changed_field_keys = 6;
+  // Set only for a version a type change produced (#165): describes the
+  // change itself ("Type changed: Password -> Password Account (SSH); added
+  // host; fields carried over: username, password"), naming any field added,
+  // renamed (via field_mapping) or dropped by the mapping. Empty for every
+  // other version, which renders from changed_field_keys as before
+  // ("Changed: <field>, <field>").
+  string change_label = 7;
 }
 
 // List a secret's versions (newest version_no first). Metadata only; gated by
@@ -1037,6 +1279,9 @@ message Connection {
   string target_id = 8;
   string privileged_secret_id = 9;
   bool bootstrap = 10;
+  // The KDC port for validating a password over Kerberos after a rotation, for
+  // a directory whose KDC doesn't listen on the standard port. 0 means 88.
+  int32 kdc_port = 11;
 }
 
 message Target {
@@ -1055,9 +1300,10 @@ message Target {
   string owner_user_id = 10;  // empty = shared (admin-owned); set = personal (owner-scoped)
   // SSH host keys the broker accepts for this target, one OpenSSH public key
   // per entry in authorized_keys form ("ssh-ed25519 AAAA... comment"). Public,
-  // not secret. Set by a site admin; checked on save (each must parse, carry
-  // no options and not be a private key or certificate). A save replaces the
-  // whole list; empty means not pinned, and the broker refuses to connect.
+  // not secret. Set by a person: a site admin, or a personal target's owner,
+  // never a token; checked on save (each must parse, carry no options and not
+  // be a private key or certificate). A save replaces the whole list; empty
+  // means not pinned, and the broker refuses to connect.
   repeated string ssh_host_keys = 11;
   // The target's connections, in display order, one connector protocol
   // apiece (no two entries may resolve to the same Connection.protocol) and
@@ -1065,6 +1311,14 @@ message Target {
   // set is normalized into a one-item list on write; a target saved before
   // this field existed is read back the same way, so no data is lost.
   repeated TargetConnection connections = 12;
+  // SHA-256 fingerprints of the TLS certificates the connector accepts for
+  // this target (LDAPS and other TLS adapters), each 64 lowercase hex digits.
+  // Public, not secret. Set by a person: a site admin, or a personal target's
+  // owner, never a token. A save takes 64 hex digits with an optional
+  // "sha256:" prefix and colons, and stores the bare lowercase form; repeats
+  // are dropped, at most 16. A save replaces the whole list; empty means no
+  // pin, and the connector verifies against the system roots alone.
+  repeated string tls_cert_pins = 13;
 }
 
 // One of a target's connections: a reference to a shared Connection (which
@@ -1101,6 +1355,14 @@ message GetTargetRulesetResponse { repeated RaciRule ruleset = 1; }
 message SetTargetRulesetRequest { ActorContext actor = 1; string target_id = 2; repeated RaciRule ruleset = 3; }
 message SetTargetRulesetResponse {}
 
+// ListSecretsByTarget lists every secret attached to target_id (#168's
+// "every secret attached to this target", for the target's page) — the
+// same can_read/locked-but-visible shape as ListSecretsInFolder, filtered
+// by target membership (secret.target_ids) instead of folder. A retired
+// secret is excluded, same default as ListSecretsInFolder.
+message ListSecretsByTargetRequest { ActorContext actor = 1; string target_id = 2; }
+message ListSecretsByTargetResponse { repeated Secret secrets = 1; }
+
 // ---- Connector / heartbeat ----
 // WorkerIdentity is the connector's platform identity (dev seam token now;
 // SPIFFE SVID later). The vault verifies it before releasing anything.
@@ -1111,6 +1373,7 @@ message HeartbeatConn {
   string host = 2;
   int32 port = 3;
   bool use_tls = 4;
+  int32 kdc_port = 5;    // Connection.kdc_port; 0 means 88
 }
 message HeartbeatTarget {
   string kind = 1;
@@ -1120,6 +1383,10 @@ message HeartbeatTarget {
   // The target's SSH host-key pins (Target.ssh_host_keys, authorized_keys
   // form). Empty means not pinned: the connector must not connect over SSH.
   repeated string ssh_host_keys = 5;
+  // The target's TLS certificate pins (Target.tls_cert_pins, SHA-256, 64
+  // lowercase hex digits). Empty means no pin: verify against the system
+  // roots alone.
+  repeated string tls_cert_pins = 6;
 }
 
 // The Active Directory type's logon format fields (logonFormat, netbios and
@@ -1131,14 +1398,30 @@ message LogonFormat {
   string upn_suffix = 3; // for username@upn_suffix; empty means the target's domain
 }
 
+// One of a multi-target secret's targets (#168), as much as a connector
+// needs to attempt that ONE target: its own connection (which may differ
+// per target) and host-identity context.
+message TargetJob {
+  string target_id = 1;
+  HeartbeatConn connection = 2;
+  HeartbeatTarget target = 3;
+}
+
 // One due validation job (no secret value — reveal is a separate call).
 message HeartbeatJob {
   string secret_id = 1;
   string secret_name = 2;
   string username = 3;         // non-sensitive: the account to bind AS
-  HeartbeatConn connection = 4;
-  HeartbeatTarget target = 5;
+  HeartbeatConn connection = 4; // the PRIMARY (first) target's connection — kept for a connector that hasn't moved to targets
+  HeartbeatTarget target = 5;   // the PRIMARY (first) target — same
   LogonFormat logon = 6;       // set only for a secret with any logon format field
+  // Every attached target (#168), one entry per target_id, PRIMARY included
+  // first. A connector that walks this list instead of the single
+  // connection/target above checks every target and reports each in
+  // ReportHeartbeatRequest.target_results. Empty only if the secret somehow
+  // has no reachable target at all (ClaimDueHeartbeats already excludes that
+  // case).
+  repeated TargetJob targets = 7;
 }
 
 message ClaimDueHeartbeatsRequest { WorkerIdentity identity = 1; int32 limit = 2; }
@@ -1158,13 +1441,19 @@ message RevealForHeartbeatResponse {
 message ReportHeartbeatRequest {
   WorkerIdentity identity = 1;
   string secret_id = 2;
-  HeartbeatResult result = 3;
+  HeartbeatResult result = 3;  // the PRIMARY target's result, or the aggregate when target_results is set
   string detail = 4;          // human-readable reason (audit/UX)
   // What the connector read about the AD account after a successful bind.
   // Both unset when it could not tell (not an AD target, or the bind or
   // lookup failed).
   optional bool builtin_administrator = 5;  // objectSid RID is 500
   optional bool admin_count = 6;            // adminCount=1
+  // Per-target outcomes (#168), one per entry in the claimed HeartbeatJob's
+  // targets list. Empty means the connector hasn't moved to multi-target
+  // reporting: result/detail above are trusted as the secret's only outcome,
+  // exactly as before. Non-empty: result above must be OK only if every
+  // entry here is ok — otherwise vault reports FAILED and lists which.
+  repeated TargetOutcome target_results = 7;
 }
 message ReportHeartbeatResponse { bool ok = 1; }
 
@@ -1174,9 +1463,14 @@ message RotationJob {
   string secret_id = 1;
   string secret_name = 2;
   string username = 3;         // non-sensitive: the account being rotated
-  HeartbeatConn connection = 4;
-  HeartbeatTarget target = 5;
+  HeartbeatConn connection = 4; // the PRIMARY (first) target's connection — kept for a connector that hasn't moved to targets
+  HeartbeatTarget target = 5;   // the PRIMARY (first) target — same
   LogonFormat logon = 6;       // set only for a secret with any logon format field
+  // Every attached target (#168). A multi-target-aware connector pushes the
+  // SAME new credential (from RevealForRotation) to every entry here and
+  // reports each in ReportRotationRequest.target_results — one generated
+  // value, applied everywhere it's used.
+  repeated TargetJob targets = 7;
 }
 
 message EnqueueRotationRequest { ActorContext actor = 1; string secret_id = 2; string reason = 3; }
@@ -1201,6 +1495,18 @@ message ReportRotationRequest {
   // the connector made no change (change and validate are SKIPPED). Unset
   // when the connector did not determine it.
   optional bool builtin_administrator = 7;
+  // Per-target outcomes (#168), one per entry in the claimed RotationJob's
+  // targets list (ok = the new credential is live and confirmed on that
+  // target). Empty means the connector hasn't moved to multi-target
+  // reporting: change/validate above are trusted as the secret's only
+  // outcome, exactly as before. Non-empty: the committed rotation is
+  // ROTATION_STATE_OK only once every entry here is ok; otherwise
+  // ROTATION_STATE_DEGRADED (the new value IS stored and was applied
+  // somewhere — never rolled back blindly) listing which targets still need
+  // it, same "doesn't call it done until every target has the new value"
+  // rule RestoreSecretVersionForPrincipal exists to let a caller recover
+  // from.
+  repeated TargetOutcome target_results = 8;
 }
 message ReportRotationResponse { bool ok = 1; }
 
@@ -1246,6 +1552,11 @@ message SecretUse {
   bool confirm = 16;
   int64 confirmed_at_unix = 17;         // set when the requester confirmed it
   string decided_by_user_id = 18;       // the owner or approver who approved or denied it
+  // Set on a one-time share: the SHA-256 (lower-case hex) of the link's token,
+  // which only the person holding the link knows. Such a use is redeemed by
+  // RedeemSecretShare, never by RedeemSecretUse, and keeps its own lifetime
+  // when it is approved.
+  string share_hash = 19;
 }
 
 // The people identity reports as active (not disabled, able to sign in), as
@@ -1266,6 +1577,13 @@ message PrepareSecretUseRequest {
   string run_id = 7;                    // optional; [A-Za-z0-9_-]{1,64}, else InvalidArgument
   string purpose = 8;                   // optional; at most 200 characters of plain text, else InvalidArgument
   ActiveUsers active_users = 9;         // optional; see ActiveUsers
+  // A one-time share of the field through a link: a person's reveal only. The
+  // SHA-256 (lower-case hex) of the link's token, and how long the link lives
+  // (60 seconds to 7 days, 0 = one day). The use then follows the normal rules
+  // (read access, the reveal step-up, the owner's approval) and is redeemed with
+  // RedeemSecretShare.
+  string share_hash = 10;
+  int64 share_ttl_seconds = 11;
 }
 message PrepareSecretUseResponse { SecretUse use = 1; }
 
@@ -1310,6 +1628,18 @@ message RedeemSecretUseResponse {
   string value = 2;
 }
 
+message RedeemSecretShareRequest {
+  ActorContext actor = 1;   // the calling service; the share's creator is the use's user_id
+  string use_id = 2;
+  string share_hash = 3;
+}
+message RedeemSecretShareResponse {
+  SecretUse use = 1;
+  string value = 2;
+}
+message RevokeSecretShareRequest { ActorContext actor = 1; string use_id = 2; }
+message RevokeSecretShareResponse { SecretUse use = 1; }
+
 // A program the grant allows and a glob its space-joined arguments must match.
 message UseGrantProgram {
   string program = 1;
@@ -1344,6 +1674,15 @@ message SetSecretAutomationForPrincipalResponse { Secret secret = 1; }
 // secret. The target must be one the principal can see.
 message SetSecretTargetForPrincipalRequest { ActorContext actor = 1; string secret_id = 2; string target_id = 3; }
 message SetSecretTargetForPrincipalResponse { Secret secret = 1; }
+
+// Attach/detach one target for a non-human principal (#168) — the
+// ForPrincipal mirror of AttachSecretTarget/DetachSecretTarget, never
+// touching the secret's other targets. Same RACI-Author + usable-target gate
+// as SetSecretTargetForPrincipal.
+message AttachSecretTargetForPrincipalRequest { ActorContext actor = 1; string secret_id = 2; string target_id = 3; }
+message AttachSecretTargetForPrincipalResponse { Secret secret = 1; }
+message DetachSecretTargetForPrincipalRequest { ActorContext actor = 1; string secret_id = 2; string target_id = 3; }
+message DetachSecretTargetForPrincipalResponse { Secret secret = 1; }
 
 // RequestHeartbeatForPrincipal makes a secret's heartbeat due now, so the next
 // connector poll checks the stored credential against its target. Needs read
@@ -1396,6 +1735,9 @@ service VaultService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc SetTargetRuleset(SetTargetRulesetRequest) returns (SetTargetRulesetResponse);
+  rpc ListSecretsByTarget(ListSecretsByTargetRequest) returns (ListSecretsByTargetResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Certificates: import a certificate file into a secret, export a
   // certificate secret's material back out as a file, or replace a secret's
@@ -1417,6 +1759,7 @@ service VaultService {
   }
   rpc ImportExtension(ImportExtensionRequest) returns (ImportExtensionResponse);
   rpc ImportExtensionFromJson(ImportExtensionFromJsonRequest) returns (ImportExtensionFromJsonResponse);
+  rpc ImportExtensionForPrincipal(ImportExtensionForPrincipalRequest) returns (ImportExtensionForPrincipalResponse);
 
   // Folders
   rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse) {
@@ -1469,6 +1812,10 @@ service VaultService {
   }
   rpc CreateSecret(CreateSecretRequest) returns (CreateSecretResponse);
   rpc UpdateSecret(UpdateSecretRequest) returns (UpdateSecretResponse);
+  // Attach/detach one target on a secret's list, never touching the others
+  // (#168) — UpdateSecret's target_id keeps meaning "replace with this one".
+  rpc AttachSecretTarget(AttachSecretTargetRequest) returns (AttachSecretTargetResponse);
+  rpc DetachSecretTarget(DetachSecretTargetRequest) returns (DetachSecretTargetResponse);
   rpc SetSecretAutomation(SetSecretAutomationRequest) returns (SetSecretAutomationResponse);
   rpc GetSecretFields(GetSecretFieldsRequest) returns (GetSecretFieldsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -1485,8 +1832,16 @@ service VaultService {
   }
   rpc CreateSecretForPrincipal(CreateSecretForPrincipalRequest) returns (CreateSecretForPrincipalResponse);
   rpc GenerateSecretForPrincipal(GenerateSecretForPrincipalRequest) returns (GenerateSecretForPrincipalResponse);
+  // Rotate/restore for non-human principals: RACI-Author, never RACI-C.
+  rpc RotateSecretForPrincipal(RotateSecretForPrincipalRequest) returns (RotateSecretForPrincipalResponse);
+  rpc RestoreSecretVersionForPrincipal(RestoreSecretVersionForPrincipalRequest) returns (RestoreSecretVersionForPrincipalResponse);
   rpc MoveSecretForPrincipal(MoveSecretForPrincipalRequest) returns (MoveSecretForPrincipalResponse);
   rpc ChangeSecretTypeForPrincipal(ChangeSecretTypeForPrincipalRequest) returns (ChangeSecretTypeForPrincipalResponse);
+  // A person's type change, and its preview. Same rules as the machine path.
+  rpc ChangeSecretType(ChangeSecretTypeRequest) returns (ChangeSecretTypeResponse);
+  rpc PreviewSecretTypeChange(PreviewSecretTypeChangeRequest) returns (PreviewSecretTypeChangeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Organize verbs for non-human principals: rename/update a secret and
   // list/create/rename/move folders. No machine delete.
   rpc RenameSecretForPrincipal(RenameSecretForPrincipalRequest) returns (RenameSecretForPrincipalResponse);
@@ -1609,6 +1964,11 @@ service VaultService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc RedeemSecretUse(RedeemSecretUseRequest) returns (RedeemSecretUseResponse);
+  // Releases a one-time share's value once, to whoever presents the hash of its
+  // token, while the use is approved and unexpired.
+  rpc RedeemSecretShare(RedeemSecretShareRequest) returns (RedeemSecretShareResponse);
+  // Ends a share early. The creator or a site admin.
+  rpc RevokeSecretShare(RevokeSecretShareRequest) returns (RevokeSecretShareResponse);
   rpc CreateUseGrant(CreateUseGrantRequest) returns (CreateUseGrantResponse);
   rpc ListUseGrants(ListUseGrantsRequest) returns (ListUseGrantsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -1616,6 +1976,8 @@ service VaultService {
   rpc RevokeUseGrant(RevokeUseGrantRequest) returns (RevokeUseGrantResponse);
   rpc SetSecretTokenApproval(SetSecretTokenApprovalRequest) returns (SetSecretTokenApprovalResponse);
   rpc SetSecretTargetForPrincipal(SetSecretTargetForPrincipalRequest) returns (SetSecretTargetForPrincipalResponse);
+  rpc AttachSecretTargetForPrincipal(AttachSecretTargetForPrincipalRequest) returns (AttachSecretTargetForPrincipalResponse);
+  rpc DetachSecretTargetForPrincipal(DetachSecretTargetForPrincipalRequest) returns (DetachSecretTargetForPrincipalResponse);
   rpc SetSecretAutomationForPrincipal(SetSecretAutomationForPrincipalRequest) returns (SetSecretAutomationForPrincipalResponse);
   rpc RequestHeartbeatForPrincipal(RequestHeartbeatForPrincipalRequest) returns (RequestHeartbeatForPrincipalResponse);
   rpc GetHeartbeatStatusForPrincipal(GetHeartbeatStatusForPrincipalRequest) returns (GetHeartbeatStatusForPrincipalResponse);
@@ -1683,7 +2045,34 @@ message SecuritySettings {
   // Folder.reveal_step_up overrides it. Machine principals are exempt
   // (allow_api_for_sensitive covers them). Off by default.
   bool require_mfa_for_reveal = 8;
+  reserved 9;
+  reserved "agents_may_create_top_level_folders";
+  // "Restrict top-level folders to admins". Off (the default): any signed-in
+  // person or personal token may create a top-level folder, and the creator or
+  // the token's user owns it. On: only a site admin or root may, in the web or
+  // through a token whose owner is one (ActorContext.token_owner_is_site_admin);
+  // anyone else gets PERMISSION_DENIED, reason TOP_LEVEL_FOLDERS_RESTRICTED.
+  // Service accounts and workloads are refused either way, as they have no
+  // user to own the folder.
+  bool restrict_top_level_folders = 10;
+  // Internal-only: the gateway refuses every request whose source address is
+  // outside allowed_networks, with a stable error code, and publishes the flag
+  // on its unauthenticated release document so an app can tell before signing
+  // in. Off by default. The vault only stores it; it can't be turned on with an
+  // empty allowed_networks.
+  bool internal_only = 11;
+  // The source networks internal_only lets through, as canonical CIDR prefixes
+  // (a bare address is stored as a /32 or /128). At most 64.
+  repeated string allowed_networks = 12;
+  // Require-managed: the gateway refuses a phone app's sign-in unless the app
+  // reports it was installed and configured by the organisation's MDM. Off by
+  // default.
+  bool require_managed = 13;
 }
+
+// A list of CIDR prefixes, so an update can say "replace the list" (present) or
+// "leave it" (absent).
+message NetworkList { repeated string cidrs = 1; }
 
 message ListPasswordPoliciesRequest {}
 message ListPasswordPoliciesResponse { repeated PasswordPolicy policies = 1; }
@@ -1704,6 +2093,12 @@ message UpdateSecuritySettingsRequest {
   optional int32 session_ttl_seconds = 7;
   optional int32 kek_rotation_days = 8;   // 0 = auto-rotation off (distinct from unset = unchanged)
   optional bool require_mfa_for_reveal = 9;
+  reserved 10;
+  reserved "agents_may_create_top_level_folders";
+  optional bool restrict_top_level_folders = 11;
+  optional bool internal_only = 12;
+  NetworkList allowed_networks = 13;   // present = replace the list; absent = unchanged
+  optional bool require_managed = 14;
 }
 message UpdateSecuritySettingsResponse { SecuritySettings settings = 1; }
 

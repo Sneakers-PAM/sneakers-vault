@@ -22,114 +22,126 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	VaultService_ListConnections_FullMethodName                 = "/sneakers.vault.v1.VaultService/ListConnections"
-	VaultService_SaveConnection_FullMethodName                  = "/sneakers.vault.v1.VaultService/SaveConnection"
-	VaultService_DeleteConnection_FullMethodName                = "/sneakers.vault.v1.VaultService/DeleteConnection"
-	VaultService_ListTargets_FullMethodName                     = "/sneakers.vault.v1.VaultService/ListTargets"
-	VaultService_SaveTarget_FullMethodName                      = "/sneakers.vault.v1.VaultService/SaveTarget"
-	VaultService_DeleteTarget_FullMethodName                    = "/sneakers.vault.v1.VaultService/DeleteTarget"
-	VaultService_GetTargetRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/GetTargetRuleset"
-	VaultService_SetTargetRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/SetTargetRuleset"
-	VaultService_ImportCertificate_FullMethodName               = "/sneakers.vault.v1.VaultService/ImportCertificate"
-	VaultService_ExportCertificate_FullMethodName               = "/sneakers.vault.v1.VaultService/ExportCertificate"
-	VaultService_ReplaceCertificate_FullMethodName              = "/sneakers.vault.v1.VaultService/ReplaceCertificate"
-	VaultService_ListSecretTypes_FullMethodName                 = "/sneakers.vault.v1.VaultService/ListSecretTypes"
-	VaultService_CreateSecretType_FullMethodName                = "/sneakers.vault.v1.VaultService/CreateSecretType"
-	VaultService_UpdateSecretType_FullMethodName                = "/sneakers.vault.v1.VaultService/UpdateSecretType"
-	VaultService_DeleteSecretType_FullMethodName                = "/sneakers.vault.v1.VaultService/DeleteSecretType"
-	VaultService_CloneSecretType_FullMethodName                 = "/sneakers.vault.v1.VaultService/CloneSecretType"
-	VaultService_ListAvailableExtensions_FullMethodName         = "/sneakers.vault.v1.VaultService/ListAvailableExtensions"
-	VaultService_ImportExtension_FullMethodName                 = "/sneakers.vault.v1.VaultService/ImportExtension"
-	VaultService_ImportExtensionFromJson_FullMethodName         = "/sneakers.vault.v1.VaultService/ImportExtensionFromJson"
-	VaultService_ListFolders_FullMethodName                     = "/sneakers.vault.v1.VaultService/ListFolders"
-	VaultService_CreateFolder_FullMethodName                    = "/sneakers.vault.v1.VaultService/CreateFolder"
-	VaultService_RenameFolder_FullMethodName                    = "/sneakers.vault.v1.VaultService/RenameFolder"
-	VaultService_MoveFolder_FullMethodName                      = "/sneakers.vault.v1.VaultService/MoveFolder"
-	VaultService_DeleteFolder_FullMethodName                    = "/sneakers.vault.v1.VaultService/DeleteFolder"
-	VaultService_ReorderFolders_FullMethodName                  = "/sneakers.vault.v1.VaultService/ReorderFolders"
-	VaultService_ListFolderRules_FullMethodName                 = "/sneakers.vault.v1.VaultService/ListFolderRules"
-	VaultService_GetInheritedFolderRules_FullMethodName         = "/sneakers.vault.v1.VaultService/GetInheritedFolderRules"
-	VaultService_AddFolderRule_FullMethodName                   = "/sneakers.vault.v1.VaultService/AddFolderRule"
-	VaultService_RemoveFolderRule_FullMethodName                = "/sneakers.vault.v1.VaultService/RemoveFolderRule"
-	VaultService_GetFolderRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/GetFolderRuleset"
-	VaultService_SetFolderRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/SetFolderRuleset"
-	VaultService_SetFolderRevealStepUp_FullMethodName           = "/sneakers.vault.v1.VaultService/SetFolderRevealStepUp"
-	VaultService_GetMyAccess_FullMethodName                     = "/sneakers.vault.v1.VaultService/GetMyAccess"
-	VaultService_SimulateFolder_FullMethodName                  = "/sneakers.vault.v1.VaultService/SimulateFolder"
-	VaultService_SimulateSecret_FullMethodName                  = "/sneakers.vault.v1.VaultService/SimulateSecret"
-	VaultService_ListSecretsInFolder_FullMethodName             = "/sneakers.vault.v1.VaultService/ListSecretsInFolder"
-	VaultService_ReorderSecrets_FullMethodName                  = "/sneakers.vault.v1.VaultService/ReorderSecrets"
-	VaultService_GetSecret_FullMethodName                       = "/sneakers.vault.v1.VaultService/GetSecret"
-	VaultService_CreateSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/CreateSecret"
-	VaultService_UpdateSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/UpdateSecret"
-	VaultService_SetSecretAutomation_FullMethodName             = "/sneakers.vault.v1.VaultService/SetSecretAutomation"
-	VaultService_GetSecretFields_FullMethodName                 = "/sneakers.vault.v1.VaultService/GetSecretFields"
-	VaultService_RevealSecretField_FullMethodName               = "/sneakers.vault.v1.VaultService/RevealSecretField"
-	VaultService_RevealSecretFieldForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/RevealSecretFieldForPrincipal"
-	VaultService_ListSecretsForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/ListSecretsForPrincipal"
-	VaultService_GetSecretForPrincipal_FullMethodName           = "/sneakers.vault.v1.VaultService/GetSecretForPrincipal"
-	VaultService_CreateSecretForPrincipal_FullMethodName        = "/sneakers.vault.v1.VaultService/CreateSecretForPrincipal"
-	VaultService_GenerateSecretForPrincipal_FullMethodName      = "/sneakers.vault.v1.VaultService/GenerateSecretForPrincipal"
-	VaultService_MoveSecretForPrincipal_FullMethodName          = "/sneakers.vault.v1.VaultService/MoveSecretForPrincipal"
-	VaultService_ChangeSecretTypeForPrincipal_FullMethodName    = "/sneakers.vault.v1.VaultService/ChangeSecretTypeForPrincipal"
-	VaultService_RenameSecretForPrincipal_FullMethodName        = "/sneakers.vault.v1.VaultService/RenameSecretForPrincipal"
-	VaultService_UpdateSecretFieldsForPrincipal_FullMethodName  = "/sneakers.vault.v1.VaultService/UpdateSecretFieldsForPrincipal"
-	VaultService_ListFoldersForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/ListFoldersForPrincipal"
-	VaultService_CreateFolderForPrincipal_FullMethodName        = "/sneakers.vault.v1.VaultService/CreateFolderForPrincipal"
-	VaultService_RenameFolderForPrincipal_FullMethodName        = "/sneakers.vault.v1.VaultService/RenameFolderForPrincipal"
-	VaultService_MoveFolderForPrincipal_FullMethodName          = "/sneakers.vault.v1.VaultService/MoveFolderForPrincipal"
-	VaultService_ListSecretVersions_FullMethodName              = "/sneakers.vault.v1.VaultService/ListSecretVersions"
-	VaultService_RevealSecretVersionField_FullMethodName        = "/sneakers.vault.v1.VaultService/RevealSecretVersionField"
-	VaultService_RestoreSecretVersion_FullMethodName            = "/sneakers.vault.v1.VaultService/RestoreSecretVersion"
-	VaultService_BreakGlassSecret_FullMethodName                = "/sneakers.vault.v1.VaultService/BreakGlassSecret"
-	VaultService_OpenBreakGlassSession_FullMethodName           = "/sneakers.vault.v1.VaultService/OpenBreakGlassSession"
-	VaultService_GetBreakGlassSession_FullMethodName            = "/sneakers.vault.v1.VaultService/GetBreakGlassSession"
-	VaultService_ListBreakGlassItems_FullMethodName             = "/sneakers.vault.v1.VaultService/ListBreakGlassItems"
-	VaultService_CloseBreakGlassSession_FullMethodName          = "/sneakers.vault.v1.VaultService/CloseBreakGlassSession"
-	VaultService_ListBreakGlassSessions_FullMethodName          = "/sneakers.vault.v1.VaultService/ListBreakGlassSessions"
-	VaultService_CopySecret_FullMethodName                      = "/sneakers.vault.v1.VaultService/CopySecret"
-	VaultService_RetireSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/RetireSecret"
-	VaultService_RestoreSecret_FullMethodName                   = "/sneakers.vault.v1.VaultService/RestoreSecret"
-	VaultService_DeleteSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/DeleteSecret"
-	VaultService_GetSecretStats_FullMethodName                  = "/sneakers.vault.v1.VaultService/GetSecretStats"
-	VaultService_GetTopAccessedSecrets_FullMethodName           = "/sneakers.vault.v1.VaultService/GetTopAccessedSecrets"
-	VaultService_ListSecretsByStatus_FullMethodName             = "/sneakers.vault.v1.VaultService/ListSecretsByStatus"
-	VaultService_FindSecretsByPublicKey_FullMethodName          = "/sneakers.vault.v1.VaultService/FindSecretsByPublicKey"
-	VaultService_GetSecretRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/GetSecretRuleset"
-	VaultService_SetSecretRuleset_FullMethodName                = "/sneakers.vault.v1.VaultService/SetSecretRuleset"
-	VaultService_GetMySecretAccess_FullMethodName               = "/sneakers.vault.v1.VaultService/GetMySecretAccess"
-	VaultService_ClaimDueHeartbeats_FullMethodName              = "/sneakers.vault.v1.VaultService/ClaimDueHeartbeats"
-	VaultService_RevealForHeartbeat_FullMethodName              = "/sneakers.vault.v1.VaultService/RevealForHeartbeat"
-	VaultService_ReportHeartbeat_FullMethodName                 = "/sneakers.vault.v1.VaultService/ReportHeartbeat"
-	VaultService_EnqueueRotation_FullMethodName                 = "/sneakers.vault.v1.VaultService/EnqueueRotation"
-	VaultService_ClaimDueRotations_FullMethodName               = "/sneakers.vault.v1.VaultService/ClaimDueRotations"
-	VaultService_RevealForRotation_FullMethodName               = "/sneakers.vault.v1.VaultService/RevealForRotation"
-	VaultService_ReportRotation_FullMethodName                  = "/sneakers.vault.v1.VaultService/ReportRotation"
-	VaultService_ListConnectors_FullMethodName                  = "/sneakers.vault.v1.VaultService/ListConnectors"
-	VaultService_ListPasswordPolicies_FullMethodName            = "/sneakers.vault.v1.VaultService/ListPasswordPolicies"
-	VaultService_SavePasswordPolicy_FullMethodName              = "/sneakers.vault.v1.VaultService/SavePasswordPolicy"
-	VaultService_DeletePasswordPolicy_FullMethodName            = "/sneakers.vault.v1.VaultService/DeletePasswordPolicy"
-	VaultService_GetSecuritySettings_FullMethodName             = "/sneakers.vault.v1.VaultService/GetSecuritySettings"
-	VaultService_UpdateSecuritySettings_FullMethodName          = "/sneakers.vault.v1.VaultService/UpdateSecuritySettings"
-	VaultService_SeedBuiltins_FullMethodName                    = "/sneakers.vault.v1.VaultService/SeedBuiltins"
-	VaultService_GenerateKeyPair_FullMethodName                 = "/sneakers.vault.v1.VaultService/GenerateKeyPair"
-	VaultService_RotateKek_FullMethodName                       = "/sneakers.vault.v1.VaultService/RotateKek"
-	VaultService_SealForImport_FullMethodName                   = "/sneakers.vault.v1.VaultService/SealForImport"
-	VaultService_PrepareSecretUse_FullMethodName                = "/sneakers.vault.v1.VaultService/PrepareSecretUse"
-	VaultService_GetSecretUse_FullMethodName                    = "/sneakers.vault.v1.VaultService/GetSecretUse"
-	VaultService_ListPendingSecretUses_FullMethodName           = "/sneakers.vault.v1.VaultService/ListPendingSecretUses"
-	VaultService_DecideSecretUse_FullMethodName                 = "/sneakers.vault.v1.VaultService/DecideSecretUse"
-	VaultService_ConfirmSecretUse_FullMethodName                = "/sneakers.vault.v1.VaultService/ConfirmSecretUse"
-	VaultService_ListSecretUsesToDecide_FullMethodName          = "/sneakers.vault.v1.VaultService/ListSecretUsesToDecide"
-	VaultService_RedeemSecretUse_FullMethodName                 = "/sneakers.vault.v1.VaultService/RedeemSecretUse"
-	VaultService_CreateUseGrant_FullMethodName                  = "/sneakers.vault.v1.VaultService/CreateUseGrant"
-	VaultService_ListUseGrants_FullMethodName                   = "/sneakers.vault.v1.VaultService/ListUseGrants"
-	VaultService_RevokeUseGrant_FullMethodName                  = "/sneakers.vault.v1.VaultService/RevokeUseGrant"
-	VaultService_SetSecretTokenApproval_FullMethodName          = "/sneakers.vault.v1.VaultService/SetSecretTokenApproval"
-	VaultService_SetSecretTargetForPrincipal_FullMethodName     = "/sneakers.vault.v1.VaultService/SetSecretTargetForPrincipal"
-	VaultService_SetSecretAutomationForPrincipal_FullMethodName = "/sneakers.vault.v1.VaultService/SetSecretAutomationForPrincipal"
-	VaultService_RequestHeartbeatForPrincipal_FullMethodName    = "/sneakers.vault.v1.VaultService/RequestHeartbeatForPrincipal"
-	VaultService_GetHeartbeatStatusForPrincipal_FullMethodName  = "/sneakers.vault.v1.VaultService/GetHeartbeatStatusForPrincipal"
+	VaultService_ListConnections_FullMethodName                  = "/sneakers.vault.v1.VaultService/ListConnections"
+	VaultService_SaveConnection_FullMethodName                   = "/sneakers.vault.v1.VaultService/SaveConnection"
+	VaultService_DeleteConnection_FullMethodName                 = "/sneakers.vault.v1.VaultService/DeleteConnection"
+	VaultService_ListTargets_FullMethodName                      = "/sneakers.vault.v1.VaultService/ListTargets"
+	VaultService_SaveTarget_FullMethodName                       = "/sneakers.vault.v1.VaultService/SaveTarget"
+	VaultService_DeleteTarget_FullMethodName                     = "/sneakers.vault.v1.VaultService/DeleteTarget"
+	VaultService_GetTargetRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/GetTargetRuleset"
+	VaultService_SetTargetRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/SetTargetRuleset"
+	VaultService_ListSecretsByTarget_FullMethodName              = "/sneakers.vault.v1.VaultService/ListSecretsByTarget"
+	VaultService_ImportCertificate_FullMethodName                = "/sneakers.vault.v1.VaultService/ImportCertificate"
+	VaultService_ExportCertificate_FullMethodName                = "/sneakers.vault.v1.VaultService/ExportCertificate"
+	VaultService_ReplaceCertificate_FullMethodName               = "/sneakers.vault.v1.VaultService/ReplaceCertificate"
+	VaultService_ListSecretTypes_FullMethodName                  = "/sneakers.vault.v1.VaultService/ListSecretTypes"
+	VaultService_CreateSecretType_FullMethodName                 = "/sneakers.vault.v1.VaultService/CreateSecretType"
+	VaultService_UpdateSecretType_FullMethodName                 = "/sneakers.vault.v1.VaultService/UpdateSecretType"
+	VaultService_DeleteSecretType_FullMethodName                 = "/sneakers.vault.v1.VaultService/DeleteSecretType"
+	VaultService_CloneSecretType_FullMethodName                  = "/sneakers.vault.v1.VaultService/CloneSecretType"
+	VaultService_ListAvailableExtensions_FullMethodName          = "/sneakers.vault.v1.VaultService/ListAvailableExtensions"
+	VaultService_ImportExtension_FullMethodName                  = "/sneakers.vault.v1.VaultService/ImportExtension"
+	VaultService_ImportExtensionFromJson_FullMethodName          = "/sneakers.vault.v1.VaultService/ImportExtensionFromJson"
+	VaultService_ImportExtensionForPrincipal_FullMethodName      = "/sneakers.vault.v1.VaultService/ImportExtensionForPrincipal"
+	VaultService_ListFolders_FullMethodName                      = "/sneakers.vault.v1.VaultService/ListFolders"
+	VaultService_CreateFolder_FullMethodName                     = "/sneakers.vault.v1.VaultService/CreateFolder"
+	VaultService_RenameFolder_FullMethodName                     = "/sneakers.vault.v1.VaultService/RenameFolder"
+	VaultService_MoveFolder_FullMethodName                       = "/sneakers.vault.v1.VaultService/MoveFolder"
+	VaultService_DeleteFolder_FullMethodName                     = "/sneakers.vault.v1.VaultService/DeleteFolder"
+	VaultService_ReorderFolders_FullMethodName                   = "/sneakers.vault.v1.VaultService/ReorderFolders"
+	VaultService_ListFolderRules_FullMethodName                  = "/sneakers.vault.v1.VaultService/ListFolderRules"
+	VaultService_GetInheritedFolderRules_FullMethodName          = "/sneakers.vault.v1.VaultService/GetInheritedFolderRules"
+	VaultService_AddFolderRule_FullMethodName                    = "/sneakers.vault.v1.VaultService/AddFolderRule"
+	VaultService_RemoveFolderRule_FullMethodName                 = "/sneakers.vault.v1.VaultService/RemoveFolderRule"
+	VaultService_GetFolderRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/GetFolderRuleset"
+	VaultService_SetFolderRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/SetFolderRuleset"
+	VaultService_SetFolderRevealStepUp_FullMethodName            = "/sneakers.vault.v1.VaultService/SetFolderRevealStepUp"
+	VaultService_GetMyAccess_FullMethodName                      = "/sneakers.vault.v1.VaultService/GetMyAccess"
+	VaultService_SimulateFolder_FullMethodName                   = "/sneakers.vault.v1.VaultService/SimulateFolder"
+	VaultService_SimulateSecret_FullMethodName                   = "/sneakers.vault.v1.VaultService/SimulateSecret"
+	VaultService_ListSecretsInFolder_FullMethodName              = "/sneakers.vault.v1.VaultService/ListSecretsInFolder"
+	VaultService_ReorderSecrets_FullMethodName                   = "/sneakers.vault.v1.VaultService/ReorderSecrets"
+	VaultService_GetSecret_FullMethodName                        = "/sneakers.vault.v1.VaultService/GetSecret"
+	VaultService_CreateSecret_FullMethodName                     = "/sneakers.vault.v1.VaultService/CreateSecret"
+	VaultService_UpdateSecret_FullMethodName                     = "/sneakers.vault.v1.VaultService/UpdateSecret"
+	VaultService_AttachSecretTarget_FullMethodName               = "/sneakers.vault.v1.VaultService/AttachSecretTarget"
+	VaultService_DetachSecretTarget_FullMethodName               = "/sneakers.vault.v1.VaultService/DetachSecretTarget"
+	VaultService_SetSecretAutomation_FullMethodName              = "/sneakers.vault.v1.VaultService/SetSecretAutomation"
+	VaultService_GetSecretFields_FullMethodName                  = "/sneakers.vault.v1.VaultService/GetSecretFields"
+	VaultService_RevealSecretField_FullMethodName                = "/sneakers.vault.v1.VaultService/RevealSecretField"
+	VaultService_RevealSecretFieldForPrincipal_FullMethodName    = "/sneakers.vault.v1.VaultService/RevealSecretFieldForPrincipal"
+	VaultService_ListSecretsForPrincipal_FullMethodName          = "/sneakers.vault.v1.VaultService/ListSecretsForPrincipal"
+	VaultService_GetSecretForPrincipal_FullMethodName            = "/sneakers.vault.v1.VaultService/GetSecretForPrincipal"
+	VaultService_CreateSecretForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/CreateSecretForPrincipal"
+	VaultService_GenerateSecretForPrincipal_FullMethodName       = "/sneakers.vault.v1.VaultService/GenerateSecretForPrincipal"
+	VaultService_RotateSecretForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/RotateSecretForPrincipal"
+	VaultService_RestoreSecretVersionForPrincipal_FullMethodName = "/sneakers.vault.v1.VaultService/RestoreSecretVersionForPrincipal"
+	VaultService_MoveSecretForPrincipal_FullMethodName           = "/sneakers.vault.v1.VaultService/MoveSecretForPrincipal"
+	VaultService_ChangeSecretTypeForPrincipal_FullMethodName     = "/sneakers.vault.v1.VaultService/ChangeSecretTypeForPrincipal"
+	VaultService_ChangeSecretType_FullMethodName                 = "/sneakers.vault.v1.VaultService/ChangeSecretType"
+	VaultService_PreviewSecretTypeChange_FullMethodName          = "/sneakers.vault.v1.VaultService/PreviewSecretTypeChange"
+	VaultService_RenameSecretForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/RenameSecretForPrincipal"
+	VaultService_UpdateSecretFieldsForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/UpdateSecretFieldsForPrincipal"
+	VaultService_ListFoldersForPrincipal_FullMethodName          = "/sneakers.vault.v1.VaultService/ListFoldersForPrincipal"
+	VaultService_CreateFolderForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/CreateFolderForPrincipal"
+	VaultService_RenameFolderForPrincipal_FullMethodName         = "/sneakers.vault.v1.VaultService/RenameFolderForPrincipal"
+	VaultService_MoveFolderForPrincipal_FullMethodName           = "/sneakers.vault.v1.VaultService/MoveFolderForPrincipal"
+	VaultService_ListSecretVersions_FullMethodName               = "/sneakers.vault.v1.VaultService/ListSecretVersions"
+	VaultService_RevealSecretVersionField_FullMethodName         = "/sneakers.vault.v1.VaultService/RevealSecretVersionField"
+	VaultService_RestoreSecretVersion_FullMethodName             = "/sneakers.vault.v1.VaultService/RestoreSecretVersion"
+	VaultService_BreakGlassSecret_FullMethodName                 = "/sneakers.vault.v1.VaultService/BreakGlassSecret"
+	VaultService_OpenBreakGlassSession_FullMethodName            = "/sneakers.vault.v1.VaultService/OpenBreakGlassSession"
+	VaultService_GetBreakGlassSession_FullMethodName             = "/sneakers.vault.v1.VaultService/GetBreakGlassSession"
+	VaultService_ListBreakGlassItems_FullMethodName              = "/sneakers.vault.v1.VaultService/ListBreakGlassItems"
+	VaultService_CloseBreakGlassSession_FullMethodName           = "/sneakers.vault.v1.VaultService/CloseBreakGlassSession"
+	VaultService_ListBreakGlassSessions_FullMethodName           = "/sneakers.vault.v1.VaultService/ListBreakGlassSessions"
+	VaultService_CopySecret_FullMethodName                       = "/sneakers.vault.v1.VaultService/CopySecret"
+	VaultService_RetireSecret_FullMethodName                     = "/sneakers.vault.v1.VaultService/RetireSecret"
+	VaultService_RestoreSecret_FullMethodName                    = "/sneakers.vault.v1.VaultService/RestoreSecret"
+	VaultService_DeleteSecret_FullMethodName                     = "/sneakers.vault.v1.VaultService/DeleteSecret"
+	VaultService_GetSecretStats_FullMethodName                   = "/sneakers.vault.v1.VaultService/GetSecretStats"
+	VaultService_GetTopAccessedSecrets_FullMethodName            = "/sneakers.vault.v1.VaultService/GetTopAccessedSecrets"
+	VaultService_ListSecretsByStatus_FullMethodName              = "/sneakers.vault.v1.VaultService/ListSecretsByStatus"
+	VaultService_FindSecretsByPublicKey_FullMethodName           = "/sneakers.vault.v1.VaultService/FindSecretsByPublicKey"
+	VaultService_GetSecretRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/GetSecretRuleset"
+	VaultService_SetSecretRuleset_FullMethodName                 = "/sneakers.vault.v1.VaultService/SetSecretRuleset"
+	VaultService_GetMySecretAccess_FullMethodName                = "/sneakers.vault.v1.VaultService/GetMySecretAccess"
+	VaultService_ClaimDueHeartbeats_FullMethodName               = "/sneakers.vault.v1.VaultService/ClaimDueHeartbeats"
+	VaultService_RevealForHeartbeat_FullMethodName               = "/sneakers.vault.v1.VaultService/RevealForHeartbeat"
+	VaultService_ReportHeartbeat_FullMethodName                  = "/sneakers.vault.v1.VaultService/ReportHeartbeat"
+	VaultService_EnqueueRotation_FullMethodName                  = "/sneakers.vault.v1.VaultService/EnqueueRotation"
+	VaultService_ClaimDueRotations_FullMethodName                = "/sneakers.vault.v1.VaultService/ClaimDueRotations"
+	VaultService_RevealForRotation_FullMethodName                = "/sneakers.vault.v1.VaultService/RevealForRotation"
+	VaultService_ReportRotation_FullMethodName                   = "/sneakers.vault.v1.VaultService/ReportRotation"
+	VaultService_ListConnectors_FullMethodName                   = "/sneakers.vault.v1.VaultService/ListConnectors"
+	VaultService_ListPasswordPolicies_FullMethodName             = "/sneakers.vault.v1.VaultService/ListPasswordPolicies"
+	VaultService_SavePasswordPolicy_FullMethodName               = "/sneakers.vault.v1.VaultService/SavePasswordPolicy"
+	VaultService_DeletePasswordPolicy_FullMethodName             = "/sneakers.vault.v1.VaultService/DeletePasswordPolicy"
+	VaultService_GetSecuritySettings_FullMethodName              = "/sneakers.vault.v1.VaultService/GetSecuritySettings"
+	VaultService_UpdateSecuritySettings_FullMethodName           = "/sneakers.vault.v1.VaultService/UpdateSecuritySettings"
+	VaultService_SeedBuiltins_FullMethodName                     = "/sneakers.vault.v1.VaultService/SeedBuiltins"
+	VaultService_GenerateKeyPair_FullMethodName                  = "/sneakers.vault.v1.VaultService/GenerateKeyPair"
+	VaultService_RotateKek_FullMethodName                        = "/sneakers.vault.v1.VaultService/RotateKek"
+	VaultService_SealForImport_FullMethodName                    = "/sneakers.vault.v1.VaultService/SealForImport"
+	VaultService_PrepareSecretUse_FullMethodName                 = "/sneakers.vault.v1.VaultService/PrepareSecretUse"
+	VaultService_GetSecretUse_FullMethodName                     = "/sneakers.vault.v1.VaultService/GetSecretUse"
+	VaultService_ListPendingSecretUses_FullMethodName            = "/sneakers.vault.v1.VaultService/ListPendingSecretUses"
+	VaultService_DecideSecretUse_FullMethodName                  = "/sneakers.vault.v1.VaultService/DecideSecretUse"
+	VaultService_ConfirmSecretUse_FullMethodName                 = "/sneakers.vault.v1.VaultService/ConfirmSecretUse"
+	VaultService_ListSecretUsesToDecide_FullMethodName           = "/sneakers.vault.v1.VaultService/ListSecretUsesToDecide"
+	VaultService_RedeemSecretUse_FullMethodName                  = "/sneakers.vault.v1.VaultService/RedeemSecretUse"
+	VaultService_RedeemSecretShare_FullMethodName                = "/sneakers.vault.v1.VaultService/RedeemSecretShare"
+	VaultService_RevokeSecretShare_FullMethodName                = "/sneakers.vault.v1.VaultService/RevokeSecretShare"
+	VaultService_CreateUseGrant_FullMethodName                   = "/sneakers.vault.v1.VaultService/CreateUseGrant"
+	VaultService_ListUseGrants_FullMethodName                    = "/sneakers.vault.v1.VaultService/ListUseGrants"
+	VaultService_RevokeUseGrant_FullMethodName                   = "/sneakers.vault.v1.VaultService/RevokeUseGrant"
+	VaultService_SetSecretTokenApproval_FullMethodName           = "/sneakers.vault.v1.VaultService/SetSecretTokenApproval"
+	VaultService_SetSecretTargetForPrincipal_FullMethodName      = "/sneakers.vault.v1.VaultService/SetSecretTargetForPrincipal"
+	VaultService_AttachSecretTargetForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/AttachSecretTargetForPrincipal"
+	VaultService_DetachSecretTargetForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/DetachSecretTargetForPrincipal"
+	VaultService_SetSecretAutomationForPrincipal_FullMethodName  = "/sneakers.vault.v1.VaultService/SetSecretAutomationForPrincipal"
+	VaultService_RequestHeartbeatForPrincipal_FullMethodName     = "/sneakers.vault.v1.VaultService/RequestHeartbeatForPrincipal"
+	VaultService_GetHeartbeatStatusForPrincipal_FullMethodName   = "/sneakers.vault.v1.VaultService/GetHeartbeatStatusForPrincipal"
 )
 
 // VaultServiceClient is the client API for VaultService service.
@@ -144,6 +156,7 @@ type VaultServiceClient interface {
 	DeleteTarget(ctx context.Context, in *DeleteTargetRequest, opts ...grpc.CallOption) (*DeleteTargetResponse, error)
 	GetTargetRuleset(ctx context.Context, in *GetTargetRulesetRequest, opts ...grpc.CallOption) (*GetTargetRulesetResponse, error)
 	SetTargetRuleset(ctx context.Context, in *SetTargetRulesetRequest, opts ...grpc.CallOption) (*SetTargetRulesetResponse, error)
+	ListSecretsByTarget(ctx context.Context, in *ListSecretsByTargetRequest, opts ...grpc.CallOption) (*ListSecretsByTargetResponse, error)
 	// Certificates: import a certificate file into a secret, export a
 	// certificate secret's material back out as a file, or replace a secret's
 	// certificate material in place (rotation, e.g. after a CA re-issue).
@@ -159,6 +172,7 @@ type VaultServiceClient interface {
 	ListAvailableExtensions(ctx context.Context, in *ListAvailableExtensionsRequest, opts ...grpc.CallOption) (*ListAvailableExtensionsResponse, error)
 	ImportExtension(ctx context.Context, in *ImportExtensionRequest, opts ...grpc.CallOption) (*ImportExtensionResponse, error)
 	ImportExtensionFromJson(ctx context.Context, in *ImportExtensionFromJsonRequest, opts ...grpc.CallOption) (*ImportExtensionFromJsonResponse, error)
+	ImportExtensionForPrincipal(ctx context.Context, in *ImportExtensionForPrincipalRequest, opts ...grpc.CallOption) (*ImportExtensionForPrincipalResponse, error)
 	// Folders
 	ListFolders(ctx context.Context, in *ListFoldersRequest, opts ...grpc.CallOption) (*ListFoldersResponse, error)
 	CreateFolder(ctx context.Context, in *CreateFolderRequest, opts ...grpc.CallOption) (*CreateFolderResponse, error)
@@ -189,6 +203,10 @@ type VaultServiceClient interface {
 	GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error)
 	CreateSecret(ctx context.Context, in *CreateSecretRequest, opts ...grpc.CallOption) (*CreateSecretResponse, error)
 	UpdateSecret(ctx context.Context, in *UpdateSecretRequest, opts ...grpc.CallOption) (*UpdateSecretResponse, error)
+	// Attach/detach one target on a secret's list, never touching the others
+	// (#168) — UpdateSecret's target_id keeps meaning "replace with this one".
+	AttachSecretTarget(ctx context.Context, in *AttachSecretTargetRequest, opts ...grpc.CallOption) (*AttachSecretTargetResponse, error)
+	DetachSecretTarget(ctx context.Context, in *DetachSecretTargetRequest, opts ...grpc.CallOption) (*DetachSecretTargetResponse, error)
 	SetSecretAutomation(ctx context.Context, in *SetSecretAutomationRequest, opts ...grpc.CallOption) (*SetSecretAutomationResponse, error)
 	GetSecretFields(ctx context.Context, in *GetSecretFieldsRequest, opts ...grpc.CallOption) (*GetSecretFieldsResponse, error)
 	RevealSecretField(ctx context.Context, in *RevealSecretFieldRequest, opts ...grpc.CallOption) (*RevealSecretFieldResponse, error)
@@ -199,8 +217,14 @@ type VaultServiceClient interface {
 	GetSecretForPrincipal(ctx context.Context, in *GetSecretForPrincipalRequest, opts ...grpc.CallOption) (*GetSecretForPrincipalResponse, error)
 	CreateSecretForPrincipal(ctx context.Context, in *CreateSecretForPrincipalRequest, opts ...grpc.CallOption) (*CreateSecretForPrincipalResponse, error)
 	GenerateSecretForPrincipal(ctx context.Context, in *GenerateSecretForPrincipalRequest, opts ...grpc.CallOption) (*GenerateSecretForPrincipalResponse, error)
+	// Rotate/restore for non-human principals: RACI-Author, never RACI-C.
+	RotateSecretForPrincipal(ctx context.Context, in *RotateSecretForPrincipalRequest, opts ...grpc.CallOption) (*RotateSecretForPrincipalResponse, error)
+	RestoreSecretVersionForPrincipal(ctx context.Context, in *RestoreSecretVersionForPrincipalRequest, opts ...grpc.CallOption) (*RestoreSecretVersionForPrincipalResponse, error)
 	MoveSecretForPrincipal(ctx context.Context, in *MoveSecretForPrincipalRequest, opts ...grpc.CallOption) (*MoveSecretForPrincipalResponse, error)
 	ChangeSecretTypeForPrincipal(ctx context.Context, in *ChangeSecretTypeForPrincipalRequest, opts ...grpc.CallOption) (*ChangeSecretTypeForPrincipalResponse, error)
+	// A person's type change, and its preview. Same rules as the machine path.
+	ChangeSecretType(ctx context.Context, in *ChangeSecretTypeRequest, opts ...grpc.CallOption) (*ChangeSecretTypeResponse, error)
+	PreviewSecretTypeChange(ctx context.Context, in *PreviewSecretTypeChangeRequest, opts ...grpc.CallOption) (*PreviewSecretTypeChangeResponse, error)
 	// Organize verbs for non-human principals: rename/update a secret and
 	// list/create/rename/move folders. No machine delete.
 	RenameSecretForPrincipal(ctx context.Context, in *RenameSecretForPrincipalRequest, opts ...grpc.CallOption) (*RenameSecretForPrincipalResponse, error)
@@ -279,11 +303,18 @@ type VaultServiceClient interface {
 	ConfirmSecretUse(ctx context.Context, in *ConfirmSecretUseRequest, opts ...grpc.CallOption) (*ConfirmSecretUseResponse, error)
 	ListSecretUsesToDecide(ctx context.Context, in *ListSecretUsesToDecideRequest, opts ...grpc.CallOption) (*ListSecretUsesToDecideResponse, error)
 	RedeemSecretUse(ctx context.Context, in *RedeemSecretUseRequest, opts ...grpc.CallOption) (*RedeemSecretUseResponse, error)
+	// Releases a one-time share's value once, to whoever presents the hash of its
+	// token, while the use is approved and unexpired.
+	RedeemSecretShare(ctx context.Context, in *RedeemSecretShareRequest, opts ...grpc.CallOption) (*RedeemSecretShareResponse, error)
+	// Ends a share early. The creator or a site admin.
+	RevokeSecretShare(ctx context.Context, in *RevokeSecretShareRequest, opts ...grpc.CallOption) (*RevokeSecretShareResponse, error)
 	CreateUseGrant(ctx context.Context, in *CreateUseGrantRequest, opts ...grpc.CallOption) (*CreateUseGrantResponse, error)
 	ListUseGrants(ctx context.Context, in *ListUseGrantsRequest, opts ...grpc.CallOption) (*ListUseGrantsResponse, error)
 	RevokeUseGrant(ctx context.Context, in *RevokeUseGrantRequest, opts ...grpc.CallOption) (*RevokeUseGrantResponse, error)
 	SetSecretTokenApproval(ctx context.Context, in *SetSecretTokenApprovalRequest, opts ...grpc.CallOption) (*SetSecretTokenApprovalResponse, error)
 	SetSecretTargetForPrincipal(ctx context.Context, in *SetSecretTargetForPrincipalRequest, opts ...grpc.CallOption) (*SetSecretTargetForPrincipalResponse, error)
+	AttachSecretTargetForPrincipal(ctx context.Context, in *AttachSecretTargetForPrincipalRequest, opts ...grpc.CallOption) (*AttachSecretTargetForPrincipalResponse, error)
+	DetachSecretTargetForPrincipal(ctx context.Context, in *DetachSecretTargetForPrincipalRequest, opts ...grpc.CallOption) (*DetachSecretTargetForPrincipalResponse, error)
 	SetSecretAutomationForPrincipal(ctx context.Context, in *SetSecretAutomationForPrincipalRequest, opts ...grpc.CallOption) (*SetSecretAutomationForPrincipalResponse, error)
 	RequestHeartbeatForPrincipal(ctx context.Context, in *RequestHeartbeatForPrincipalRequest, opts ...grpc.CallOption) (*RequestHeartbeatForPrincipalResponse, error)
 	GetHeartbeatStatusForPrincipal(ctx context.Context, in *GetHeartbeatStatusForPrincipalRequest, opts ...grpc.CallOption) (*GetHeartbeatStatusForPrincipalResponse, error)
@@ -371,6 +402,16 @@ func (c *vaultServiceClient) SetTargetRuleset(ctx context.Context, in *SetTarget
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetTargetRulesetResponse)
 	err := c.cc.Invoke(ctx, VaultService_SetTargetRuleset_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) ListSecretsByTarget(ctx context.Context, in *ListSecretsByTargetRequest, opts ...grpc.CallOption) (*ListSecretsByTargetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSecretsByTargetResponse)
+	err := c.cc.Invoke(ctx, VaultService_ListSecretsByTarget_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -481,6 +522,16 @@ func (c *vaultServiceClient) ImportExtensionFromJson(ctx context.Context, in *Im
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ImportExtensionFromJsonResponse)
 	err := c.cc.Invoke(ctx, VaultService_ImportExtensionFromJson_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) ImportExtensionForPrincipal(ctx context.Context, in *ImportExtensionForPrincipalRequest, opts ...grpc.CallOption) (*ImportExtensionForPrincipalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ImportExtensionForPrincipalResponse)
+	err := c.cc.Invoke(ctx, VaultService_ImportExtensionForPrincipal_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -697,6 +748,26 @@ func (c *vaultServiceClient) UpdateSecret(ctx context.Context, in *UpdateSecretR
 	return out, nil
 }
 
+func (c *vaultServiceClient) AttachSecretTarget(ctx context.Context, in *AttachSecretTargetRequest, opts ...grpc.CallOption) (*AttachSecretTargetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AttachSecretTargetResponse)
+	err := c.cc.Invoke(ctx, VaultService_AttachSecretTarget_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) DetachSecretTarget(ctx context.Context, in *DetachSecretTargetRequest, opts ...grpc.CallOption) (*DetachSecretTargetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DetachSecretTargetResponse)
+	err := c.cc.Invoke(ctx, VaultService_DetachSecretTarget_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vaultServiceClient) SetSecretAutomation(ctx context.Context, in *SetSecretAutomationRequest, opts ...grpc.CallOption) (*SetSecretAutomationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetSecretAutomationResponse)
@@ -777,6 +848,26 @@ func (c *vaultServiceClient) GenerateSecretForPrincipal(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *vaultServiceClient) RotateSecretForPrincipal(ctx context.Context, in *RotateSecretForPrincipalRequest, opts ...grpc.CallOption) (*RotateSecretForPrincipalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RotateSecretForPrincipalResponse)
+	err := c.cc.Invoke(ctx, VaultService_RotateSecretForPrincipal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) RestoreSecretVersionForPrincipal(ctx context.Context, in *RestoreSecretVersionForPrincipalRequest, opts ...grpc.CallOption) (*RestoreSecretVersionForPrincipalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RestoreSecretVersionForPrincipalResponse)
+	err := c.cc.Invoke(ctx, VaultService_RestoreSecretVersionForPrincipal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vaultServiceClient) MoveSecretForPrincipal(ctx context.Context, in *MoveSecretForPrincipalRequest, opts ...grpc.CallOption) (*MoveSecretForPrincipalResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MoveSecretForPrincipalResponse)
@@ -791,6 +882,26 @@ func (c *vaultServiceClient) ChangeSecretTypeForPrincipal(ctx context.Context, i
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ChangeSecretTypeForPrincipalResponse)
 	err := c.cc.Invoke(ctx, VaultService_ChangeSecretTypeForPrincipal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) ChangeSecretType(ctx context.Context, in *ChangeSecretTypeRequest, opts ...grpc.CallOption) (*ChangeSecretTypeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangeSecretTypeResponse)
+	err := c.cc.Invoke(ctx, VaultService_ChangeSecretType_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) PreviewSecretTypeChange(ctx context.Context, in *PreviewSecretTypeChangeRequest, opts ...grpc.CallOption) (*PreviewSecretTypeChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PreviewSecretTypeChangeResponse)
+	err := c.cc.Invoke(ctx, VaultService_PreviewSecretTypeChange_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1297,6 +1408,26 @@ func (c *vaultServiceClient) RedeemSecretUse(ctx context.Context, in *RedeemSecr
 	return out, nil
 }
 
+func (c *vaultServiceClient) RedeemSecretShare(ctx context.Context, in *RedeemSecretShareRequest, opts ...grpc.CallOption) (*RedeemSecretShareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RedeemSecretShareResponse)
+	err := c.cc.Invoke(ctx, VaultService_RedeemSecretShare_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) RevokeSecretShare(ctx context.Context, in *RevokeSecretShareRequest, opts ...grpc.CallOption) (*RevokeSecretShareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeSecretShareResponse)
+	err := c.cc.Invoke(ctx, VaultService_RevokeSecretShare_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vaultServiceClient) CreateUseGrant(ctx context.Context, in *CreateUseGrantRequest, opts ...grpc.CallOption) (*CreateUseGrantResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateUseGrantResponse)
@@ -1347,6 +1478,26 @@ func (c *vaultServiceClient) SetSecretTargetForPrincipal(ctx context.Context, in
 	return out, nil
 }
 
+func (c *vaultServiceClient) AttachSecretTargetForPrincipal(ctx context.Context, in *AttachSecretTargetForPrincipalRequest, opts ...grpc.CallOption) (*AttachSecretTargetForPrincipalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AttachSecretTargetForPrincipalResponse)
+	err := c.cc.Invoke(ctx, VaultService_AttachSecretTargetForPrincipal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vaultServiceClient) DetachSecretTargetForPrincipal(ctx context.Context, in *DetachSecretTargetForPrincipalRequest, opts ...grpc.CallOption) (*DetachSecretTargetForPrincipalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DetachSecretTargetForPrincipalResponse)
+	err := c.cc.Invoke(ctx, VaultService_DetachSecretTargetForPrincipal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vaultServiceClient) SetSecretAutomationForPrincipal(ctx context.Context, in *SetSecretAutomationForPrincipalRequest, opts ...grpc.CallOption) (*SetSecretAutomationForPrincipalResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetSecretAutomationForPrincipalResponse)
@@ -1389,6 +1540,7 @@ type VaultServiceServer interface {
 	DeleteTarget(context.Context, *DeleteTargetRequest) (*DeleteTargetResponse, error)
 	GetTargetRuleset(context.Context, *GetTargetRulesetRequest) (*GetTargetRulesetResponse, error)
 	SetTargetRuleset(context.Context, *SetTargetRulesetRequest) (*SetTargetRulesetResponse, error)
+	ListSecretsByTarget(context.Context, *ListSecretsByTargetRequest) (*ListSecretsByTargetResponse, error)
 	// Certificates: import a certificate file into a secret, export a
 	// certificate secret's material back out as a file, or replace a secret's
 	// certificate material in place (rotation, e.g. after a CA re-issue).
@@ -1404,6 +1556,7 @@ type VaultServiceServer interface {
 	ListAvailableExtensions(context.Context, *ListAvailableExtensionsRequest) (*ListAvailableExtensionsResponse, error)
 	ImportExtension(context.Context, *ImportExtensionRequest) (*ImportExtensionResponse, error)
 	ImportExtensionFromJson(context.Context, *ImportExtensionFromJsonRequest) (*ImportExtensionFromJsonResponse, error)
+	ImportExtensionForPrincipal(context.Context, *ImportExtensionForPrincipalRequest) (*ImportExtensionForPrincipalResponse, error)
 	// Folders
 	ListFolders(context.Context, *ListFoldersRequest) (*ListFoldersResponse, error)
 	CreateFolder(context.Context, *CreateFolderRequest) (*CreateFolderResponse, error)
@@ -1434,6 +1587,10 @@ type VaultServiceServer interface {
 	GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error)
 	CreateSecret(context.Context, *CreateSecretRequest) (*CreateSecretResponse, error)
 	UpdateSecret(context.Context, *UpdateSecretRequest) (*UpdateSecretResponse, error)
+	// Attach/detach one target on a secret's list, never touching the others
+	// (#168) — UpdateSecret's target_id keeps meaning "replace with this one".
+	AttachSecretTarget(context.Context, *AttachSecretTargetRequest) (*AttachSecretTargetResponse, error)
+	DetachSecretTarget(context.Context, *DetachSecretTargetRequest) (*DetachSecretTargetResponse, error)
 	SetSecretAutomation(context.Context, *SetSecretAutomationRequest) (*SetSecretAutomationResponse, error)
 	GetSecretFields(context.Context, *GetSecretFieldsRequest) (*GetSecretFieldsResponse, error)
 	RevealSecretField(context.Context, *RevealSecretFieldRequest) (*RevealSecretFieldResponse, error)
@@ -1444,8 +1601,14 @@ type VaultServiceServer interface {
 	GetSecretForPrincipal(context.Context, *GetSecretForPrincipalRequest) (*GetSecretForPrincipalResponse, error)
 	CreateSecretForPrincipal(context.Context, *CreateSecretForPrincipalRequest) (*CreateSecretForPrincipalResponse, error)
 	GenerateSecretForPrincipal(context.Context, *GenerateSecretForPrincipalRequest) (*GenerateSecretForPrincipalResponse, error)
+	// Rotate/restore for non-human principals: RACI-Author, never RACI-C.
+	RotateSecretForPrincipal(context.Context, *RotateSecretForPrincipalRequest) (*RotateSecretForPrincipalResponse, error)
+	RestoreSecretVersionForPrincipal(context.Context, *RestoreSecretVersionForPrincipalRequest) (*RestoreSecretVersionForPrincipalResponse, error)
 	MoveSecretForPrincipal(context.Context, *MoveSecretForPrincipalRequest) (*MoveSecretForPrincipalResponse, error)
 	ChangeSecretTypeForPrincipal(context.Context, *ChangeSecretTypeForPrincipalRequest) (*ChangeSecretTypeForPrincipalResponse, error)
+	// A person's type change, and its preview. Same rules as the machine path.
+	ChangeSecretType(context.Context, *ChangeSecretTypeRequest) (*ChangeSecretTypeResponse, error)
+	PreviewSecretTypeChange(context.Context, *PreviewSecretTypeChangeRequest) (*PreviewSecretTypeChangeResponse, error)
 	// Organize verbs for non-human principals: rename/update a secret and
 	// list/create/rename/move folders. No machine delete.
 	RenameSecretForPrincipal(context.Context, *RenameSecretForPrincipalRequest) (*RenameSecretForPrincipalResponse, error)
@@ -1524,11 +1687,18 @@ type VaultServiceServer interface {
 	ConfirmSecretUse(context.Context, *ConfirmSecretUseRequest) (*ConfirmSecretUseResponse, error)
 	ListSecretUsesToDecide(context.Context, *ListSecretUsesToDecideRequest) (*ListSecretUsesToDecideResponse, error)
 	RedeemSecretUse(context.Context, *RedeemSecretUseRequest) (*RedeemSecretUseResponse, error)
+	// Releases a one-time share's value once, to whoever presents the hash of its
+	// token, while the use is approved and unexpired.
+	RedeemSecretShare(context.Context, *RedeemSecretShareRequest) (*RedeemSecretShareResponse, error)
+	// Ends a share early. The creator or a site admin.
+	RevokeSecretShare(context.Context, *RevokeSecretShareRequest) (*RevokeSecretShareResponse, error)
 	CreateUseGrant(context.Context, *CreateUseGrantRequest) (*CreateUseGrantResponse, error)
 	ListUseGrants(context.Context, *ListUseGrantsRequest) (*ListUseGrantsResponse, error)
 	RevokeUseGrant(context.Context, *RevokeUseGrantRequest) (*RevokeUseGrantResponse, error)
 	SetSecretTokenApproval(context.Context, *SetSecretTokenApprovalRequest) (*SetSecretTokenApprovalResponse, error)
 	SetSecretTargetForPrincipal(context.Context, *SetSecretTargetForPrincipalRequest) (*SetSecretTargetForPrincipalResponse, error)
+	AttachSecretTargetForPrincipal(context.Context, *AttachSecretTargetForPrincipalRequest) (*AttachSecretTargetForPrincipalResponse, error)
+	DetachSecretTargetForPrincipal(context.Context, *DetachSecretTargetForPrincipalRequest) (*DetachSecretTargetForPrincipalResponse, error)
 	SetSecretAutomationForPrincipal(context.Context, *SetSecretAutomationForPrincipalRequest) (*SetSecretAutomationForPrincipalResponse, error)
 	RequestHeartbeatForPrincipal(context.Context, *RequestHeartbeatForPrincipalRequest) (*RequestHeartbeatForPrincipalResponse, error)
 	GetHeartbeatStatusForPrincipal(context.Context, *GetHeartbeatStatusForPrincipalRequest) (*GetHeartbeatStatusForPrincipalResponse, error)
@@ -1566,6 +1736,9 @@ func (UnimplementedVaultServiceServer) GetTargetRuleset(context.Context, *GetTar
 func (UnimplementedVaultServiceServer) SetTargetRuleset(context.Context, *SetTargetRulesetRequest) (*SetTargetRulesetResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetTargetRuleset not implemented")
 }
+func (UnimplementedVaultServiceServer) ListSecretsByTarget(context.Context, *ListSecretsByTargetRequest) (*ListSecretsByTargetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSecretsByTarget not implemented")
+}
 func (UnimplementedVaultServiceServer) ImportCertificate(context.Context, *ImportCertificateRequest) (*ImportCertificateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ImportCertificate not implemented")
 }
@@ -1598,6 +1771,9 @@ func (UnimplementedVaultServiceServer) ImportExtension(context.Context, *ImportE
 }
 func (UnimplementedVaultServiceServer) ImportExtensionFromJson(context.Context, *ImportExtensionFromJsonRequest) (*ImportExtensionFromJsonResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ImportExtensionFromJson not implemented")
+}
+func (UnimplementedVaultServiceServer) ImportExtensionForPrincipal(context.Context, *ImportExtensionForPrincipalRequest) (*ImportExtensionForPrincipalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ImportExtensionForPrincipal not implemented")
 }
 func (UnimplementedVaultServiceServer) ListFolders(context.Context, *ListFoldersRequest) (*ListFoldersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListFolders not implemented")
@@ -1662,6 +1838,12 @@ func (UnimplementedVaultServiceServer) CreateSecret(context.Context, *CreateSecr
 func (UnimplementedVaultServiceServer) UpdateSecret(context.Context, *UpdateSecretRequest) (*UpdateSecretResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateSecret not implemented")
 }
+func (UnimplementedVaultServiceServer) AttachSecretTarget(context.Context, *AttachSecretTargetRequest) (*AttachSecretTargetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AttachSecretTarget not implemented")
+}
+func (UnimplementedVaultServiceServer) DetachSecretTarget(context.Context, *DetachSecretTargetRequest) (*DetachSecretTargetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DetachSecretTarget not implemented")
+}
 func (UnimplementedVaultServiceServer) SetSecretAutomation(context.Context, *SetSecretAutomationRequest) (*SetSecretAutomationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetSecretAutomation not implemented")
 }
@@ -1686,11 +1868,23 @@ func (UnimplementedVaultServiceServer) CreateSecretForPrincipal(context.Context,
 func (UnimplementedVaultServiceServer) GenerateSecretForPrincipal(context.Context, *GenerateSecretForPrincipalRequest) (*GenerateSecretForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GenerateSecretForPrincipal not implemented")
 }
+func (UnimplementedVaultServiceServer) RotateSecretForPrincipal(context.Context, *RotateSecretForPrincipalRequest) (*RotateSecretForPrincipalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RotateSecretForPrincipal not implemented")
+}
+func (UnimplementedVaultServiceServer) RestoreSecretVersionForPrincipal(context.Context, *RestoreSecretVersionForPrincipalRequest) (*RestoreSecretVersionForPrincipalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RestoreSecretVersionForPrincipal not implemented")
+}
 func (UnimplementedVaultServiceServer) MoveSecretForPrincipal(context.Context, *MoveSecretForPrincipalRequest) (*MoveSecretForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MoveSecretForPrincipal not implemented")
 }
 func (UnimplementedVaultServiceServer) ChangeSecretTypeForPrincipal(context.Context, *ChangeSecretTypeForPrincipalRequest) (*ChangeSecretTypeForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ChangeSecretTypeForPrincipal not implemented")
+}
+func (UnimplementedVaultServiceServer) ChangeSecretType(context.Context, *ChangeSecretTypeRequest) (*ChangeSecretTypeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangeSecretType not implemented")
+}
+func (UnimplementedVaultServiceServer) PreviewSecretTypeChange(context.Context, *PreviewSecretTypeChangeRequest) (*PreviewSecretTypeChangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PreviewSecretTypeChange not implemented")
 }
 func (UnimplementedVaultServiceServer) RenameSecretForPrincipal(context.Context, *RenameSecretForPrincipalRequest) (*RenameSecretForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RenameSecretForPrincipal not implemented")
@@ -1842,6 +2036,12 @@ func (UnimplementedVaultServiceServer) ListSecretUsesToDecide(context.Context, *
 func (UnimplementedVaultServiceServer) RedeemSecretUse(context.Context, *RedeemSecretUseRequest) (*RedeemSecretUseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RedeemSecretUse not implemented")
 }
+func (UnimplementedVaultServiceServer) RedeemSecretShare(context.Context, *RedeemSecretShareRequest) (*RedeemSecretShareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RedeemSecretShare not implemented")
+}
+func (UnimplementedVaultServiceServer) RevokeSecretShare(context.Context, *RevokeSecretShareRequest) (*RevokeSecretShareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeSecretShare not implemented")
+}
 func (UnimplementedVaultServiceServer) CreateUseGrant(context.Context, *CreateUseGrantRequest) (*CreateUseGrantResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateUseGrant not implemented")
 }
@@ -1856,6 +2056,12 @@ func (UnimplementedVaultServiceServer) SetSecretTokenApproval(context.Context, *
 }
 func (UnimplementedVaultServiceServer) SetSecretTargetForPrincipal(context.Context, *SetSecretTargetForPrincipalRequest) (*SetSecretTargetForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetSecretTargetForPrincipal not implemented")
+}
+func (UnimplementedVaultServiceServer) AttachSecretTargetForPrincipal(context.Context, *AttachSecretTargetForPrincipalRequest) (*AttachSecretTargetForPrincipalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AttachSecretTargetForPrincipal not implemented")
+}
+func (UnimplementedVaultServiceServer) DetachSecretTargetForPrincipal(context.Context, *DetachSecretTargetForPrincipalRequest) (*DetachSecretTargetForPrincipalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DetachSecretTargetForPrincipal not implemented")
 }
 func (UnimplementedVaultServiceServer) SetSecretAutomationForPrincipal(context.Context, *SetSecretAutomationForPrincipalRequest) (*SetSecretAutomationForPrincipalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetSecretAutomationForPrincipal not implemented")
@@ -2027,6 +2233,24 @@ func _VaultService_SetTargetRuleset_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VaultServiceServer).SetTargetRuleset(ctx, req.(*SetTargetRulesetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_ListSecretsByTarget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSecretsByTargetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ListSecretsByTarget(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ListSecretsByTarget_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ListSecretsByTarget(ctx, req.(*ListSecretsByTargetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2225,6 +2449,24 @@ func _VaultService_ImportExtensionFromJson_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VaultServiceServer).ImportExtensionFromJson(ctx, req.(*ImportExtensionFromJsonRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_ImportExtensionForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ImportExtensionForPrincipalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ImportExtensionForPrincipal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ImportExtensionForPrincipal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ImportExtensionForPrincipal(ctx, req.(*ImportExtensionForPrincipalRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2607,6 +2849,42 @@ func _VaultService_UpdateSecret_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VaultService_AttachSecretTarget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AttachSecretTargetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).AttachSecretTarget(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_AttachSecretTarget_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).AttachSecretTarget(ctx, req.(*AttachSecretTargetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_DetachSecretTarget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DetachSecretTargetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).DetachSecretTarget(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_DetachSecretTarget_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).DetachSecretTarget(ctx, req.(*DetachSecretTargetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VaultService_SetSecretAutomation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetSecretAutomationRequest)
 	if err := dec(in); err != nil {
@@ -2751,6 +3029,42 @@ func _VaultService_GenerateSecretForPrincipal_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VaultService_RotateSecretForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RotateSecretForPrincipalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).RotateSecretForPrincipal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_RotateSecretForPrincipal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).RotateSecretForPrincipal(ctx, req.(*RotateSecretForPrincipalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_RestoreSecretVersionForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestoreSecretVersionForPrincipalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).RestoreSecretVersionForPrincipal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_RestoreSecretVersionForPrincipal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).RestoreSecretVersionForPrincipal(ctx, req.(*RestoreSecretVersionForPrincipalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VaultService_MoveSecretForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MoveSecretForPrincipalRequest)
 	if err := dec(in); err != nil {
@@ -2783,6 +3097,42 @@ func _VaultService_ChangeSecretTypeForPrincipal_Handler(srv interface{}, ctx con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VaultServiceServer).ChangeSecretTypeForPrincipal(ctx, req.(*ChangeSecretTypeForPrincipalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_ChangeSecretType_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeSecretTypeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).ChangeSecretType(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_ChangeSecretType_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).ChangeSecretType(ctx, req.(*ChangeSecretTypeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_PreviewSecretTypeChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PreviewSecretTypeChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).PreviewSecretTypeChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_PreviewSecretTypeChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).PreviewSecretTypeChange(ctx, req.(*PreviewSecretTypeChangeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3687,6 +4037,42 @@ func _VaultService_RedeemSecretUse_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VaultService_RedeemSecretShare_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RedeemSecretShareRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).RedeemSecretShare(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_RedeemSecretShare_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).RedeemSecretShare(ctx, req.(*RedeemSecretShareRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_RevokeSecretShare_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeSecretShareRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).RevokeSecretShare(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_RevokeSecretShare_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).RevokeSecretShare(ctx, req.(*RevokeSecretShareRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VaultService_CreateUseGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateUseGrantRequest)
 	if err := dec(in); err != nil {
@@ -3773,6 +4159,42 @@ func _VaultService_SetSecretTargetForPrincipal_Handler(srv interface{}, ctx cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VaultServiceServer).SetSecretTargetForPrincipal(ctx, req.(*SetSecretTargetForPrincipalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_AttachSecretTargetForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AttachSecretTargetForPrincipalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).AttachSecretTargetForPrincipal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_AttachSecretTargetForPrincipal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).AttachSecretTargetForPrincipal(ctx, req.(*AttachSecretTargetForPrincipalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VaultService_DetachSecretTargetForPrincipal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DetachSecretTargetForPrincipalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VaultServiceServer).DetachSecretTargetForPrincipal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VaultService_DetachSecretTargetForPrincipal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VaultServiceServer).DetachSecretTargetForPrincipal(ctx, req.(*DetachSecretTargetForPrincipalRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3871,6 +4293,10 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _VaultService_SetTargetRuleset_Handler,
 		},
 		{
+			MethodName: "ListSecretsByTarget",
+			Handler:    _VaultService_ListSecretsByTarget_Handler,
+		},
+		{
 			MethodName: "ImportCertificate",
 			Handler:    _VaultService_ImportCertificate_Handler,
 		},
@@ -3913,6 +4339,10 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ImportExtensionFromJson",
 			Handler:    _VaultService_ImportExtensionFromJson_Handler,
+		},
+		{
+			MethodName: "ImportExtensionForPrincipal",
+			Handler:    _VaultService_ImportExtensionForPrincipal_Handler,
 		},
 		{
 			MethodName: "ListFolders",
@@ -3999,6 +4429,14 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _VaultService_UpdateSecret_Handler,
 		},
 		{
+			MethodName: "AttachSecretTarget",
+			Handler:    _VaultService_AttachSecretTarget_Handler,
+		},
+		{
+			MethodName: "DetachSecretTarget",
+			Handler:    _VaultService_DetachSecretTarget_Handler,
+		},
+		{
 			MethodName: "SetSecretAutomation",
 			Handler:    _VaultService_SetSecretAutomation_Handler,
 		},
@@ -4031,12 +4469,28 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _VaultService_GenerateSecretForPrincipal_Handler,
 		},
 		{
+			MethodName: "RotateSecretForPrincipal",
+			Handler:    _VaultService_RotateSecretForPrincipal_Handler,
+		},
+		{
+			MethodName: "RestoreSecretVersionForPrincipal",
+			Handler:    _VaultService_RestoreSecretVersionForPrincipal_Handler,
+		},
+		{
 			MethodName: "MoveSecretForPrincipal",
 			Handler:    _VaultService_MoveSecretForPrincipal_Handler,
 		},
 		{
 			MethodName: "ChangeSecretTypeForPrincipal",
 			Handler:    _VaultService_ChangeSecretTypeForPrincipal_Handler,
+		},
+		{
+			MethodName: "ChangeSecretType",
+			Handler:    _VaultService_ChangeSecretType_Handler,
+		},
+		{
+			MethodName: "PreviewSecretTypeChange",
+			Handler:    _VaultService_PreviewSecretTypeChange_Handler,
 		},
 		{
 			MethodName: "RenameSecretForPrincipal",
@@ -4239,6 +4693,14 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _VaultService_RedeemSecretUse_Handler,
 		},
 		{
+			MethodName: "RedeemSecretShare",
+			Handler:    _VaultService_RedeemSecretShare_Handler,
+		},
+		{
+			MethodName: "RevokeSecretShare",
+			Handler:    _VaultService_RevokeSecretShare_Handler,
+		},
+		{
 			MethodName: "CreateUseGrant",
 			Handler:    _VaultService_CreateUseGrant_Handler,
 		},
@@ -4257,6 +4719,14 @@ var VaultService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetSecretTargetForPrincipal",
 			Handler:    _VaultService_SetSecretTargetForPrincipal_Handler,
+		},
+		{
+			MethodName: "AttachSecretTargetForPrincipal",
+			Handler:    _VaultService_AttachSecretTargetForPrincipal_Handler,
+		},
+		{
+			MethodName: "DetachSecretTargetForPrincipal",
+			Handler:    _VaultService_DetachSecretTargetForPrincipal_Handler,
 		},
 		{
 			MethodName: "SetSecretAutomationForPrincipal",

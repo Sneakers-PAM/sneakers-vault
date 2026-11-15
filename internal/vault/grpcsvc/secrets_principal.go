@@ -113,6 +113,11 @@ type newSecretSpec struct {
 // heartbeat/rotation via ensureLifecycle (the exact block CreateSecret runs).
 // Caller holds s.mu (write lock) and has already gated canManage/typeId.
 func (s *Server) buildAndStoreSecret(ctx context.Context, actor *vaultv1.ActorContext, spec newSecretSpec, fields map[string]string) (*vaultv1.Secret, error) {
+	fields, err := checkSelectFieldsForCreate(s.findType(spec.typeID), fields)
+	if err != nil {
+		s.lg(ctx).Info("principal create refused: select field value", log.F("type_id", spec.typeID), log.F("error", err.Error()))
+		return nil, err
+	}
 	// Authoritative server-side check that a submitted SSH private/public
 	// key pair actually correspond, before anything is sealed and stored.
 	if err := verifyKeyPairFields(fields); err != nil {
@@ -121,9 +126,12 @@ func (s *Server) buildAndStoreSecret(ctx context.Context, actor *vaultv1.ActorCo
 	// The opt-outs are set before ensureLifecycle so an opted-out secret never
 	// gets a schedule row, not even briefly.
 	sec := &vaultv1.Secret{
-		Id: s.nextID("secret"), Name: spec.name, FolderId: spec.folderID, TypeId: spec.typeID, TargetId: spec.targetID,
+		Id: s.nextID("secret"), Name: spec.name, FolderId: spec.folderID, TypeId: spec.typeID,
 		RotationOptOut: spec.disableRotation, HeartbeatOptOut: spec.disableHeartbeat,
-		Position: s.nextPosition(spec.folderID),
+		Position: s.nextPosition(spec.folderID), CreatorPrincipalId: principalActorID(actor),
+	}
+	if spec.targetID != "" {
+		setSecretTargets(sec, []string{spec.targetID})
 	}
 	rec, err := s.crypt.Seal(fields)
 	if err != nil {

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Checks scripts/govulncheck.sh against saved govulncheck JSON: the allowed ID
-# passes, any other called finding fails, and an uncalled finding passes.
+# Checks scripts/govulncheck.sh against saved govulncheck JSON with an empty
+# allow list: any called finding fails (GO-2026-6443 included, now that it is no
+# longer allowed), and an uncalled finding passes.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 dir=scripts/testdata/govulncheck
@@ -15,7 +16,7 @@ expect() {
     fail=1
   fi
 }
-expect pass allowed-only.json
+expect fail allowed-only.json
 expect fail other-called.json
 expect pass other-uncalled.json
 exit "$fail"

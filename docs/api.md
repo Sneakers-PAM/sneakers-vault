@@ -53,11 +53,11 @@ See the [runbook](runbook.md#health) for each server's dependencies.
 | Secret types | `ListSecretTypes`, `CreateSecretType`, `UpdateSecretType`, `DeleteSecretType`, `CloneSecretType`, `ListAvailableExtensions`, `ImportExtension`, `ImportExtensionFromJson` |
 | Folders | `ListFolders`, `CreateFolder`, `RenameFolder`, `MoveFolder`, `DeleteFolder`, `ReorderFolders` |
 | Access rules | `GetFolderRuleset`, `SetFolderRuleset`, `GetMyAccess`, `SimulateFolder`, `SimulateSecret`, `GetSecretRuleset`, `SetSecretRuleset`, `GetMySecretAccess`, `GetTargetRuleset`, `SetTargetRuleset`; the older `ListFolderRules`, `GetInheritedFolderRules`, `AddFolderRule`, `RemoveFolderRule` |
-| Secrets | `ListSecretsInFolder`, `ReorderSecrets`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
+| Secrets | `ListSecretsInFolder`, `ListSecretsByTarget`, `ReorderSecrets`, `GetSecret`, `CreateSecret`, `UpdateSecret`, `ChangeSecretType`, `PreviewSecretTypeChange`, `SetSecretAutomation`, `GetSecretFields`, `RevealSecretField`, `CopySecret`, `RetireSecret`, `RestoreSecret`, `DeleteSecret`, `ListSecretVersions`, `RevealSecretVersionField`, `BreakGlassSecret` |
 | Break-glass browse | `OpenBreakGlassSession`, `GetBreakGlassSession`, `ListBreakGlassItems`, `CloseBreakGlassSession`, `ListBreakGlassSessions` |
 | Dashboard | `GetSecretStats`, `GetTopAccessedSecrets`, `ListSecretsByStatus`, `FindSecretsByPublicKey` |
-| Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `GetSecretForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
-| Secret uses and approvals | `PrepareSecretUse`, `GetSecretUse`, `ListPendingSecretUses`, `ListSecretUsesToDecide`, `DecideSecretUse`, `ConfirmSecretUse`, `RedeemSecretUse`, `CreateUseGrant`, `ListUseGrants`, `RevokeUseGrant`, `SetSecretTokenApproval` |
+| Machine principals | `RevealSecretFieldForPrincipal`, `ListSecretsForPrincipal`, `GetSecretForPrincipal`, `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `MoveSecretForPrincipal`, `ChangeSecretTypeForPrincipal`, `RenameSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`, `ListFoldersForPrincipal`, `CreateFolderForPrincipal`, `RenameFolderForPrincipal`, `MoveFolderForPrincipal`, `ImportExtensionForPrincipal`, `SetSecretTargetForPrincipal`, `SetSecretAutomationForPrincipal`, `RequestHeartbeatForPrincipal`, `GetHeartbeatStatusForPrincipal` |
+| Secret uses and approvals | `PrepareSecretUse`, `GetSecretUse`, `ListPendingSecretUses`, `ListSecretUsesToDecide`, `DecideSecretUse`, `ConfirmSecretUse`, `RedeemSecretUse`, `RedeemSecretShare`, `RevokeSecretShare`, `CreateUseGrant`, `ListUseGrants`, `RevokeUseGrant`, `SetSecretTokenApproval` |
 | Certificates | `ImportCertificate`, `ExportCertificate`, `ReplaceCertificate` |
 | Connections and targets | `ListConnections`, `SaveConnection`, `DeleteConnection`, `ListTargets`, `SaveTarget`, `DeleteTarget` |
 | Connector | `ClaimDueHeartbeats`, `RevealForHeartbeat`, `ReportHeartbeat`, `EnqueueRotation`, `ClaimDueRotations`, `RevealForRotation`, `ReportRotation` |
@@ -81,6 +81,46 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   I informed) on folders, secrets and targets, evaluated target first and then up the folder
   chain. Folder owners get read, approve and author. Site admins and root read everything but are
   never automatic approvers or authors.
+- **Contribute, own reveal:** the C cell also accepts `own` (`RaciRule.grants["C"] = "own"`), never
+  valid on R/A/I. Combined with `R: "allow"` it is a grant for a machine principal: create and
+  update anywhere `R` allows in the folder, but reveal only a secret whose `creator_principal_id`
+  is its own — through every read path (reveal, copy, export, version history, break-glass, the
+  sshbroker's fetch), never a blanket folder read. A secret not its own stays refused
+  (`PermissionDenied`, reason `NO_ACCESS`) and fully hidden from listing (`ListSecretsForPrincipal`,
+  `GetSecretForPrincipal`), the same treatment a secret a plain deny covers already gets. Saving a
+  ruleset with `own` on any cell but C is refused, `InvalidArgument`. `creator_principal_id` is set
+  once, at creation, by `CreateSecret`/`CreateSecretForPrincipal`/`GenerateSecretForPrincipal`;
+  empty on a secret created before this field existed, so it stays unreadable under an own-reveal
+  grant until explicitly reassigned (not yet built).
+- **Rotate/restore for a machine principal:** `RotateSecretForPrincipal` regenerates the type's
+  password field under its policy and stores it as a new version, always returning the new value
+  once — the caller (e.g. a local-admin-password broker) stores it, then sets it on the host.
+  `RestoreSecretVersionForPrincipal` makes a prior version current again, as a new version, never a
+  history rewrite. Both need RACI Author (never C) on the secret's folder chain — the same grant
+  `CreateSecretForPrincipal` needs — are refused (`PermissionDenied`, audited) without it, are
+  refused (`FailedPrecondition`, reason `ROTATION_IN_PROGRESS`) while a scheduled rotation is
+  queued or running, and are HUMAN-never: a `PRINCIPAL_KIND_HUMAN` actor gets `PermissionDenied`
+  (use `RestoreSecretVersion`, which needs the recovery role, instead). Neither ever changes a
+  target's pinned SSH host keys.
+- **One secret, many targets:** a secret holds an ordered `target_ids` list; `target_id` (legacy,
+  singular) stays the first/primary entry, kept in sync, so a consumer that hasn't moved to the
+  list still reads a sensible single value. `UpdateSecret`/`SetSecretTargetForPrincipal`'s
+  `target_id` keeps meaning "replace the whole list with just this one". `AttachSecretTarget`/
+  `DetachSecretTarget` (and their `ForPrincipal` mirrors) add or remove one target without
+  touching the others — both idempotent: attaching an already-attached target, or detaching one
+  that isn't attached, is a no-op. Host-key pins stay per target (`Target.ssh_host_keys`), unaffected.
+  `ClaimDueRotations`/`ClaimDueHeartbeats` hand the connector every attached target
+  (`RotationJob`/`HeartbeatJob.targets`, primary first; the singular `connection`/`target` fields
+  stay the primary target's, for a connector that hasn't moved to the list) and are reachable once
+  ANY attached target is usable. `ReportRotation`/`ReportHeartbeat.target_results` (one entry per
+  target, empty means the connector hasn't moved to multi-target reporting) fold into the secret's
+  one aggregate result — `ROTATION_STATE_OK`/`HEARTBEAT_RESULT_OK` only once every attached target
+  succeeds, otherwise DEGRADED/FAILED — while `target_rotation_outcomes`/`target_heartbeat_outcomes`
+  keep the per-target breakdown. A rotation already committed to the vault is never rolled back
+  just because one target hasn't caught up: "done" only waits on every target getting there, or the
+  failures being shown. `ListSecretsByTarget` lists every secret attached to a target (the
+  target's own page: "every secret attached to this target"), following the same visibility as
+  `ListSecretsInFolder` below — locked but listed, hidden on an explicit deny.
 - **Seeing secrets:** `ListSecretsInFolder` and `GetSecret` show a secret's metadata to anyone who
   can see its folder, even without read, so people can find a secret and request access. Each
   secret carries `can_read`, false when the caller can't read it. A secret an explicit deny
@@ -106,8 +146,37 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   own a folder or target, and they get nothing from an `everyone` allow (an `everyone` deny still
   applies). There is no machine delete. A personal token may create folders in its own personal
   tree only; a service account never creates inside a personal tree. Names may not contain `/` or
-  `\`. `RevealSecretFieldForPrincipal` also returns non-sensitive fields, audited as
+  `\`. A top-level folder (`CreateFolder` or
+  `CreateFolderForPrincipal` with no `parent_id`) is refused to a service account or workload
+  (`InvalidArgument`), which has no user to own it. Any signed-in person or personal token gets one
+  while `restrict_top_level_folders` is off, its default. While it's on, only a human site admin or
+  root does, or a token for which the gateway has set `ActorContext.token_owner_is_site_admin` (the
+  token's owner holds site admin or root). Anyone else gets `PermissionDenied` with reason
+  `TOP_LEVEL_FOLDERS_RESTRICTED`, audited as `authz.denied`, and the message names the setting.
+  `MoveFolder` to the top level follows the same rule, on top of owning or managing the folder; a
+  folder already at the top level isn't refused, and reordering top-level folders still needs an
+  admin. `MoveFolder` to the parent a folder already has changes nothing: no rescope and no
+  `folder.move` audit event. A `new_parent_id` that doesn't exist is `NotFound`. `MoveFolderForPrincipal` can't move a
+  folder to the top level (`InvalidArgument`), and a token the setting restricts gets
+  `TOP_LEVEL_FOLDERS_RESTRICTED` instead. The new folder is shared and owned by the creator or the token's user. A token's create is audited as
+  `folder.create.principal` under that user with `token_id`, `path` and `top_level`. The flag
+  counts for one thing more, activating an extension pack, and for nothing else: a token never
+  acts with admin authority. Every person sees a shared folder's
+  name in `ListFolders`; its contents stay with its owners and site admins until an owner adds a
+  rule. `RevealSecretFieldForPrincipal` also returns non-sensitive fields, audited as
   `secret.read.principal`.
+- **Extension packs for tokens** (`ImportExtensionForPrincipal`): a personal token whose owner is a
+  site admin or root (`ActorContext.token_owner_is_site_admin`) can activate a catalogued pack by
+  id. A person is refused, as on every `*ForPrincipal` call; a service account, a workload and any
+  other token get `PermissionDenied` with reason `NOT_SITE_ADMIN`, audited as `authz.denied` with
+  the pack as the subject when it's catalogued and `vault` otherwise. A pack that isn't catalogued
+  is `NotFound`, and one already installed is `AlreadyExists`. Each activation is audited as
+  `extension.import.principal` in the audit tier, under the token's user, with the pack as the
+  subject and `name`, `token_id` and `source` as attributes. `source` is `mcp` for an MCP agent
+  token (`ActorContext.token_client_kind`, set by the gateway from the verified token) and
+  `machine_api` for any other. The event is written first and fails closed: if it can't be
+  recorded, the pack isn't installed. A person's `ImportExtension` stays on the activity tier as
+  `extension.import`. `ImportExtensionFromJson` has no machine equivalent.
 - **Approval levels** (`SetSecretTokenApproval`). A secret has one of three levels, and they apply
   the same way to a person revealing or copying in the web and to a personal token (MCP
   `get_secret`, `sneakers-run`):
@@ -226,7 +295,15 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   connection), `rotates_on_checkin` (that plus a check-out type) and `heartbeat_enabled`.
 - **Version history (recovery):** `ListSecretVersions` gives a human reader the change list
   (version numbers, authors, times, changed field keys), never values; machine principals are
-  refused. Revealing a field of any version (`RevealSecretVersionField`) and
+  refused. A version a type change produced also carries `change_label` — "Type changed: <old
+  type> → <new type>", naming any field added, renamed (`field_mapping`) or carried over, and any
+  moved to notes — instead of reading as only "Changed: <field>" (#165). Empty for every other
+  version, which renders from its changed field keys as before. The response of
+  `ChangeSecretType` and `ChangeSecretTypeForPrincipal`, and their `secret.type_change` and
+  `secret.type_change.principal` audit events (`change_label` attribute), carry the identical
+  text. A target attached afterward is its own audit event
+  (`secret.target.principal`) and never touches an already-written version's label — attaching a
+  target mints no version at all. Revealing a field of any version (`RevealSecretVersionField`) and
   `RestoreSecretVersion` need read on the secret plus the recovery role (`is_recovery`; site
   admin and root don't imply it) and an MFA within `MFA_MAX_AGE`. Otherwise `PermissionDenied`
   with reason `RECOVERY_ROLE_REQUIRED` or `STEP_UP_REQUIRED`, audited as `recovery.denied`.
@@ -240,6 +317,12 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   out of rotation or heartbeat; an opted-out secret has no schedule row. Rotation and heartbeat are
   scheduled only for a secret whose target has a connection; a manual rotation or heartbeat
   request without one answers `FailedPrecondition`.
+- **Heartbeat with no connector:** `RequestHeartbeatForPrincipal` answers `FAILED_PRECONDITION`
+  with reason `NO_CONNECTOR` when no connector can serve a check in this environment, so a caller
+  tests the reason, not the message.
+- **Moves that need a site admin:** `UpdateSecret` and `MoveFolder` refuse a move that puts shared
+  content into a personal folder, from anyone but a site admin, with `PERMISSION_DENIED` and
+  reason `MOVE_APPROVAL_REQUIRED`; the gateway files the approval.
 - **What can rotate:** `EnqueueRotation` refuses a secret whose type has no rotation
   (`FailedPrecondition`, reason `ROTATION_NOT_SUPPORTED`) or that is opted out
   (`ROTATION_OPTED_OUT`). Nothing is queued, and the refusal is audited as `rotate.refused`. A
@@ -249,6 +332,28 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   into a lockout. It resumes, due at once, when a person changes the value, a rotation commits, or
   `RequestHeartbeatForPrincipal` is called (at most once a minute). Without a worker-identity
   verifier no connector can claim checks, so that request answers `FailedPrecondition`.
+- **When a heartbeat starts:** a new or updated secret's heartbeat schedule row is only created
+  once it's actually reachable: a target whose connection exists, and — for an SSH Key secret
+  only, since the broker needs to trust the host before it sends a credential — at least one
+  pinned host key on that target. A heartbeat-capable secret that isn't reachable yet comes up
+  with heartbeat off rather than failing checks from the first poll; its principal view
+  (`heartbeat_blocked_reason`, `*ForPrincipal` responses only) names what's still missing ("no
+  target", "no connection" or "no pinned host key") so a caller knows it can switch heartbeat on
+  once that's fixed. `SetSecretAutomation(ForPrincipal)` opting a secret OUT of heartbeat always
+  succeeds; opting back IN is refused with the same reason (`FailedPrecondition`) when the secret
+  still isn't reachable, rather than silently doing nothing.
+- **Heartbeat audit rollup:** a successful check with the same result as the secret's last one
+  doesn't write its own audit record. It folds into a pending `heartbeat_audit_summary` row (one
+  per secret) that counts the checks and spans their first/last time, and is emitted as a single
+  `heartbeat.summary` record — the only one those checks ever produce — at the first state change
+  (a failure, a host-key refusal, or a recovery into OK) or when the day closes, whichever comes
+  first. A day rollover with the result staying OK flushes the same way but starts the next day's
+  rollup silently, with no individual record of its own. Every failure, host-key refusal and state
+  change is still audited on its own, exactly as before: `heartbeat.report` for a failure or
+  recovery, `secret.heartbeat.host_key` for a host-key refusal, `secret.heartbeat.tls_certificate` for an
+  untrusted TLS certificate, `secret.heartbeat.pause` /
+  `secret.heartbeat.resume` for the pause lifecycle. Person and agent actions on a secret are
+  never rolled up.
 - **Built-in Administrator:** an Active Directory account the connector reports as RID 500 is
   never rotated (heartbeat still runs). Manual rotation and turning rotation back on answer
   `FailedPrecondition`; check-in and break-glass rotations are skipped so the lease still closes.
@@ -277,9 +382,16 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   target, one OpenSSH public key per entry in authorized_keys form (`ssh-ed25519 AAAA... comment`).
   They are public keys, not secrets. `SaveTarget` replaces the whole list: each entry must parse,
   carry no options, and be neither a private key nor a certificate (else `InvalidArgument`, naming
-  the entry by position only); repeats of one key are dropped; at most 16 per target. Only a human
-  site admin may add, change or clear them (`PermissionDenied` otherwise); anyone who may edit the
-  target can save it with the pins it already has. A change is audited as
+  the entry by position only); repeats of one key are dropped; at most 16 per target. Only a person
+  may add, change or clear them: a site admin on any target, or the owner of a personal target
+  (so a staff user can pin the targets they made, and a non-admin's new target can be saved with
+  its pins). No token may, not even one whose user is a site admin or the target's owner: pinning
+  decides which server a credential may be sent to, so it stays with a person, on purpose. A
+  token's refusal (`PermissionDenied`, ErrorInfo reason `HOST_KEYS_PERSON_ONLY`) says that plainly
+  ("pinned by a person in the web app ... an agent's token can't change them, even an admin's")
+  rather than reading as a missing role. A person who is neither is refused with
+  `PermissionDenied`, reason `HOST_KEYS_NOT_OWNER`. Anyone who may
+  edit the target can save it with the pins it already has. A change is audited as
   `target.host_keys.change` with the SHA256 fingerprints `added` and `removed`, never the keys.
   `ListTargets` returns them. An empty list means the target isn't pinned, and the broker refuses
   to connect to it. They're stored in `target_ssh_host_keys` with their fingerprints.
@@ -288,7 +400,30 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   `HEARTBEAT_RESULT_HOST_KEY_NOT_PINNED` or `HEARTBEAT_RESULT_HOST_KEY_MISMATCH` when it refuses;
   the vault records either as a failed check with the connector's reason (counted as drift,
   notified like a drift, audited as `secret.heartbeat.host_key`), but doesn't pause the schedule,
-  because no credential was tried.
+  because no credential was tried. `HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE`, for a TLS certificate
+  that failed verification, is treated the same way and audited as
+  `secret.heartbeat.tls_certificate`, with the connector's reason in `detail`.
+- **TLS certificate pins:** `Target.tls_cert_pins` holds the SHA-256 fingerprints of the TLS
+  certificates the connector accepts for the target's LDAPS (and other TLS) connections, so a
+  directory whose certificate comes from an enterprise CA can be trusted without a CA file. They
+  are public, not secrets. `SaveTarget` replaces the whole list: each entry is 64 hex digits, with
+  an optional `sha256:` prefix (any case) and colons between bytes, as `openssl x509 -fingerprint
+  -sha256` prints them; it's stored bare, in lowercase. Anything else is `InvalidArgument`, naming
+  the entry by position only. Repeats are dropped; at most 16 per target. The rule is the SSH
+  host key one: only a person may change them, a site admin on any target or the owner of a
+  personal target. A token is refused (`PermissionDenied`, reason `TLS_PINS_PERSON_ONLY`), an
+  admin's or the owner's own included, and a person who is neither gets `TLS_PINS_NOT_OWNER`.
+  Anyone who may edit the target can save it with the pins it already has. A change is audited as
+  `target.tls_cert_pins.change` with the fingerprints `added` and `removed`. They're stored in
+  `target_tls_cert_pins`. Heartbeat and rotation jobs carry them as `HeartbeatTarget.tls_cert_pins`
+  (on `HeartbeatJob.target`, `RotationJob.target` and each per-target entry). An empty list
+  means no pin, and the connector verifies against the system roots alone. The connector reports
+  `HEARTBEAT_RESULT_CERTIFICATE_MISMATCH` when the target's certificate matches none of its pins;
+  the vault records it like `HEARTBEAT_RESULT_UNTRUSTED_CERTIFICATE`: a failed check, counted as
+  drift, audited as `secret.heartbeat.tls_certificate`, with the schedule left running.
+- **KDC port:** `Connection.kdc_port` is the port for validating a password over Kerberos after a
+  rotation, for a directory whose KDC isn't on the standard port. 0 means 88; a value outside 0 to
+  65535 is `InvalidArgument`. Jobs carry it as `HeartbeatConn.kdc_port`.
 - **Target connections:** `Target.connections` is an ordered list of `TargetConnection`
   (`connection_id` plus `is_default`), one entry per protocol a host answers on; exactly one entry
   is default. `connection_id` on `Target` stays as an alias for the default entry — reading it
@@ -303,7 +438,38 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   or not.
 - **Type changes:** see [type-change.md](type-change.md).
 - **Catalogue:** built-in types change additively only. An existing store picks up new built-ins
-  through `seed-catalog`.
+  (types, extension packs, connections, password policies) at its next start, without changing
+  or putting back anything already given to it (see [runbook.md](runbook.md#upgrades));
+  `seed-catalog` rewrites the definitions of existing built-ins.
+- **GitHub App type:** `type-github-app` holds one GitHub App: `appId` and `installationId`
+  (digits), `clientId`, `clientSecret`, `privateKey`, `webhookSecret` and `ownerOrg`, plus
+  `description` and `notes`. `appId`, `privateKey` and `ownerOrg` are required. `privateKey` is a
+  sensitive MULTILINE field rather than the SENSITIVE kind, so a pasted PEM keeps its line breaks
+  in the editor; like the SSH Key's private key it isn't super-sensitive, so a token can read it
+  for automation. It has no heartbeat, rotation or checkout.
+- **Changing a secret's type:** `ChangeSecretType` is a signed-in person's version of
+  `ChangeSecretTypeForPrincipal`, and `PreviewSecretTypeChange` runs the same rules without writing
+  anything. See [type-change.md](type-change.md) for the rules, the preview and the refusal
+  reasons.
+- **Required fields:** a field a type marks `required` (any kind — TEXT, PASSWORD, MULTILINE,
+  SELECT and so on) may not be saved empty. `CreateSecret`, `UpdateSecret`,
+  `CreateSecretForPrincipal`, `GenerateSecretForPrincipal`, `UpdateSecretFieldsForPrincipal`,
+  `ChangeSecretType` and `ChangeSecretTypeForPrincipal` refuse an empty or missing value for one with `InvalidArgument`
+  and an ErrorInfo (domain `sneakers.vault`, reason `FIELD_VALUE_REQUIRED`, metadata `field`),
+  naming the field; a SELECT's refusal also lists its options (metadata `allowed`, the options
+  joined by `|`). An optional field may be empty. A create checks every field of the type, sent or
+  not; an update checks only the fields it sends, so a stored value from before this check existed
+  is still read, revealed and rotated as it is, and only has to change when that field is saved
+  again — the next save that touches it is what completes it.
+- **SELECT values:** a SELECT field's value must also be one of its type's options, refused the
+  same way (`FIELD_VALUE_NOT_ALLOWED`). Matching ignores case when exactly one option matches, and
+  the option's own spelling is stored (`ed25519` is stored as `Ed25519`); a value that could be
+  more than one option is refused. A SELECT with no options constrains nothing beyond required.
+- **Catalogue JSON:** `gen/catalogue/types.json` is the built-in catalogue and the extension packs
+  as JSON (types, fields, kinds, options), generated from `BuiltinTypes` and `ExtensionCatalog`.
+  `TestCatalogueJSONIsCurrent` fails when it is stale; regenerate it with
+  `UPDATE_CATALOGUE=1 go test ./internal/vault/grpcsvc -run TestCatalogueJSONIsCurrent`. Other
+  repos vendor it at a pinned commit.
 - **Key rotation:** `RotateKek` needs a human site admin or root (`NOT_SITE_ADMIN` otherwise),
   called through the gateway. The in-process scheduler rotates on its own and is audited as
   `system:kek-scheduler`.
@@ -317,9 +483,36 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   by `SetFolderRevealStepUp`, site admin only) refuses a person's `RevealSecretField` or
   `CopySecret` without an MFA within `MFA_MAX_AGE` (`STEP_UP_REQUIRED`, audited as
   `secret.reveal.step_up_required`). See [configuration.md](configuration.md#security-settings).
+- **One-time shares:** a person can share one field of a secret through a link with someone who
+  has no account. `PrepareSecretUse` takes `share_hash` (the lower-case hex SHA-256 of the link's
+  token, which the vault never sees) and `share_ttl_seconds` (60 seconds to 7 days, 0 = one day) on
+  a reveal by a person; a token or service account is refused. The use then follows the ordinary
+  rules: read access, the field, the reveal step-up (`STEP_UP_REQUIRED` at prepare, since the
+  person who redeems has no session), and the owner's approval, decided by an owner or approver
+  like any other use. An approval doesn't shorten a share's lifetime. `RedeemSecretShare(use_id,
+  share_hash)` releases the value once, to whoever presents the matching hash: an unknown use or a
+  wrong hash is `NotFound`, and a share that can't be redeemed says why (`FailedPrecondition`,
+  reason `SHARE_NOT_APPROVED`, `SHARE_DENIED`, `SHARE_USED` or `SHARE_EXPIRED`) without burning
+  it. `RevokeSecretShare` ends one that hasn't been opened, for its creator or a site admin. A
+  share is never redeemed through `RedeemSecretUse`. A redeem is audited as `secret.reveal` by the
+  creator with `via` = `share_link`, and refusals as `secret.share.redeem`; a revoke is
+  `secret.share.revoke`. Read access is checked when the share is prepared and approved, not again
+  at redeem, so a creator who loses access should revoke their open shares.
 - **Security settings:** before first-run setup has stored any (a store outside `dev`, `local`
   and `development` starts empty), `GetSecuritySettings` returns the defaults setup installs, and
-  `UpdateSecuritySettings` starts from them.
+  `UpdateSecuritySettings` starts from them. A setting a stored row predates reads as its
+  default (off for `restrict_top_level_folders`), so no migration is needed. A retired field left in
+  a stored row is dropped on load. A change to `restrict_top_level_folders` is audited on
+  `settings.update` with `restrict_top_level_folders.from` and `.to`.
+  `internal_only`, `allowed_networks` and `require_managed` follow the same rule (off or empty by
+  default), are site admin only, and are audited with `internal_only.from`/`.to`,
+  `allowed_networks.from`/`.to` (comma-separated) and `require_managed.from`/`.to`. The vault only
+  stores them; the gateway enforces them. An allowed network is a CIDR prefix or a bare address,
+  stored as a canonical prefix with duplicates dropped, at most 64. A network that doesn't parse, or
+  `internal_only` on with no network listed (whichever field the request changes), is
+  `INVALID_ARGUMENT` and changes nothing, so an admin can't lock everyone out by accident.
+  `UpdateSecuritySettingsRequest.allowed_networks` replaces the list when present and leaves it
+  alone when absent.
 - **Import:** `SealForImport` seals up to 500 field sets per call under the active working key and
   returns the envelopes in the form `secret_records` and `secret_versions` store, without storing
   anything. `sneakers-migrate import` uses it to re-wrap imported secrets, so the root key never

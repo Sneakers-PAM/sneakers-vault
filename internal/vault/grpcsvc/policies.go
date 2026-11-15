@@ -201,6 +201,11 @@ func (s *Server) UpdateSecuritySettings(ctx context.Context, req *vaultv1.Update
 		s.lg(ctx).Info("security settings updated before setup: starting from the defaults")
 		s.ensureSecuritySettings()
 	}
+	plan, err := s.planNetworkSettings(req)
+	if err != nil {
+		s.lg(ctx).Info("security settings update refused: invalid network settings", log.F("user_id", req.GetActor().GetUserId()))
+		return nil, err
+	}
 	if req.DefaultPasswordPolicyId != nil {
 		s.settings.DefaultPasswordPolicyId = req.GetDefaultPasswordPolicyId()
 	}
@@ -231,6 +236,37 @@ func (s *Server) UpdateSecuritySettings(ctx context.Context, req *vaultv1.Update
 		}
 		s.settings.KekRotationDays = days
 	}
-	s.emit(ctx, req.GetActor().GetUserId(), "settings.update", "security", false)
+	attrs := s.applyAuditedSettings(ctx, req, plan)
+	s.emitAttrs(ctx, req.GetActor().GetUserId(), "settings.update", "security", false, attrs)
 	return &vaultv1.UpdateSecuritySettingsResponse{Settings: settingsWithDefaults(s.settings)}, nil
+}
+
+// applyAuditedSettings applies the settings whose change is audited with its
+// old and new value, and returns the attributes for the audit event. The caller
+// holds s.mu.
+func (s *Server) applyAuditedSettings(ctx context.Context, req *vaultv1.UpdateSecuritySettingsRequest, plan networkPlan) map[string]string {
+	var attrs map[string]string
+	if req.RestrictTopLevelFolders != nil {
+		from, to := s.settings.GetRestrictTopLevelFolders(), req.GetRestrictTopLevelFolders()
+		s.settings.RestrictTopLevelFolders = to
+		s.lg(ctx).Info("restrict_top_level_folders changed", log.F("from", from), log.F("to", to), log.F("user_id", req.GetActor().GetUserId()))
+		attrs = map[string]string{
+			"restrict_top_level_folders.from": strconv.FormatBool(from),
+			"restrict_top_level_folders.to":   strconv.FormatBool(to),
+		}
+	}
+	if req.RequireManaged != nil {
+		from, to := s.settings.GetRequireManaged(), req.GetRequireManaged()
+		s.settings.RequireManaged = to
+		s.lg(ctx).Info("require_managed changed", log.F("from", from), log.F("to", to), log.F("user_id", req.GetActor().GetUserId()))
+		attrs = mergeAttrs(attrs, map[string]string{
+			"require_managed.from": strconv.FormatBool(from),
+			"require_managed.to":   strconv.FormatBool(to),
+		})
+	}
+	if netAttrs := plan.apply(s.settings); len(netAttrs) > 0 {
+		s.lg(ctx).Info("network settings changed", log.F("internal_only", plan.internalOnly), log.F("networks", len(plan.networks)), log.F("user_id", req.GetActor().GetUserId()))
+		attrs = mergeAttrs(attrs, netAttrs)
+	}
+	return attrs
 }

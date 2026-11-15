@@ -149,22 +149,33 @@ func (s *Server) rotationScheduled(ctx context.Context, secretID string) bool {
 	return err == nil && ok
 }
 
-// connectionForSecret resolves the full Connection behind a secret's target (for
-// the rotate-the-rotator guard, which needs the privileged-secret linkage).
-// Caller holds at least s.mu.RLock.
+// connectionForSecret resolves the full Connection behind a secret's PRIMARY
+// (first) target (for the rotate-the-rotator guard, which needs the
+// privileged-secret linkage). A privileged rotator secret binds one
+// connection in practice, so this stays scoped to the primary target even
+// for a secret attached to several (#168). Caller holds at least
+// s.mu.RLock.
 func (s *Server) connectionForSecret(sec *vaultv1.Secret) *vaultv1.Connection {
-	tgt := findByID(s.targets, sec.GetTargetId())
+	tgt := findByID(s.targets, primaryTargetID(sec))
 	if tgt == nil {
 		return nil
 	}
 	return findByID(s.connections, tgt.GetConnectionId())
 }
 
-// rotationReachable reports whether a secret has a target whose connection
-// exists, the minimum the connector needs to attempt a rotation. Caller holds
-// at least s.mu.RLock.
+// rotationReachable reports whether a secret has at least one attached
+// target (#168) whose connection exists, the minimum the connector needs to
+// attempt a rotation against that target. Permissive: a secret with several
+// targets, only some connected, is still reachable — the connector reports
+// per target (ReportRotation.target_results) which it could actually reach.
+// Caller holds at least s.mu.RLock.
 func (s *Server) rotationReachable(sec *vaultv1.Secret) bool {
-	return s.connectionForSecret(sec) != nil
+	for _, id := range secretTargetIDs(sec) {
+		if tgt := findByID(s.targets, id); tgt != nil && findByID(s.connections, tgt.GetConnectionId()) != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // rotationEligible reports whether a secret can actually be rotated now: it is
@@ -216,18 +227,21 @@ func (s *Server) dropClaimedRotation(ctx context.Context, secretID, why string) 
 var errNoRotationTarget = status.Error(codes.FailedPrecondition,
 	"secret has no target with a connection: attach a target before rotating")
 
-// managedPeersOnConnection lists the other secret ids whose target binds to the
-// same connection as sec (i.e. the accounts a connection's privileged credential
-// manages). Caller holds at least s.mu.RLock.
+// managedPeersOnConnection lists the other secret ids with ANY target
+// (#168) bound to the same connection as sec (i.e. the accounts a
+// connection's privileged credential manages). Caller holds at least
+// s.mu.RLock.
 func (s *Server) managedPeersOnConnection(connID, exceptSecretID string) []string {
 	var out []string
 	for _, sec := range s.secrets {
 		if sec.GetId() == exceptSecretID {
 			continue
 		}
-		tgt := findByID(s.targets, sec.GetTargetId())
-		if tgt != nil && tgt.GetConnectionId() == connID {
-			out = append(out, sec.GetId())
+		for _, id := range secretTargetIDs(sec) {
+			if tgt := findByID(s.targets, id); tgt != nil && tgt.GetConnectionId() == connID {
+				out = append(out, sec.GetId())
+				break
+			}
 		}
 	}
 	return out
@@ -322,14 +336,18 @@ func (s *Server) ClaimDueRotations(ctx context.Context, req *vaultv1.ClaimDueRot
 			s.dropClaimedRotation(ctx, id, why)
 			continue
 		}
-		conn, tgt := s.connTargetFor(sec)
-		if conn == nil {
-			// Nothing to rotate against. Dropping the row stops it being
-			// re-claimed and shown as rotating forever; attaching a target
-			// schedules it again.
+		if !s.rotationReachable(sec) {
+			// Nothing to rotate against, on ANY attached target (#168).
+			// Dropping the row stops it being re-claimed and shown as
+			// rotating forever; attaching a target schedules it again.
 			s.dropUnreachableRotation(ctx, sec)
 			continue
 		}
+		// connTargetFor resolves the PRIMARY target only — kept for a
+		// connector that hasn't moved to the targets list below, which
+		// carries every attached target whether or not the primary itself
+		// has a connection.
+		conn, tgt := s.connTargetFor(sec)
 		// Rotate-the-rotator: don't rotate a connection's privileged credential
 		// while any account it manages is mid-rotation. Release the claim so it
 		// retries once the managed rotations settle.
@@ -344,7 +362,8 @@ func (s *Server) ClaimDueRotations(ctx context.Context, req *vaultv1.ClaimDueRot
 			SecretId: id, SecretName: sec.GetName(),
 			Username:   s.nonSensitiveField(id, "username"),
 			Connection: conn, Target: tgt,
-			Logon: s.jobLogonFormat(id),
+			Logon:   s.jobLogonFormat(id),
+			Targets: s.targetJobsFor(sec),
 		})
 	}
 	return &vaultv1.ClaimDueRotationsResponse{Jobs: jobs}, nil
@@ -523,6 +542,10 @@ func (s *Server) ReportRotation(ctx context.Context, req *vaultv1.ReportRotation
 	var result vaultv1.RotationState
 	var next time.Time
 	var newRecord crypto.Record
+	// targetOutcomes is non-nil only when the connector reported per-target
+	// results (#168); nil means it hasn't moved to multi-target reporting,
+	// so change/validate above are trusted exactly as before.
+	var targetOutcomes []*vaultv1.TargetOutcome
 	refreshRecord := false // we hold a fresh active record to install in the hot path.
 	alreadyActive := false // OK×active idempotent retry: skip schedule/timestamp rewrites.
 	committedVno := 0      // the ledger version_no the refreshed record holds.
@@ -684,6 +707,14 @@ func (s *Server) ReportRotation(ctx context.Context, req *vaultv1.ReportRotation
 			// commit stands, flag DEGRADED for operator attention.
 			result = vaultv1.RotationState_ROTATION_STATE_DEGRADED
 		}
+		// Per-target aggregation (#168): the committed value is live
+		// somewhere, so it is never rolled back here regardless — but it
+		// isn't OK ("done") until every attached target has it too.
+		var allTargetsOK bool
+		allTargetsOK, targetOutcomes = aggregateTargetOutcomes(req.GetTargetResults(), now)
+		if result == vaultv1.RotationState_ROTATION_STATE_OK && !allTargetsOK {
+			result = vaultv1.RotationState_ROTATION_STATE_DEGRADED
+		}
 		if intervalDays > 0 {
 			next = now.AddDate(0, 0, intervalDays)
 		}
@@ -720,6 +751,9 @@ func (s *Server) ReportRotation(ctx context.Context, req *vaultv1.ReportRotation
 	}
 	if !skipResult {
 		sec.LastRotationResult = result
+	}
+	if targetOutcomes != nil {
+		sec.TargetRotationOutcomes = targetOutcomes
 	}
 	if result == vaultv1.RotationState_ROTATION_STATE_OK && !alreadyActive {
 		sec.RotatedAt = now.Format(time.RFC3339)

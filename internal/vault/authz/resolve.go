@@ -7,6 +7,12 @@ package authz
 type RuleDecision struct {
 	Allowed bool
 	Reason  string
+	// OwnOnly is set when Allowed came from a GrantOwn cell: the grant is
+	// instance-scoped (the subject's own secret only), not a blanket read of
+	// the category. Meaningless when Allowed is false. The authz package
+	// cannot resolve ownership itself (it has no secret data), so this is a
+	// flag for the caller to finish the check against instance ownership.
+	OwnOnly bool
 }
 
 func ownerInChain(u EvalSubject, chain []CategoryRuleset) bool {
@@ -25,11 +31,11 @@ func ownerInChain(u EvalSubject, chain []CategoryRuleset) bool {
 func decideAction(u EvalSubject, chain []CategoryRuleset, act Action) RuleDecision {
 	// site-admin / root read everything (never auto-approver/author).
 	if act == ActRead && (u.IsSiteAdmin || u.IsRoot) {
-		return RuleDecision{true, "site-admin reads all"}
+		return RuleDecision{true, "site-admin reads all", false}
 	}
 	// owners: auto read + approve + author (not ack), evaluated before rules.
 	if act != ActAck && ownerInChain(u, chain) {
-		return RuleDecision{true, "owner (auto read/approve/author)"}
+		return RuleDecision{true, "owner (auto read/approve/author)", false}
 	}
 	// top-down, target category first then ancestors; first non-blank match wins.
 	for ci, c := range chain {
@@ -39,13 +45,15 @@ func decideAction(u EvalSubject, chain []CategoryRuleset, act Action) RuleDecisi
 			}
 			switch r.Grants[act] {
 			case GrantAllow:
-				return RuleDecision{true, ruleReason(ci, ri, c.Name, "allow", r.Subject)}
+				return RuleDecision{true, ruleReason(ci, ri, c.Name, "allow", r.Subject), false}
 			case GrantDeny:
-				return RuleDecision{false, ruleReason(ci, ri, c.Name, "deny", r.Subject)}
+				return RuleDecision{false, ruleReason(ci, ri, c.Name, "deny", r.Subject), false}
+			case GrantOwn:
+				return RuleDecision{true, ruleReason(ci, ri, c.Name, "own", r.Subject), true}
 			}
 		}
 	}
-	return RuleDecision{false, ReasonDefaultDeny}
+	return RuleDecision{false, ReasonDefaultDeny, false}
 }
 
 // ReasonDefaultDeny is the reason of a decision no rule matched: nothing
@@ -110,14 +118,14 @@ func Resolve(u EvalSubject, chain []CategoryRuleset) ActionResult {
 	read := decideAction(u, chain, ActRead)
 	if !read.Allowed {
 		if decideAction(u, chain, ActAuthor).Allowed {
-			read = RuleDecision{true, "author implies read"}
+			read = RuleDecision{true, "author implies read", false}
 		} else if decideAction(u, chain, ActApprove).Allowed {
-			read = RuleDecision{true, "approver implies read"}
+			read = RuleDecision{true, "approver implies read", false}
 		}
 	}
 	gate := func(act Action) RuleDecision {
 		if !read.Allowed {
-			return RuleDecision{false, "requires read"}
+			return RuleDecision{false, "requires read", false}
 		}
 		return decideAction(u, chain, act)
 	}

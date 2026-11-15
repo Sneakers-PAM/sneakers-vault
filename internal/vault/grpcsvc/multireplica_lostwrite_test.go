@@ -80,7 +80,7 @@ func createViaInterceptor(ctx context.Context, t *testing.T, s *Server, name str
 	sec := viaInterceptor(ctx, t, s, "CreateSecret", func() (any, error) {
 		return s.CreateSecret(ctx, &vaultv1.CreateSecretRequest{
 			Actor: operator, Name: name, FolderId: f.GetFolder().GetId(), TypeId: "type-password",
-			Fields: map[string]string{"password": "pw-" + name},
+			Fields: map[string]string{"username": "u-" + name, "password": "pw-" + name},
 		})
 	}).(*vaultv1.CreateSecretResponse)
 	return sec.GetSecret().GetId()
@@ -207,7 +207,7 @@ func TestMultiReplicaConcurrentWritersKeepEveryWrite(t *testing.T) {
 						func(context.Context, any) (any, error) {
 							return s.CreateSecret(ctx, &vaultv1.CreateSecretRequest{
 								Actor: operator, Name: name, FolderId: folderID, TypeId: "type-password",
-								Fields: map[string]string{"password": "pw-" + name},
+								Fields: map[string]string{"username": "u-" + name, "password": "pw-" + name},
 							})
 						})
 					if err != nil {

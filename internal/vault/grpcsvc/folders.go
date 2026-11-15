@@ -32,11 +32,12 @@ func (s *Server) ListFolders(_ context.Context, req *vaultv1.ListFoldersRequest)
 	// else's personal folder is by explicit share or an audited break-the-glass
 	// (which notifies the owner), never by blanket admin visibility.
 	out := make([]*vaultv1.Folder, 0, len(s.folders))
+	seen := s.secretsSeenByFolder(reqActor)
 	for _, f := range s.folders {
 		if folderVisible(actor, f) {
 			// Clone so the derived subtree count never mutates stored state.
 			cp := proto.Clone(f).(*vaultv1.Folder)
-			cp.SubtreeSecretCount = s.activeSubtreeSecretCount(f.GetId())
+			cp.SubtreeSecretCount = s.seenSubtreeSecretCount(f.GetId(), seen)
 			// can_manage mirrors the SAME gate CreateFolder enforces for
 			// creating a subfolder here, so the UI can show/hide the
 			// folder context-menu/create affordance without guessing at
@@ -82,7 +83,7 @@ func (s *Server) subtreeSecretCount(id string) int32 {
 }
 
 // activeSubtreeSecretCount is subtreeSecretCount excluding retired secrets —
-// the count ListFolders reports as Folder.SubtreeSecretCount. Retired
+// the count break-the-glass reports, since its session sees every folder. Retired
 // secrets are already hidden from ListSecretsInFolder's default view, so
 // counting them here made a folder look non-empty ("subtree_secret_count"
 // stuck above 0) even after its only secret had been retired/deleted and the
@@ -100,12 +101,51 @@ func (s *Server) activeSubtreeSecretCount(id string) int32 {
 	return n
 }
 
+// secretsSeenByFolder counts, per folder, the active secrets a would get from
+// ListSecretsInFolder, for the folders a can open from the tree. A secret
+// shared out of someone else's personal folder is visible but left out: that
+// folder isn't in a's tree, so counting it would inflate the master personal
+// root, the only ancestor a can see.
+func (s *Server) secretsSeenByFolder(a *vaultv1.ActorContext) map[string]int32 {
+	seen := make(map[string]int32, len(s.folders))
+	for _, sec := range s.secrets {
+		if sec.GetRetired() {
+			continue
+		}
+		f := s.findFolder(sec.GetFolderId())
+		if f == nil || !folderVisible(a.GetUserId(), f) {
+			continue
+		}
+		if visible, _ := s.secretVisibility(a, sec); visible {
+			seen[f.GetId()]++
+		}
+	}
+	return seen
+}
+
+// seenSubtreeSecretCount totals secretsSeenByFolder over a folder and its
+// descendants: the count ListFolders reports as Folder.SubtreeSecretCount. It's
+// the caller's view, so the master personal root, which holds every user's
+// personal folder, reports only the caller's own secrets.
+func (s *Server) seenSubtreeSecretCount(id string, seen map[string]int32) int32 {
+	var n int32
+	for folder := range s.descendantIDs(id) {
+		n += seen[folder]
+	}
+	return n
+}
+
 func (s *Server) CreateFolder(ctx context.Context, req *vaultv1.CreateFolderRequest) (*vaultv1.CreateFolderResponse, error) {
 	if req.GetName() == "" {
 		return nil, status.Error(codes.InvalidArgument, "folder name is required")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if req.GetParentId() == "" {
+		if err := s.checkTopLevelCreate(ctx, req.GetActor(), "CreateFolder"); err != nil {
+			return nil, err
+		}
+	}
 	// Provision the actor's own personal folder here — a genuine WRITE the
 	// actor explicitly asked for — rather than as a side effect of a read.
 	// This is the "legitimate provisioning" moment for every real user
@@ -180,12 +220,24 @@ func (s *Server) MoveFolder(ctx context.Context, req *vaultv1.MoveFolderRequest)
 	if !s.isFolderOwner(actor, f) && !s.canManage(actor, f.GetId()) {
 		return nil, status.Error(codes.PermissionDenied, "not permitted to move this folder")
 	}
+	// A folder that's already there keeps its scope, group and role: rescoping
+	// it to its own location would take access away from everyone holding it.
+	if req.GetNewParentId() == f.GetParentId() {
+		return &vaultv1.MoveFolderResponse{Folder: f}, nil
+	}
 	// Guard against cycles: a folder cannot move into itself or a descendant.
 	if req.GetNewParentId() != "" && s.descendantIDs(f.GetId())[req.GetNewParentId()] {
 		return nil, status.Error(codes.InvalidArgument, "cannot move a folder into itself or one of its descendants")
 	}
 
 	dest := s.findFolder(req.GetNewParentId()) // nil = move to top level (shared)
+	if req.GetNewParentId() == "" {
+		if err := s.checkTopLevelCreate(ctx, actor, "MoveFolder"); err != nil {
+			return nil, err
+		}
+	} else if dest == nil {
+		return nil, errNotFound("destination folder")
+	}
 	destPersonal, destOwner := s.destPersonal(dest)
 
 	// Move rule: personal -> shared and rearranging your own personal tree
@@ -197,7 +249,7 @@ func (s *Server) MoveFolder(ctx context.Context, req *vaultv1.MoveFolderRequest)
 	if destPersonal {
 		alreadyOwned := f.GetScope() == vaultv1.FolderScope_FOLDER_SCOPE_PERSONAL && f.GetOwnerUserId() == destOwner
 		if !alreadyOwned && !isHumanAdmin(actor) {
-			return nil, status.Error(codes.PermissionDenied, "moving content into a personal folder requires site-admin approval")
+			return nil, refuseCode(codes.PermissionDenied, ReasonMoveApprovalRequired, "moving content into a personal folder requires site-admin approval")
 		}
 	}
 

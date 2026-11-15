@@ -33,6 +33,8 @@ or values.
   `internal/server/workloadauth.go` sets the Sneakers audience and caller-name prefix and builds
   the interceptors. See docs/workload-auth.md.
 - `proto/` - both APIs; `gen/go/` - the generated Go (committed, checked current in CI).
+- `gen/catalogue/types.json` - the built-in catalogue as JSON, checked current by a test (see
+  docs/api.md, "Catalogue JSON").
 - `migrations/vault/`, `migrations/workflow/` - each service's Postgres schema, forward only.
 - `docs/` - configuration, API, runbook, worker identity and type changes.
 
@@ -78,6 +80,9 @@ Follow the logging rules in `CLAUDE.md`. In short:
 - No real identifiers anywhere: fixtures use example.org, 192.0.2.0/24, 2001:db8::/32 and invented
   names. Test keys are generated at test time; never commit key material.
 - The built-in catalogue is additive only: append new types, never reorder or alter existing ones.
+  A new built-in type, extension pack, connection or password policy reaches existing installs
+  at their next start (`upgradeBuiltins` in `internal/vault/grpcsvc/server.go`), tracked in the
+  `builtin_ledger` table so a deleted one is never put back. `preLedgerBuiltins` is frozen.
 - `go.mod` holds tagged releases only: no `replace` directive, and no pseudo-version (`@main`,
   `@<sha>`) of a `github.com/Bugs5382/*` or `github.com/Sneakers-PAM/*` module; the
   `proto-sync / check` job fails on either. To compile and test against a local package checkout,
