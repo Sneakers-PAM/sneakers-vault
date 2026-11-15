@@ -170,11 +170,9 @@ func dialRedis(ctx context.Context, l zerolog.Logger, url string) *bredis.Client
 	return rc
 }
 
-func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	svcLog, logger := telemetry.NewLoggers(serviceName, os.Getenv)
+// mustLoadConfig loads the settings and refuses removed ones; either failure
+// is fatal.
+func mustLoadConfig(logger zerolog.Logger) config.Config {
 	cfg, err := config.Load()
 	if err == nil {
 		err = refuseRemovedSettings(os.Getenv)
@@ -182,6 +180,19 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("config")
 	}
+	return cfg
+}
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	if maybeMigrate(ctx, os.Args) {
+		return
+	}
+
+	svcLog, logger := telemetry.NewLoggers(serviceName, os.Getenv)
+	cfg := mustLoadConfig(logger)
 
 	maint := mustMaintenance(logger)
 
