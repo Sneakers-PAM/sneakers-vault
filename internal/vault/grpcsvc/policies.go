@@ -206,6 +206,11 @@ func (s *Server) UpdateSecuritySettings(ctx context.Context, req *vaultv1.Update
 		s.lg(ctx).Info("security settings update refused: invalid network settings", log.F("user_id", req.GetActor().GetUserId()))
 		return nil, err
 	}
+	mcpPlan, err := planMcpTools(req)
+	if err != nil {
+		s.lg(ctx).Info("security settings update refused: invalid MCP function list", log.F("user_id", req.GetActor().GetUserId()))
+		return nil, err
+	}
 	if req.DefaultPasswordPolicyId != nil {
 		s.settings.DefaultPasswordPolicyId = req.GetDefaultPasswordPolicyId()
 	}
@@ -236,7 +241,7 @@ func (s *Server) UpdateSecuritySettings(ctx context.Context, req *vaultv1.Update
 		}
 		s.settings.KekRotationDays = days
 	}
-	attrs := s.applyAuditedSettings(ctx, req, plan)
+	attrs := s.applyAuditedSettings(ctx, req, plan, mcpPlan)
 	s.emitAttrs(ctx, req.GetActor().GetUserId(), "settings.update", "security", false, attrs)
 	return &vaultv1.UpdateSecuritySettingsResponse{Settings: settingsWithDefaults(s.settings)}, nil
 }
@@ -244,7 +249,7 @@ func (s *Server) UpdateSecuritySettings(ctx context.Context, req *vaultv1.Update
 // applyAuditedSettings applies the settings whose change is audited with its
 // old and new value, and returns the attributes for the audit event. The caller
 // holds s.mu.
-func (s *Server) applyAuditedSettings(ctx context.Context, req *vaultv1.UpdateSecuritySettingsRequest, plan networkPlan) map[string]string {
+func (s *Server) applyAuditedSettings(ctx context.Context, req *vaultv1.UpdateSecuritySettingsRequest, plan networkPlan, mcpPlan mcpToolsPlan) map[string]string {
 	var attrs map[string]string
 	if req.RestrictTopLevelFolders != nil {
 		from, to := s.settings.GetRestrictTopLevelFolders(), req.GetRestrictTopLevelFolders()
@@ -267,6 +272,10 @@ func (s *Server) applyAuditedSettings(ctx context.Context, req *vaultv1.UpdateSe
 	if netAttrs := plan.apply(s.settings); len(netAttrs) > 0 {
 		s.lg(ctx).Info("network settings changed", log.F("internal_only", plan.internalOnly), log.F("networks", len(plan.networks)), log.F("user_id", req.GetActor().GetUserId()))
 		attrs = mergeAttrs(attrs, netAttrs)
+	}
+	if mcpAttrs := mcpPlan.apply(s.settings); len(mcpAttrs) > 0 {
+		s.lg(ctx).Info("disabled MCP functions changed", log.F("count", len(mcpPlan.names)), log.F("user_id", req.GetActor().GetUserId()))
+		attrs = mergeAttrs(attrs, mcpAttrs)
 	}
 	return attrs
 }
