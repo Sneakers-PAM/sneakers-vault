@@ -37,8 +37,9 @@ type BootHealth struct {
 	done chan struct{}
 	once sync.Once
 
-	mu   sync.Mutex
-	deps []health.DependencyReport
+	mu      sync.Mutex
+	deps    []health.DependencyReport
+	rootKey *RootKeyStatus
 }
 
 // StartBootHealth listens on :port and serves the boot health service. deps
@@ -70,6 +71,20 @@ func StartBootHealth(port string, lg log.Logger, deps ...string) (*BootHealth, e
 	}()
 	lg.Info("boot health serving; waiting for dependencies", log.F("port", port), log.F("dependencies", len(deps)))
 	return b, nil
+}
+
+// SetRootKeyStatus makes the boot health service report rs, so a root key
+// replacement is readable while the vault is still starting.
+func (b *BootHealth) SetRootKeyStatus(rs *RootKeyStatus) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.rootKey = rs
+}
+
+func (b *BootHealth) rootKeyStatus() *RootKeyStatus {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.rootKey
 }
 
 // Waiting records a failed attempt to reach name: it stays down, with the
@@ -129,6 +144,11 @@ func (b *BootHealth) report() health.Report {
 
 func (b *BootHealth) reportInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		if rs := b.rootKeyStatus(); rs != nil {
+			if r, ok := req.(*healthpb.HealthCheckRequest); ok && info.FullMethod == healthCheckMethod && r.GetService() == "" {
+				_ = grpc.SetHeader(ctx, metadata.Pairs(HeaderRootKey, rs.header()))
+			}
+		}
 		if r, ok := req.(*healthpb.HealthCheckRequest); ok && info.FullMethod == healthCheckMethod && r.GetService() == "" {
 			if raw, err := json.Marshal(b.report()); err == nil {
 				_ = grpc.SetHeader(ctx, metadata.Pairs(HeaderHealth, string(raw)))

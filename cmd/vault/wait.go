@@ -31,9 +31,9 @@ func mustBootHealth(logger zerolog.Logger, port string, lg log.Logger) *server.B
 // non-transient error is returned at once: a missing or wrong VAULT_ROOT_KEK
 // still stops the boot with the schema untouched, as does a failing
 // migration or bad credentials.
-func openPostgres(ctx context.Context, boot *server.BootHealth, migrateDSN, migrationsDir, environment, dsn string, wait ...postgres.WaitOption) (crypto.KEKProvider, string, *postgres.DB, error) {
+func openPostgres(ctx context.Context, boot *server.BootHealth, migrateDSN, migrationsDir, environment, dsn string, wait ...postgres.WaitOption) (*crypto.RootKEKs, string, *postgres.DB, error) {
 	wait = append([]postgres.WaitOption{postgres.WithRetryHook(boot.RetryHook("postgres"))}, wait...)
-	var root crypto.KEKProvider
+	var root *crypto.RootKEKs
 	var rootRef string
 	if err := postgres.WaitFor(ctx, func(ctx context.Context) error {
 		var err error

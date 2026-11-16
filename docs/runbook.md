@@ -114,12 +114,29 @@ read-only maintenance is on.
 
 The design behind these keys is in [kek-keyring.md](kek-keyring.md).
 
-- **Root key** (`VAULT_ROOT_KEK`): wraps the working keys. It's permanent for a database: there is
-  no previous-root support, so losing it makes every secret unrecoverable. Keep it in your secret
-  store and back it up separately from the database.
+- **Root key** (`VAULT_ROOT_KEK`): wraps the working keys. Losing it makes every secret
+  unrecoverable, so keep it in your secret store and back it up separately from the database. To
+  replace it, see [Replacing the root key](#replacing-the-root-key).
 - **Working keys** (`kek-v1`, `kek-v2`, ...): wrap each secret's data key. The active one seals new
   data; older ones stay in the ring, decrypt-only, until nothing references them.
 - **Dev seed** (`DEV_KEK_SEED`): only in `dev`, and public in the source. Never run real data on it.
+
+### Replacing the root key
+
+1. Set the new key as `VAULT_ROOT_KEK` and the old one as `VAULT_ROOT_KEK_PREVIOUS`, and restart.
+2. At start the vault moves every working key still on the old root under the new one and reads
+   them all back under the new root alone. Read the status from the health check response header
+   `sneakers-root-key` (`{"state":..., "pending":N}`; also on the boot-time health service while
+   it starts). `none` is no previous key set, `in-progress` is the move running, `verified` is
+   done and read back, `failed` is a move that did not finish: the stored ring is unchanged, the
+   vault still serves with both keys, and the next start tries again.
+3. Only after `verified`, unset `VAULT_ROOT_KEK_PREVIOUS` and retire the old key from your secret
+   store. The vault never drops it and never deletes a working key; keep a backup of the old key
+   until a restart on the new key alone has come up.
+
+A previous key that is malformed, the same as the current one, or unable to open a key still on the
+old root stops the start before anything is moved. Secret values are not re-encrypted; only the
+small wrapped working keys change.
 
 ### Rotating the working key
 

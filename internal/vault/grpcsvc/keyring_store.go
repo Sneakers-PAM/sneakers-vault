@@ -6,6 +6,7 @@ package grpcsvc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	postgres "github.com/Bugs5382/go-postgres"
@@ -103,4 +104,28 @@ func (k *keyringStore) InsertActive(ctx context.Context, ref string, wrapped []b
 func (k *keyringStore) Retire(ctx context.Context, ref string) error {
 	_, err := k.db.Querier().Exec(ctx, `UPDATE kek_keyring SET retired_at = now() WHERE ref = $1`, ref)
 	return err
+}
+
+// MoveRoot re-wraps working keys under another root in one transaction: every
+// move applies, or none does. A row another replica has already moved to the
+// same root is left as it is; a row that is on neither root is an error.
+func (k *keyringStore) MoveRoot(ctx context.Context, moves []rootMove) error {
+	return k.db.RunInTxQuerier(ctx, func(tx postgres.Querier) error {
+		for _, m := range moves {
+			tag, err := tx.Exec(ctx,
+				`UPDATE kek_keyring SET wrapped_key=$1, root_ref=$2 WHERE ref=$3 AND root_ref=$4`,
+				m.WrappedKey, m.ToRoot, m.Ref, m.FromRoot)
+			if err != nil {
+				return err
+			}
+			if tag.RowsAffected() == 1 {
+				continue
+			}
+			var now string
+			if err := tx.QueryRow(ctx, `SELECT root_ref FROM kek_keyring WHERE ref=$1`, m.Ref).Scan(&now); err != nil || now != m.ToRoot {
+				return fmt.Errorf("working key %s is on neither root", m.Ref)
+			}
+		}
+		return nil
+	})
 }
