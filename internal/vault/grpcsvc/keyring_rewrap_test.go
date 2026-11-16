@@ -200,3 +200,15 @@ func TestRewrap_AKeyThatCannotBeOpenedChangesNothing(t *testing.T) {
 		}
 	}
 }
+
+type failingLoad struct{ memRewrapStore }
+
+func (failingLoad) Load(context.Context) ([]keyringRow, error) { return nil, errors.New("down") }
+
+func TestRewrap_AnUnreadableRingIsFailedWithAtLeastOnePending(t *testing.T) {
+	f := newRewrapFixture(t, 2)
+	st, pending := RewrapKeyring(context.Background(), &failingLoad{}, f.rk, func(crypto.RotationState, int) {})
+	if st != crypto.RotationFailed || pending < 1 {
+		t.Fatalf("state=%s pending=%d, want failed with at least 1 so a zero never reads as nothing left", st, pending)
+	}
+}

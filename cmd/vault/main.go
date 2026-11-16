@@ -211,6 +211,18 @@ func dialRedis(ctx context.Context, l zerolog.Logger, url string) *bredis.Client
 	return rc
 }
 
+// initialRootKeyStatus is the status from the first moment: in-progress when a
+// previous root key is set (the count is known once the ring is read, after
+// Postgres is reached), none otherwise, so a reader never sees "none" while a
+// replacement is about to run.
+func initialRootKeyStatus(getenv func(string) string) *server.RootKeyStatus {
+	rs := &server.RootKeyStatus{}
+	if getenv("VAULT_ROOT_KEK_PREVIOUS") != "" {
+		rs.Set(crypto.RotationInProgress, 0)
+	}
+	return rs
+}
+
 // rewrapRootKey moves the working keys still on the previous root key (when
 // VAULT_ROOT_KEK_PREVIOUS is set) under the current one and reads them all back
 // under the current root alone. The status is reported on the health check; the
@@ -322,7 +334,7 @@ func main() {
 	// the startup probe passes on a slow boot, and readiness NOT_SERVING with
 	// postgres listed down until it is reached.
 	boot := mustBootHealth(logger, healthPort, svcLog)
-	rootStatus := &server.RootKeyStatus{}
+	rootStatus := initialRootKeyStatus(os.Getenv)
 	boot.SetRootKeyStatus(rootStatus)
 
 	migrationsDir := env("MIGRATIONS_DIR", "migrations/vault")

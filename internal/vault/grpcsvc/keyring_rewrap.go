@@ -52,7 +52,8 @@ func RewrapKeyring(ctx context.Context, ks rewrapStore, rk *crypto.RootKEKs, rep
 	}
 	rows, err := ks.Load(ctx)
 	if err != nil {
-		return finish(crypto.RotationFailed, 0)
+		// The count is unknown; at least one, so a zero never reads as nothing left.
+		return finish(crypto.RotationFailed, 1)
 	}
 	var todo []keyringRow
 	for _, r := range rows {

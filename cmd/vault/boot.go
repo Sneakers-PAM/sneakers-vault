@@ -96,7 +96,11 @@ func verifyKeyringUnwraps(ctx context.Context, conn postgres.Querier, root crypt
 	for _, g := range gens {
 		raw, err := root.UnwrapDEK(g.wrapped, g.rootRef)
 		if err != nil {
-			return fmt.Errorf("root KEK preflight: VAULT_ROOT_KEK cannot unwrap keyring generation %s (wrapped under root %s); refusing to migrate or boot: %w", g.ref, g.rootRef, err)
+			which := "VAULT_ROOT_KEK"
+			if rk, ok := root.(*crypto.RootKEKs); ok && rk.Previous() != nil && !rk.OnCurrent(g.rootRef) {
+				which = "VAULT_ROOT_KEK_PREVIOUS"
+			}
+			return fmt.Errorf("root KEK preflight: %s cannot unwrap keyring generation %s (wrapped under root %s); refusing to migrate or boot: %w", which, g.ref, g.rootRef, err)
 		}
 		clear(raw)
 	}

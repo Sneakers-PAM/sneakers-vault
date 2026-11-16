@@ -73,6 +73,8 @@ func TestRootKeyReplacement_EndToEnd(t *testing.T) {
 	// A wrong previous key stops the start before anything is re-wrapped.
 	if _, _, err := bootWith(t, dsn, randKEK(t), randKEK(t)); err == nil {
 		t.Fatal("a wrong previous key started")
+	} else if !strings.Contains(err.Error(), "VAULT_ROOT_KEK_PREVIOUS") {
+		t.Fatalf("the error should name VAULT_ROOT_KEK_PREVIOUS, not the current key: %v", err)
 	} else if strings.Contains(err.Error(), oldKey) || strings.Contains(err.Error(), newKey) {
 		t.Fatalf("the error shows a key: %v", err)
 	}
@@ -130,5 +132,16 @@ func TestRootKeyReplacement_EndToEnd(t *testing.T) {
 	// And the old root alone no longer opens the ring.
 	if _, _, err := bootWith(t, dsn, oldKey, ""); err == nil {
 		t.Fatal("the old root alone still starts after the move")
+	}
+}
+
+func TestInitialRootKeyStatus_InProgressWhileAPreviousKeyIsSet(t *testing.T) {
+	st, n := initialRootKeyStatus(envMap(map[string]string{"VAULT_ROOT_KEK_PREVIOUS": b64Key(1)})).Get()
+	if st != crypto.RotationInProgress || n != 0 {
+		t.Fatalf("%s %d: with a previous key set the status must read in-progress from the first moment, not none", st, n)
+	}
+	st, n = initialRootKeyStatus(envMap(nil)).Get()
+	if st != crypto.RotationNone || n != 0 {
+		t.Fatalf("%s %d, want none", st, n)
 	}
 }
