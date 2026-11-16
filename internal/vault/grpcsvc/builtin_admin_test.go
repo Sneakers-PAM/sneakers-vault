@@ -347,7 +347,7 @@ func TestBreakGlass_NoPostRotationForBuiltinAdministrator(t *testing.T) {
 	fx.heartbeat(t, ptr(true), ptr(false))
 
 	if _, err := fx.s.BreakGlassSecret(context.Background(), &vaultv1.BreakGlassSecretRequest{
-		Actor: orgCarol, SecretId: fx.id, Reason: "outage",
+		Actor: inWebSession(orgCarol), SecretId: fx.id, Reason: "outage",
 	}); err != nil {
 		t.Fatalf("BreakGlassSecret: %v", err)
 	}

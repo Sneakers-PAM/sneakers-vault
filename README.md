@@ -19,7 +19,10 @@ every field value envelope-encrypted at rest under a rotating key ring.
 - 🤖 **Machine access:** service accounts, workloads and personal tokens act through the
   `*ForPrincipal` calls, never with admin authority.
 - 🚨 **Break-glass:** an audited emergency reveal that notifies the owner and queues a rotation,
-  and a short-lived, audited browse of every folder and secret for site admins.
+  and a short-lived, audited browse of every folder and secret for site admins. It is the backup
+  for an admin who needs a password outside the planned access paths, it needs TOTP and a reason,
+  and it is for people in their own signed-in session only: the MCP, AI agents and API tokens
+  can't use it, enforced here (see [docs/api.md](docs/api.md)).
 
 ## ✅ Workflow service
 

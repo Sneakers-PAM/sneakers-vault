@@ -39,8 +39,8 @@ import (
 // row, and the owner notification) is best-effort — none of it may deny or
 // unwind an emergency reveal that is already, authoritatively, on the record.
 func (s *Server) BreakGlassSecret(ctx context.Context, req *vaultv1.BreakGlassSecretRequest) (*vaultv1.BreakGlassSecretResponse, error) {
-	if req.GetActor().GetPrincipalKind() != vaultv1.PrincipalKind_PRINCIPAL_KIND_HUMAN {
-		return nil, status.Error(codes.PermissionDenied, "break-glass is available to signed-in people only")
+	if err := s.refuseBreakGlassCaller(ctx, req.GetActor(), "BreakGlassSecret", req.GetSecretId()); err != nil {
+		return nil, err
 	}
 	sessionID := req.GetSessionId()
 	reason, err := s.breakGlassReason(ctx, req)
