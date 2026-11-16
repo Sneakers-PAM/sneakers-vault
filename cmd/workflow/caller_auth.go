@@ -9,13 +9,13 @@ import (
 	"time"
 
 	log "github.com/Bugs5382/go-log"
+	"github.com/Bugs5382/go-mtls"
 	workloadauth "github.com/Bugs5382/go-workload-identity"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/grpcsvc"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // callerAuth builds the interceptors that authenticate every caller against
@@ -44,11 +44,11 @@ func mustCallerAuth(ctx context.Context, logger zerolog.Logger, lg log.Logger) (
 }
 
 // mustDialAudit connects to the audit service (AUDIT_ADDR, default
-// localhost:9194) with the workflow's workload token. The connection is lazy,
-// so an audit service that is down doesn't stop the boot; events are then
-// only logged.
-func mustDialAudit(logger zerolog.Logger) *grpc.ClientConn {
-	auth, err := server.ClientAuth(os.Getenv)
+// localhost:9194) with the workflow's workload token, over mutual TLS when p
+// is not nil. The connection is lazy, so an audit service that is down doesn't
+// stop the boot; events are then only logged.
+func mustDialAudit(logger zerolog.Logger, p *mtls.Provider) *grpc.ClientConn {
+	opts, err := auditDialOptions(p, os.Getenv)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("workload token")
 	}
@@ -56,11 +56,19 @@ func mustDialAudit(logger zerolog.Logger) *grpc.ClientConn {
 	if addr == "" {
 		addr = "localhost:9194"
 	}
-	conn, err := grpc.NewClient(addr, append([]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials()), server.ClientStatsHandler()}, auth...)...)
+	conn, err := grpc.NewClient(addr, opts...)
 	if err != nil {
 		logger.Fatal().Err(err).Str("audit", addr).Msg("dial audit")
 	}
 	return conn
+}
+
+func auditDialOptions(p *mtls.Provider, getenv func(string) string) ([]grpc.DialOption, error) {
+	auth, err := server.ClientAuth(getenv)
+	if err != nil {
+		return nil, err
+	}
+	return append([]grpc.DialOption{server.MTLSDialOption(p), server.ClientStatsHandler()}, auth...), nil
 }
 
 // mustMFAMaxAge reads MFA_MAX_AGE and stops the boot on a bad value.

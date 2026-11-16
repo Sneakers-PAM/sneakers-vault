@@ -10,10 +10,10 @@ import (
 	"context"
 	"os"
 
+	"github.com/Bugs5382/go-mtls"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -62,17 +62,18 @@ func asSelf(ctx context.Context, method string, req, reply any, cc *grpc.ClientC
 	return invoker(ctx, method, req, reply, cc, opts...)
 }
 
-// Dial connects to VAULT_ADDR (env, default localhost:9091) over plaintext
-// gRPC with the OTel client stats handler. With WORKLOAD_TOKEN_FILE set it
+// Dial connects to VAULT_ADDR (env, default localhost:9091) with the OTel
+// client stats handler, over mutual TLS when p is not nil and plaintext
+// otherwise. With WORKLOAD_TOKEN_FILE set it
 // sends the workflow's workload token on every call and calls the self
 // methods as itself.
-func Dial() (*Client, error) {
+func Dial(p *mtls.Provider) (*Client, error) {
 	addr := env("VAULT_ADDR", defaultAddr)
 	auth, err := server.ClientAuth(os.Getenv)
 	if err != nil {
 		return nil, err
 	}
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials()), server.ClientStatsHandler()}
+	opts := []grpc.DialOption{server.MTLSDialOption(p), server.ClientStatsHandler()}
 	if len(auth) > 0 {
 		opts = append(append(opts, auth...), grpc.WithChainUnaryInterceptor(asSelf))
 	}

@@ -270,3 +270,24 @@ func TestRunWithHealthTLS_NilProviderIsPlaintext(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestBootPort(t *testing.T) {
+	if got := BootPort(nil, "9090", "9091"); got != "9090" {
+		t.Fatalf("plaintext: %q, want the service port", got)
+	}
+	if got := BootPort(&mtls.Provider{}, "9090", "9091"); got != "9091" {
+		t.Fatalf("mutual TLS: %q, want the plain health port", got)
+	}
+}
+
+func TestRequireHealthPort(t *testing.T) {
+	if err := RequireHealthPort(nil, ""); err != nil {
+		t.Fatalf("plaintext needs no health port: %v", err)
+	}
+	if err := RequireHealthPort(&mtls.Provider{}, ""); err == nil || !strings.Contains(err.Error(), "HEALTH_PORT") {
+		t.Fatalf("err=%v, want a refusal naming HEALTH_PORT", err)
+	}
+	if err := RequireHealthPort(&mtls.Provider{}, "9091"); err != nil {
+		t.Fatal(err)
+	}
+}

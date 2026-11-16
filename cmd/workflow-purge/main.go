@@ -31,6 +31,7 @@ import (
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/maintenance"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/grpcsvc"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/workflow/vaultclient"
 	"github.com/rs/zerolog"
@@ -79,7 +80,12 @@ func resolveRetentionDays(ctx context.Context, l zerolog.Logger) int {
 		}
 	}
 	if os.Getenv("VAULT_ADDR") != "" {
-		if vault, err := vaultclient.Dial(); err == nil {
+		p, perr := server.MTLSFromEnv(os.Getenv)
+		if perr != nil {
+			l.Warn().Err(perr).Msg("mutual TLS config; using fallback retention")
+			return grpcsvc.DefaultRequestHistoryRetentionDays
+		}
+		if vault, err := vaultclient.Dial(p); err == nil {
 			defer func() { _ = vault.Close() }()
 			if resp, err := vault.GetSecuritySettings(ctx, &vaultv1.GetSecuritySettingsRequest{}); err == nil {
 				if d := int(resp.GetSettings().GetRequestHistoryRetentionDays()); d > 0 {
