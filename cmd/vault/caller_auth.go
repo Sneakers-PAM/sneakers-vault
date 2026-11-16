@@ -8,12 +8,12 @@ import (
 	"os"
 
 	log "github.com/Bugs5382/go-log"
+	"github.com/Bugs5382/go-mtls"
 	workloadauth "github.com/Bugs5382/go-workload-identity"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"github.com/Sneakers-PAM/sneakers-vault/internal/vault/grpcsvc"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // callerAuth builds the interceptors that authenticate every caller against
@@ -36,12 +36,21 @@ func mustWorkloadAuthConfig(logger zerolog.Logger) {
 }
 
 // mustDialOptions returns the options for the vault's outbound calls (audit,
-// notify): plaintext, traced, and carrying the vault's workload token when
-// WORKLOAD_TOKEN_FILE is set. A set but unreadable token file exits.
-func mustDialOptions(logger zerolog.Logger) []grpc.DialOption {
-	auth, err := server.ClientAuth(os.Getenv)
+// notify): traced, carrying the vault's workload token when WORKLOAD_TOKEN_FILE
+// is set, and over mutual TLS when p is not nil (plaintext otherwise). A set
+// but unreadable token file exits.
+func mustDialOptions(logger zerolog.Logger, p *mtls.Provider) []grpc.DialOption {
+	opts, err := dialOptions(p, os.Getenv)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("workload token")
 	}
-	return append([]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials()), server.ClientStatsHandler()}, auth...)
+	return opts
+}
+
+func dialOptions(p *mtls.Provider, getenv func(string) string) ([]grpc.DialOption, error) {
+	auth, err := server.ClientAuth(getenv)
+	if err != nil {
+		return nil, err
+	}
+	return append([]grpc.DialOption{server.MTLSDialOption(p), server.ClientStatsHandler()}, auth...), nil
 }

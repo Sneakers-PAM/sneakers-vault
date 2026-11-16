@@ -241,7 +241,7 @@ func main() {
 	// Service-to-service authentication fails closed: check it before anything
 	// else so a missing issuer stops the boot with the schema untouched.
 	mustWorkloadAuthConfig(logger)
-	dialOpts := mustDialOptions(logger)
+	dialOpts := mustDialOptions(logger, tlsProvider)
 
 	// Direct (no-broker) audit: every mutation records to the append-only chain.
 	auditAddr := env("AUDIT_ADDR", "localhost:9194")
