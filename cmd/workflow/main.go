@@ -12,6 +12,7 @@ import (
 
 	"github.com/Bugs5382/go-buildinfo/health"
 	log "github.com/Bugs5382/go-log"
+	"github.com/Bugs5382/go-mtls"
 	otel "github.com/Bugs5382/go-otel"
 	postgres "github.com/Bugs5382/go-postgres"
 	workloadauth "github.com/Bugs5382/go-workload-identity"
@@ -53,6 +54,10 @@ func main() {
 
 	maint := mustMaintenance(logger)
 
+	// Mutual TLS is on when the three MTLS_* files are set and off when none
+	// is; a half-set switch stops the boot rather than serving plaintext.
+	tlsProvider := mustMTLS(logger, cfg)
+
 	otelShutdown, err := otel.InitWithOptions(ctx, serviceName, cfg.OTLPEndpoint, telemetry.Options(os.Getenv)...)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("otel init")
@@ -71,7 +76,7 @@ func main() {
 	// Postgres and runs the migrations: liveness SERVING, so the startup probe
 	// passes on a slow boot, and readiness NOT_SERVING with postgres listed
 	// down until it is reached.
-	boot, err := server.StartBootHealth(cfg.GRPCPort, svcLog, "postgres")
+	boot, err := server.StartBootHealth(server.BootPort(tlsProvider, cfg.GRPCPort, cfg.HealthPort), svcLog, "postgres")
 	if err != nil {
 		logger.Fatal().Err(err).Msg("boot health")
 	}
@@ -100,7 +105,7 @@ func main() {
 	defer db.Close()
 	recordDBVersion(ctx, logger, db)
 
-	vault, err := vaultclient.Dial()
+	vault, err := vaultclient.Dial(tlsProvider)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("vault dial")
 	}
@@ -119,7 +124,7 @@ func main() {
 	svc.SetLogger(svcLog)
 	svc.SetMaintenance(maint)
 	svc.SetMFAMaxAge(mustMFAMaxAge(logger))
-	auditConn := mustDialAudit(logger)
+	auditConn := mustDialAudit(logger, tlsProvider)
 	defer func() { _ = auditConn.Close() }()
 	svc.SetAuditor(auditclient.New(auditv1.NewAuditServiceClient(auditConn)))
 	if err := svc.SeedIfEmpty(ctx); err != nil {
@@ -135,11 +140,24 @@ func main() {
 	logger.Info().Str("port", cfg.GRPCPort).Msg("starting")
 	checker := mustChecker(logger, svcLog, append(dependencies(db, vault.Conn(), auditConn, workloadVerifier), telemetry.Dependencies(cfg.OTLPEndpoint, os.Getenv)...))
 	boot.Stop()
-	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, func(gs *grpc.Server) {
+	if err := server.RunWithHealthTLS(ctx, cfg.GRPCPort, cfg.HealthPort, tlsProvider, svcLog, checker, func(gs *grpc.Server) {
 		grpcsvc.Register(gs, svc)
 	}, authOpts...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
 	}
+}
+
+// mustMTLS builds the mutual TLS provider, nil when it is off. A half-set
+// switch, an unreadable file, or mutual TLS without HEALTH_PORT stops the boot.
+func mustMTLS(logger zerolog.Logger, cfg config.Config) *mtls.Provider {
+	p, err := server.MTLSFromEnv(os.Getenv)
+	if err == nil {
+		err = server.RequireHealthPort(p, cfg.HealthPort)
+	}
+	if err != nil {
+		logger.Fatal().Err(err).Msg("mutual TLS config")
+	}
+	return p
 }
 
 // dependencies are what readiness follows. Only the database is required: the

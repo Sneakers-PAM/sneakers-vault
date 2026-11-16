@@ -7,7 +7,7 @@ import "testing"
 
 func TestConn_IsTheDialledConnection(t *testing.T) {
 	t.Setenv("VAULT_ADDR", "vault.example.test:9091")
-	c, err := Dial()
+	c, err := Dial(nil)
 	if err != nil {
 		t.Fatal(err)
 	}

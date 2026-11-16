@@ -4,6 +4,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -46,4 +47,24 @@ func MTLSDialOption(p *mtls.Provider) grpc.DialOption {
 		return grpc.WithTransportCredentials(insecure.NewCredentials())
 	}
 	return p.DialOption()
+}
+
+// BootPort is where the boot health service listens while a service waits for
+// its dependencies: the service port, or the plain health port when mutual TLS
+// is on (p not nil), because the service port then refuses a caller without a
+// certificate and the kubelet's probe has none.
+func BootPort(p *mtls.Provider, grpcPort, healthPort string) string {
+	if p != nil {
+		return healthPort
+	}
+	return grpcPort
+}
+
+// RequireHealthPort refuses mutual TLS without HEALTH_PORT: the kubelet probe
+// cannot present a certificate, so health needs its own plain port.
+func RequireHealthPort(p *mtls.Provider, healthPort string) error {
+	if p != nil && healthPort == "" {
+		return errors.New("mutual TLS is on and HEALTH_PORT is not set: health needs its own plain port")
+	}
+	return nil
 }
