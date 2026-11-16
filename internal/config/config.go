@@ -9,8 +9,12 @@ import (
 )
 
 type Config struct {
-	DatabaseDSN  string
-	GRPCPort     string
+	DatabaseDSN string
+	GRPCPort    string
+	// HealthPort is the plain, health-only port. Empty keeps health on GRPCPort.
+	// With mutual TLS on it is required: the kubelet's gRPC probe cannot present
+	// a client certificate.
+	HealthPort   string
 	OTLPEndpoint string
 }
 
@@ -18,6 +22,7 @@ func Load() (Config, error) {
 	c := Config{
 		DatabaseDSN: os.Getenv("DATABASE_DSN"),
 		GRPCPort:    getOr("GRPC_PORT", "9090"),
+		HealthPort:  os.Getenv("HEALTH_PORT"),
 		// Empty means no collector: otel.Init runs without an exporter instead
 		// of retrying a default localhost address that is rarely there.
 		OTLPEndpoint: getOr("OTEL_EXPORTER_OTLP_ENDPOINT", ""),

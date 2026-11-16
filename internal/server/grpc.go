@@ -8,12 +8,14 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"time"
 
 	"github.com/Bugs5382/go-buildinfo/health"
 	log "github.com/Bugs5382/go-log"
+	"github.com/Bugs5382/go-mtls"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -42,6 +44,19 @@ func RunWithLogger(ctx context.Context, port string, lg log.Logger, register fun
 // checker has no dependencies, so the service is always ready. A nil lg
 // discards the recovery interceptors' panics.
 func RunWithHealth(ctx context.Context, port string, lg log.Logger, checker *health.Checker, register func(*grpc.Server), opts ...grpc.ServerOption) error {
+	return RunWithHealthTLS(ctx, port, "", nil, lg, checker, register, opts...)
+}
+
+// RunWithHealthTLS is RunWithHealth with mutual TLS on the service port when p
+// is not nil: every caller must present a certificate the CA behind p signed,
+// over TLS 1.3. The health service then also answers, and only it, on a plain
+// listener at healthPort, because the kubelet's gRPC probe cannot present a
+// certificate. A non-nil p with an empty healthPort is refused. A nil p is
+// plaintext, as RunWithHealth.
+func RunWithHealthTLS(ctx context.Context, port, healthPort string, p *mtls.Provider, lg log.Logger, checker *health.Checker, register func(*grpc.Server), opts ...grpc.ServerOption) error {
+	if p != nil && healthPort == "" {
+		return errors.New("mutual TLS is on and HEALTH_PORT is not set: the kubelet probe cannot present a certificate, so health needs its own plain port")
+	}
 	if lg == nil {
 		lg = log.Nop()
 	}
@@ -77,7 +92,11 @@ func RunWithHealth(ctx context.Context, port string, lg log.Logger, checker *hea
 		grpc.ChainUnaryInterceptor(RecoveryUnaryInterceptor(lg), bi.UnaryServerInterceptor(), reportUnaryInterceptor(checker)),
 		grpc.ChainStreamInterceptor(RecoveryStreamInterceptor(lg), bi.StreamServerInterceptor()),
 	}
+	healthOpts := append([]grpc.ServerOption(nil), defaults...)
 	opts = append(defaults, opts...)
+	if p != nil {
+		opts = append([]grpc.ServerOption{p.ServerOption()}, opts...)
+	}
 
 	s := grpc.NewServer(opts...)
 	healthpb.RegisterHealthServer(s, hs)
@@ -102,24 +121,72 @@ func RunWithHealth(ctx context.Context, port string, lg log.Logger, checker *hea
 		errCh <- nil
 	}()
 
+	hsrv, err := startHealthOnly(p, healthPort, healthOpts, hs, errCh)
+	if err != nil {
+		s.Stop()
+		return err
+	}
+	if p != nil {
+		lg.Info("mutual TLS on: service port requires a client certificate; health is plain on its own port", log.F("port", port), log.F("health_port", healthPort))
+	}
+
 	select {
 	case <-ctx.Done():
 		hs.Shutdown()
-		stopped := make(chan struct{})
-		go func() {
-			s.GracefulStop()
-			close(stopped)
-		}()
-		select {
-		case <-stopped:
-		case <-time.After(gracefulStopTimeout):
-			s.Stop()
-		}
+		gracefulStop(s, hsrv)
 		<-errCh
 		return nil
 	case err := <-errCh:
+		if hsrv != nil {
+			hsrv.Stop()
+		}
+		s.Stop()
 		return err
 	}
+}
+
+// gracefulStop drains s and the optional health-only server hsrv, forcing both
+// to stop when the drain outlasts gracefulStopTimeout.
+func gracefulStop(s, hsrv *grpc.Server) {
+	stopped := make(chan struct{})
+	go func() {
+		s.GracefulStop()
+		if hsrv != nil {
+			hsrv.GracefulStop()
+		}
+		close(stopped)
+	}()
+	select {
+	case <-stopped:
+	case <-time.After(gracefulStopTimeout):
+		s.Stop()
+		if hsrv != nil {
+			hsrv.Stop()
+		}
+	}
+}
+
+// startHealthOnly serves the health service alone on a plain listener at
+// healthPort when mutual TLS is on (p not nil), with the same health state and
+// interceptors as the service port and nothing else registered: no reflection,
+// no services. It returns a nil server when mutual TLS is off. A serve failure
+// is sent to errCh.
+func startHealthOnly(p *mtls.Provider, healthPort string, opts []grpc.ServerOption, hs healthpb.HealthServer, errCh chan<- error) (*grpc.Server, error) {
+	if p == nil {
+		return nil, nil
+	}
+	lis, err := net.Listen("tcp", ":"+healthPort)
+	if err != nil {
+		return nil, fmt.Errorf("health listen: %w", err)
+	}
+	srv := grpc.NewServer(opts...)
+	healthpb.RegisterHealthServer(srv, hs)
+	go func() {
+		if err := srv.Serve(lis); err != nil {
+			errCh <- fmt.Errorf("health serve: %w", err)
+		}
+	}()
+	return srv, nil
 }
 
 // ClientStatsHandler returns the grpc.DialOption that installs the OpenTelemetry

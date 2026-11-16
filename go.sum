@@ -6,6 +6,8 @@ github.com/Bugs5382/go-certkit v1.1.1 h1:WkmiwRPjpcY4ZTXV4nU2EH4JsL4ABK3igcYg2Ej
 github.com/Bugs5382/go-certkit v1.1.1/go.mod h1:TAqCT/Hn7ABFHHXbudXvL4DogxsFf6yZgG364zjK5Ac=
 github.com/Bugs5382/go-log v1.4.0 h1:6AKDyc8PSxjW/dkkL0zCy9tKz3ce7c16f4PXQAsWYFI=
 github.com/Bugs5382/go-log v1.4.0/go.mod h1:OGgIWWKKNg2AXVJlbVJZb/s8dnqqsrKwWznYXik547E=
+github.com/Bugs5382/go-mtls v1.0.0 h1:9NpWGPZYxpNtwV9P2E7A+i4GOWm2Q9LJ7aa22+fJ89g=
+github.com/Bugs5382/go-mtls v1.0.0/go.mod h1:IhIqJl8Tm3GkUtXEoejhrGC79Swv8jqP0Ur8zkenKxg=
 github.com/Bugs5382/go-otel v1.6.0 h1:cjptZM4h5jXzU6d3hLz2tGgPmN9blhxLVc81PmoWdNw=
 github.com/Bugs5382/go-otel v1.6.0/go.mod h1:dY2m4IIVbcK87lrMzPC92JJtGpgd2W3A6NBeCEidEKs=
 github.com/Bugs5382/go-postgres v1.3.0 h1:gpXzgYCKW+lkCePmY93STXulThNVcGJUdHJSunBbKos=

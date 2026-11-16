@@ -33,6 +33,7 @@ require (
 )
 
 require (
+	github.com/Bugs5382/go-mtls v1.0.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
