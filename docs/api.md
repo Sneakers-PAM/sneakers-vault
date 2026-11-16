@@ -225,9 +225,9 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   If nobody at all can decide (no active owner or approver, more than one active person),
   `PrepareSecretUse` refuses at once with `NO_APPROVER` rather than leaving a use waiting.
 
-  **One prompt per task:** after the requester confirms a use of a run, later uses of the same run
-  by the same token (or the same web session) are approved at prepare for an hour. A use grant
-  (`CreateUseGrant`) stands in for that confirmation only when the requester alone could confirm;
+  **One approval per use:** an approval belongs to the one use it was given for (its secret, field,
+  command, token and client label) and is redeemed once. A run id covers no other use: every use in
+  a run waits for its own approval. A use grant (`CreateUseGrant`) stands in for that confirmation only when the requester alone could confirm;
   it never replaces another owner's or approver's decision. Service accounts are outside the
   levels: they have no person to approve, and their reveals are governed by their RACI grants and
   by `allow_api_for_sensitive` (off by default). Break-glass is unchanged.

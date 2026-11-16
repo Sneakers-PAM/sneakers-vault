@@ -7,7 +7,6 @@ import (
 	"context"
 	"slices"
 	"strconv"
-	"time"
 
 	log "github.com/Bugs5382/go-log"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
@@ -32,10 +31,6 @@ const (
 	ReasonShareUsed        = "SHARE_USED"
 	ReasonShareExpired     = "SHARE_EXPIRED"
 )
-
-// runConfirmSpan is how long one confirmation covers later uses in the same
-// run by the same requester, so one task asks at most once.
-const runConfirmSpan = time.Hour
 
 // approvalLevel is a secret's approval level: 0 none, 1 approval-required
 // (owners exempt), 2 always-approve (everyone).

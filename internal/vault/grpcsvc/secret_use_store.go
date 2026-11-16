@@ -24,9 +24,9 @@ type useStore interface {
 	PendingUses(ctx context.Context, userID string) ([]*vaultv1.SecretUse, error)
 	// AllPendingUses lists every pending use, for the approvers' queue.
 	AllPendingUses(ctx context.Context) ([]*vaultv1.SecretUse, error)
-	// RunConfirmedSince reports whether the requester confirmed a use of this
-	// run, from this token ("" for the web), at or after sinceUnix.
-	RunConfirmedSince(ctx context.Context, userID, tokenID, runID string, sinceUnix int64) (bool, error)
+	// ClaimUse moves a use from one state to another in one step and reports
+	// whether this call made the change, so one approved use is released once.
+	ClaimUse(ctx context.Context, id string, from, to vaultv1.SecretUseState) (bool, error)
 	PutGrant(ctx context.Context, g *vaultv1.UseGrant) error
 	GetGrant(ctx context.Context, id string) (*vaultv1.UseGrant, error)
 	GrantsFor(ctx context.Context, userID string) ([]*vaultv1.UseGrant, error)
@@ -83,16 +83,15 @@ func (m *memUseStore) AllPendingUses(_ context.Context) ([]*vaultv1.SecretUse, e
 	return out, nil
 }
 
-func (m *memUseStore) RunConfirmedSince(_ context.Context, userID, tokenID, runID string, sinceUnix int64) (bool, error) {
+func (m *memUseStore) ClaimUse(_ context.Context, id string, from, to vaultv1.SecretUseState) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for _, u := range m.uses {
-		if u.GetUserId() == userID && u.GetTokenId() == tokenID && u.GetRunId() == runID &&
-			u.GetConfirmedAtUnix() != 0 && u.GetConfirmedAtUnix() >= sinceUnix {
-			return true, nil
-		}
+	u, ok := m.uses[id]
+	if !ok || u.GetState() != from {
+		return false, nil
 	}
-	return false, nil
+	u.State = to
+	return true, nil
 }
 
 func (m *memUseStore) PutGrant(_ context.Context, g *vaultv1.UseGrant) error {
@@ -166,14 +165,14 @@ func (p *pgUseStore) AllPendingUses(ctx context.Context) ([]*vaultv1.SecretUse, 
 	return p.queryUses(ctx, `SELECT data FROM secret_uses WHERE state=$1`, int32(vaultv1.SecretUseState_SECRET_USE_STATE_PENDING))
 }
 
-func (p *pgUseStore) RunConfirmedSince(ctx context.Context, userID, tokenID, runID string, sinceUnix int64) (bool, error) {
-	var ok bool
-	err := p.db.QueryRow(ctx,
-		`SELECT EXISTS (SELECT 1 FROM secret_uses WHERE user_id=$1
-		   AND coalesce(data->>'tokenId','')=$2 AND data->>'runId'=$3
-		   AND coalesce((data->>'confirmedAtUnix')::bigint, 0) >= greatest($4::bigint, 1))`,
-		userID, tokenID, runID, sinceUnix).Scan(&ok)
-	return ok, err
+func (p *pgUseStore) ClaimUse(ctx context.Context, id string, from, to vaultv1.SecretUseState) (bool, error) {
+	tag, err := p.db.Exec(ctx,
+		`UPDATE secret_uses SET state=$3, data=jsonb_set(data, '{state}', to_jsonb($4::text)) WHERE id=$1 AND state=$2`,
+		id, int32(from), int32(to), to.String())
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
 }
 
 func (p *pgUseStore) queryUses(ctx context.Context, q string, args ...any) ([]*vaultv1.SecretUse, error) {

@@ -145,7 +145,7 @@ type Server struct {
 	invDebounceD time.Duration // coalesce window for a burst of peer writes
 	invBackoffD  time.Duration // reconnect backoff for the subscriber
 
-	seq int
+	seq atomic.Int64
 }
 
 // New builds an in-memory Server seeded with a small demonstrable dataset
@@ -438,8 +438,7 @@ func (s *Server) PersistUnary(ctx context.Context, req any, info *grpc.UnaryServ
 }
 
 func (s *Server) nextID(prefix string) string {
-	s.seq++
-	return fmt.Sprintf("%s-%d-%d", prefix, time.Now().UnixNano(), s.seq)
+	return fmt.Sprintf("%s-%d-%d", prefix, time.Now().UnixNano(), s.seq.Add(1))
 }
 
 func (s *Server) emit(ctx context.Context, actor, action, subject string, sensitive bool) {
