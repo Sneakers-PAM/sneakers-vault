@@ -29,8 +29,8 @@ import (
 
 	log "github.com/Bugs5382/go-log"
 	postgres "github.com/Bugs5382/go-postgres"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/server"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // env returns the environment variable k, or def when it is unset/empty.
@@ -41,14 +41,27 @@ func env(k, def string) string {
 	return def
 }
 
-// dial opens an insecure gRPC client connection (the seeders talk to in-cluster
-// services over the internal network).
+// dial opens a gRPC client connection to a service. It uses mutual TLS when
+// MTLS_CERT_FILE, MTLS_KEY_FILE and MTLS_CA_FILE are set and plaintext when
+// none is; a half-set switch stops the seeder.
 func dial(addr string) *grpc.ClientConn {
-	c, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	opt, err := dialOption(os.Getenv)
+	if err != nil {
+		panic(err)
+	}
+	c, err := grpc.NewClient(addr, opt)
 	if err != nil {
 		panic(err)
 	}
 	return c
+}
+
+func dialOption(getenv func(string) string) (grpc.DialOption, error) {
+	p, err := server.MTLSFromEnv(getenv)
+	if err != nil {
+		return nil, err
+	}
+	return server.MTLSDialOption(p), nil
 }
 
 // openPool connects to DATABASE_DSN via the app's proven go-postgres pool and
