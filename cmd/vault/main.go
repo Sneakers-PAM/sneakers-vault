@@ -17,6 +17,7 @@ import (
 
 	"github.com/Bugs5382/go-buildinfo/health"
 	log "github.com/Bugs5382/go-log"
+	"github.com/Bugs5382/go-mtls"
 	otel "github.com/Bugs5382/go-otel"
 	postgres "github.com/Bugs5382/go-postgres"
 	bredis "github.com/Bugs5382/go-redis"
@@ -170,6 +171,32 @@ func dialRedis(ctx context.Context, l zerolog.Logger, url string) *bredis.Client
 	return rc
 }
 
+// mustMTLS builds the mutual TLS provider, nil when it is off. A half-set
+// switch, an unreadable file, or mutual TLS without HEALTH_PORT stops the boot:
+// the kubelet probe cannot present a certificate, so health needs its own
+// plain port.
+func mustMTLS(logger zerolog.Logger, cfg config.Config) *mtls.Provider {
+	p, err := server.MTLSFromEnv(os.Getenv)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("mutual TLS config")
+	}
+	if p != nil && cfg.HealthPort == "" {
+		logger.Fatal().Msg("mutual TLS is on and HEALTH_PORT is not set: health needs its own plain port")
+	}
+	return p
+}
+
+// bootHealthPort is where the boot health service listens while the boot
+// waits for its dependencies: the service port, or the plain health port when
+// mutual TLS is on, because the service port then refuses a caller without a
+// certificate and the kubelet's probe has none.
+func bootHealthPort(cfg config.Config, p *mtls.Provider) string {
+	if p != nil {
+		return cfg.HealthPort
+	}
+	return cfg.GRPCPort
+}
+
 // mustLoadConfig loads the settings and refuses removed ones; either failure
 // is fatal.
 func mustLoadConfig(logger zerolog.Logger) config.Config {
@@ -195,6 +222,11 @@ func main() {
 	cfg := mustLoadConfig(logger)
 
 	maint := mustMaintenance(logger)
+
+	// Mutual TLS is on when the three MTLS_* files are set and off when none
+	// is; a half-set switch stops the boot rather than serving plaintext.
+	tlsProvider := mustMTLS(logger, cfg)
+	healthPort := bootHealthPort(cfg, tlsProvider)
 
 	otelShutdown, err := otel.InitWithOptions(ctx, serviceName, cfg.OTLPEndpoint, telemetry.Options(os.Getenv)...)
 	if err != nil {
@@ -231,7 +263,7 @@ func main() {
 	// Postgres and runs the preflight and migrations: liveness SERVING, so
 	// the startup probe passes on a slow boot, and readiness NOT_SERVING with
 	// postgres listed down until it is reached.
-	boot := mustBootHealth(logger, cfg.GRPCPort, svcLog)
+	boot := mustBootHealth(logger, healthPort, svcLog)
 
 	migrationsDir := env("MIGRATIONS_DIR", "migrations/vault")
 	// Migrations need a direct/session Postgres connection (advisory locks,
@@ -321,7 +353,7 @@ func main() {
 	// SelfActorUnary), with or without service-to-service authentication.
 	opts := append(authOpts, grpc.ChainUnaryInterceptor(srv.PersonSessionUnary, maintUnary, srv.PersistUnary), grpc.ChainStreamInterceptor(maintStream))
 	boot.Stop()
-	if err := server.RunWithHealth(ctx, cfg.GRPCPort, svcLog, checker, srv.RegisterInto, opts...); err != nil {
+	if err := server.RunWithHealthTLS(ctx, cfg.GRPCPort, cfg.HealthPort, tlsProvider, svcLog, checker, srv.RegisterInto, opts...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
 	}
 }
