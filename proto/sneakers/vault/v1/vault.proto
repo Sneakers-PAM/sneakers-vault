@@ -2089,11 +2089,21 @@ message SecuritySettings {
   // reports it was installed and configured by the organisation's MDM. Off by
   // default.
   bool require_managed = 13;
+  // Names of the MCP functions an admin has turned off. The gateway doesn't
+  // offer them to agents and refuses a call to one. Empty (the default) = every
+  // function is on. The vault only stores the list and doesn't check a name
+  // against the gateway's functions, so a name the gateway doesn't know is kept
+  // and ignored. At most 256 names, each at most 128 bytes.
+  repeated string disabled_mcp_tools = 14;
 }
 
 // A list of CIDR prefixes, so an update can say "replace the list" (present) or
 // "leave it" (absent).
 message NetworkList { repeated string cidrs = 1; }
+
+// A list of MCP function names, so an update can say "replace the list"
+// (present) or "leave it" (absent).
+message McpToolList { repeated string names = 1; }
 
 message ListPasswordPoliciesRequest {}
 message ListPasswordPoliciesResponse { repeated PasswordPolicy policies = 1; }
@@ -2120,6 +2130,7 @@ message UpdateSecuritySettingsRequest {
   optional bool internal_only = 12;
   NetworkList allowed_networks = 13;   // present = replace the list; absent = unchanged
   optional bool require_managed = 14;
+  McpToolList disabled_mcp_tools = 15;   // present = replace the list; absent = unchanged
 }
 message UpdateSecuritySettingsResponse { SecuritySettings settings = 1; }
 

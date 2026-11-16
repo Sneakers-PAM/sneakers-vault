@@ -523,6 +523,14 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   `INVALID_ARGUMENT` and changes nothing, so an admin can't lock everyone out by accident.
   `UpdateSecuritySettingsRequest.allowed_networks` replaces the list when present and leaves it
   alone when absent.
+  `disabled_mcp_tools` is the list of MCP function names an admin has turned off (empty by default,
+  so every function is on, and a stored row that predates it reads as empty). It is site admin only
+  and the vault only stores it; the gateway hides those functions from agents and refuses a call to
+  one. Names are trimmed with empties and duplicates dropped, at most 256 names of at most 128 bytes
+  each; more is `INVALID_ARGUMENT` and changes nothing. A name the gateway doesn't know is kept.
+  `UpdateSecuritySettingsRequest.disabled_mcp_tools` (an `McpToolList`) replaces the list when
+  present, so an empty list turns every function back on, and leaves it alone when absent. A change
+  is audited on `settings.update` with `disabled_mcp_tools.from` and `.to` (comma-separated).
 - **Import:** `SealForImport` seals up to 500 field sets per call under the active working key and
   returns the envelopes in the form `secret_records` and `secret_versions` store, without storing
   anything. `sneakers-migrate import` uses it to re-wrap imported secrets, so the root key never
