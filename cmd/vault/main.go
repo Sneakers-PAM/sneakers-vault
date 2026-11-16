@@ -374,6 +374,7 @@ func main() {
 	logBootBuiltins(ctx, svcLog, srv.BootAddedBuiltins())
 	srv.SetMaintenance(maint)
 	srv.SetMFAMaxAge(mustMFAMaxAge(logger))
+	srv.SetUseApprovalLifetime(mustUseApprovalLifetime(logger))
 	srv.SetNotifier(notifyclient.New(notifyv1.NewNotifyServiceClient(notifyConn)))
 	// RotateKek needs the keyring, its durable store, and the root KEK +
 	// ref to mint and persist new working-KEK generations.

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -122,37 +123,58 @@ func TestFailedRedeemIsAudited(t *testing.T) {
 	fx.failureAudit(t, "secret.use.redeem", "failed")
 }
 
-func TestRedeemMustFollowApprovalWithinAMinute(t *testing.T) {
+func TestRedeemMustFollowApprovalWithinTheLifetime(t *testing.T) {
 	fx := newUseFixture(t)
 	u := fx.prepare(t)
 	fx.now = fx.now.Add(2 * time.Minute)
 	if err := fx.decide(fx.approver, u.GetId(), true); err != nil {
 		t.Fatalf("approve inside the 10 minute window: %v", err)
 	}
-	fx.now = fx.now.Add(redeemAfterApproval)
+	fx.now = fx.now.Add(config.DefaultUseApprovalLifetime)
 	if _, err := fx.redeem(fx.token, u.GetId()); err == nil {
-		t.Fatal("redeemed a minute after approval")
+		t.Fatal("redeemed a full lifetime after approval")
 	}
 
 	v := fx.prepare(t)
 	if err := fx.decide(fx.approver, v.GetId(), true); err != nil {
 		t.Fatal(err)
 	}
-	fx.now = fx.now.Add(redeemAfterApproval - time.Second)
+	fx.now = fx.now.Add(config.DefaultUseApprovalLifetime - time.Second)
 	if _, err := fx.redeem(fx.token, v.GetId()); err != nil {
-		t.Fatalf("redeem inside the minute: %v", err)
+		t.Fatalf("redeem inside the lifetime: %v", err)
 	}
 }
 
-func TestGrantApprovedUseMustBeRedeemedWithinAMinute(t *testing.T) {
+func TestApprovalLifetimeIsConfigurable(t *testing.T) {
+	fx := newUseFixture(t)
+	fx.s.SetUseApprovalLifetime(2 * time.Minute)
+	u := fx.prepare(t)
+	if err := fx.decide(fx.approver, u.GetId(), true); err != nil {
+		t.Fatal(err)
+	}
+	fx.now = fx.now.Add(2 * time.Minute)
+	if _, err := fx.redeem(fx.token, u.GetId()); err == nil {
+		t.Fatal("redeemed after the configured 2 minute lifetime")
+	}
+	v := fx.prepare(t)
+	if err := fx.decide(fx.approver, v.GetId(), true); err != nil {
+		t.Fatal(err)
+	}
+	fx.now = fx.now.Add(2*time.Minute - time.Second)
+	if _, err := fx.redeem(fx.token, v.GetId()); err != nil {
+		t.Fatalf("redeem inside the configured lifetime: %v", err)
+	}
+}
+
+func TestGrantApprovedUseMustBeRedeemedWithinTheLifetime(t *testing.T) {
 	fx := newUseFixture(t)
 	fx.programGrant(t, "ssh")
 	u := fx.prepare(t)
 	if u.GetState() != vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED {
 		t.Fatalf("state %s, want APPROVED by grant", u.GetState())
 	}
-	fx.now = fx.now.Add(redeemAfterApproval)
+	fx.now = fx.now.Add(config.DefaultUseApprovalLifetime)
 	if _, err := fx.redeem(fx.token, u.GetId()); err == nil {
-		t.Fatal("redeemed a minute after the grant approved it")
+		t.Fatal("redeemed a full lifetime after the grant approved it")
 	}
 }

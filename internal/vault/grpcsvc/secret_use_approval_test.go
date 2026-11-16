@@ -306,10 +306,8 @@ func TestApprovalAlwaysApproveSoleApproverConfirmsOnce(t *testing.T) {
 		t.Fatal("no secret.use.confirm audit event")
 	}
 	fx.now = fx.now.Add(5 * time.Minute)
-	wantState(t, "a later use in the same task", fx.prepare(t, tok, "run-7", everyone), vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED)
+	wantState(t, "a later use in the same task", fx.prepare(t, tok, "run-7", everyone), vaultv1.SecretUseState_SECRET_USE_STATE_PENDING)
 	wantState(t, "a use in a new task", fx.prepare(t, tok, "run-8", everyone), vaultv1.SecretUseState_SECRET_USE_STATE_PENDING)
-	fx.now = fx.now.Add(runConfirmSpan)
-	wantState(t, "the same task after the confirmation lapsed", fx.prepare(t, tok, "run-7", everyone), vaultv1.SecretUseState_SECRET_USE_STATE_PENDING)
 }
 
 func TestApprovalSingleUserInstallConfirmsInsteadOfWaiting(t *testing.T) {

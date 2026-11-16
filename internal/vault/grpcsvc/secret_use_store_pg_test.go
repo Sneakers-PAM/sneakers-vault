@@ -99,7 +99,7 @@ func TestPGUseStoreKeepsRunFieldsAndLoadsOldRows(t *testing.T) {
 	}
 }
 
-func TestPGUseStoreQueueAndRunConfirmation(t *testing.T) {
+func TestPGUseStoreQueueAndClaim(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_DSN")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_DSN not set")
@@ -132,20 +132,21 @@ func TestPGUseStoreQueueAndRunConfirmation(t *testing.T) {
 		t.Fatalf("AllPendingUses = %v, %v", all, err)
 	}
 	for name, c := range map[string]struct {
-		user, token, run string
-		since            int64
-		want             bool
+		id       string
+		from, to vaultv1.SecretUseState
+		want     bool
 	}{
-		"token run confirmed":   {"u-ada", "utok-1", "run-1", 1789999000, true},
-		"web run confirmed":     {"u-bob", "", "web-1", 1789999000, true},
-		"confirmation too old":  {"u-ada", "utok-1", "run-1", 1790000001, false},
-		"another token":         {"u-ada", "utok-2", "run-1", 0, false},
-		"another run":           {"u-ada", "utok-1", "run-2", 0, false},
-		"a run never confirmed": {"u-bob", "", "web-2", 0, false},
+		"approved to redeemed":    {"use-c", vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED, vaultv1.SecretUseState_SECRET_USE_STATE_REDEEMED, true},
+		"already redeemed":        {"use-c", vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED, vaultv1.SecretUseState_SECRET_USE_STATE_REDEEMED, false},
+		"pending is not approved": {"use-b", vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED, vaultv1.SecretUseState_SECRET_USE_STATE_REDEEMED, false},
+		"no such use":             {"use-z", vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED, vaultv1.SecretUseState_SECRET_USE_STATE_REDEEMED, false},
 	} {
-		got, err := st.RunConfirmedSince(ctx, c.user, c.token, c.run, c.since)
+		got, err := st.ClaimUse(ctx, c.id, c.from, c.to)
 		if err != nil || got != c.want {
 			t.Errorf("%s: %v, %v; want %v", name, got, err, c.want)
 		}
+	}
+	if u, err := st.GetUse(ctx, "use-c"); err != nil || u.GetState() != vaultv1.SecretUseState_SECRET_USE_STATE_REDEEMED {
+		t.Errorf("claimed use = %v, %v; want REDEEMED in the stored data", u.GetState(), err)
 	}
 }

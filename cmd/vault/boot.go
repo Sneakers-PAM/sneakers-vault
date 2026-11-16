@@ -201,6 +201,16 @@ func mustMFAMaxAge(logger zerolog.Logger) time.Duration {
 	return d
 }
 
+// mustUseApprovalLifetime reads SECRET_USE_APPROVAL_LIFETIME; a bad value
+// stops the boot.
+func mustUseApprovalLifetime(logger zerolog.Logger) time.Duration {
+	d, err := config.UseApprovalLifetime(os.Getenv)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("secret use approval lifetime")
+	}
+	return d
+}
+
 // logBootBuiltins logs the built-ins this start-up added to the store (the
 // secret types, extension packs, connections and password policies a newer
 // release ships), at info so an upgrade shows what it brought in.

@@ -11,6 +11,7 @@ import (
 
 	log "github.com/Bugs5382/go-log"
 	vaultv1 "github.com/Sneakers-PAM/sneakers-vault/gen/go/sneakers/vault/v1"
+	"github.com/Sneakers-PAM/sneakers-vault/internal/config"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -59,13 +60,25 @@ func checkShareRequest(req *vaultv1.PrepareSecretUseRequest) error {
 	return nil
 }
 
-// approvedUntil is when an approved use stops being redeemable: a minute after
-// the approval, except for a share, which keeps the lifetime its creator chose.
-func approvedUntil(use *vaultv1.SecretUse, now time.Time) int64 {
+// approvedUntil is when an approved use stops being redeemable: the approval
+// lifetime after the approval, except for a share, which keeps the lifetime its
+// creator chose.
+func (s *Server) approvedUntil(use *vaultv1.SecretUse, now time.Time) int64 {
 	if use.GetShareHash() != "" {
 		return use.GetExpiresAtUnix()
 	}
-	return now.Add(redeemAfterApproval).Unix()
+	return now.Add(s.approvalLifetime()).Unix()
+}
+
+// SetUseApprovalLifetime sets how long an approved use stays redeemable
+// (SECRET_USE_APPROVAL_LIFETIME); a value of 0 or less keeps the default.
+func (s *Server) SetUseApprovalLifetime(d time.Duration) { s.useApprovalLifetime = d }
+
+func (s *Server) approvalLifetime() time.Duration {
+	if s.useApprovalLifetime > 0 {
+		return s.useApprovalLifetime
+	}
+	return config.DefaultUseApprovalLifetime
 }
 
 // shareRefusal says why a share can't be redeemed now.
