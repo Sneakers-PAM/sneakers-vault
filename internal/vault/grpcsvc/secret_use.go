@@ -23,11 +23,10 @@ import (
 )
 
 const (
-	secretUseTTL        = 10 * time.Minute
-	redeemAfterApproval = time.Minute
-	useGrantMaxSpan     = 24 * time.Hour
-	maxUseArgv          = 64
-	maxUsePurpose       = 200
+	secretUseTTL    = 10 * time.Minute
+	useGrantMaxSpan = 24 * time.Hour
+	maxUseArgv      = 64
+	maxUsePurpose   = 200
 )
 
 var useRunID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
@@ -159,7 +158,7 @@ func (s *Server) PrepareSecretUse(ctx context.Context, req *vaultv1.PrepareSecre
 func (s *Server) approveAtPrepare(ctx context.Context, st useStore, use *vaultv1.SecretUse, sec *vaultv1.Secret, needsApproval bool, now time.Time) error {
 	approve := func() {
 		use.State = vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED
-		use.ExpiresAtUnix = approvedUntil(use, now)
+		use.ExpiresAtUnix = s.approvedUntil(use, now)
 	}
 	if !needsApproval {
 		approve()
@@ -415,7 +414,7 @@ func (s *Server) DecideSecretUse(ctx context.Context, req *vaultv1.DecideSecretU
 	if req.GetApprove() {
 		action = "secret.use.approve"
 		use.State = vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED
-		use.ExpiresAtUnix = approvedUntil(use, s.clock())
+		use.ExpiresAtUnix = s.approvedUntil(use, s.clock())
 	}
 	use.DecidedByUserId = actor.GetUserId()
 	if err := st.PutUse(ctx, use); err != nil {
@@ -476,7 +475,7 @@ func (s *Server) ConfirmSecretUse(ctx context.Context, req *vaultv1.ConfirmSecre
 	}
 	now := s.clock()
 	use.State = vaultv1.SecretUseState_SECRET_USE_STATE_APPROVED
-	use.ExpiresAtUnix = approvedUntil(use, now)
+	use.ExpiresAtUnix = s.approvedUntil(use, now)
 	use.ConfirmedAtUnix = now.Unix()
 	if err := st.PutUse(ctx, use); err != nil {
 		return nil, status.Errorf(codes.Internal, "store secret use: %v", err)

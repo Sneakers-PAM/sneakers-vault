@@ -226,7 +226,7 @@ See the [runbook](runbook.md#health) for each server's dependencies.
   `PrepareSecretUse` refuses at once with `NO_APPROVER` rather than leaving a use waiting.
 
   **One approval per use:** an approval belongs to the one use it was given for (its secret, field,
-  command, token and client label) and is redeemed once. A run id covers no other use: every use in
+  command, token and client label) and is redeemed once. A run id covers no other use, and an approved use is redeemable for `SECRET_USE_APPROVAL_LIFETIME` (default 10 minutes) after its approval: every use in
   a run waits for its own approval. A use grant (`CreateUseGrant`) stands in for that confirmation only when the requester alone could confirm;
   it never replaces another owner's or approver's decision. Service accounts are outside the
   levels: they have no person to approve, and their reveals are governed by their RACI grants and

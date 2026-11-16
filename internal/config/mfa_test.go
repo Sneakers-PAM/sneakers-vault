@@ -47,3 +47,20 @@ func TestMFAFresh(t *testing.T) {
 		}
 	}
 }
+
+func TestUseApprovalLifetime(t *testing.T) {
+	if DefaultUseApprovalLifetime != 10*time.Minute {
+		t.Fatalf("default %v, want 10m", DefaultUseApprovalLifetime)
+	}
+	for v, want := range map[string]time.Duration{"": DefaultUseApprovalLifetime, "30s": 30 * time.Second, "10m": 10 * time.Minute, "1h": time.Hour} {
+		got, err := UseApprovalLifetime(func(string) string { return v })
+		if err != nil || got != want {
+			t.Fatalf("%q: %v, %v; want %v", v, got, err, want)
+		}
+	}
+	for _, v := range []string{"10", "0", "0s", "-1m", "soon", "1h1s", "2h"} {
+		if _, err := UseApprovalLifetime(func(string) string { return v }); err == nil {
+			t.Fatalf("%q accepted", v)
+		}
+	}
+}

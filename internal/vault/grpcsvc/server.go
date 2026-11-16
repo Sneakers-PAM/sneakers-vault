@@ -145,6 +145,10 @@ type Server struct {
 	invDebounceD time.Duration // coalesce window for a burst of peer writes
 	invBackoffD  time.Duration // reconnect backoff for the subscriber
 
+	// useApprovalLifetime is how long an approved use stays redeemable; 0 is
+	// the default (SECRET_USE_APPROVAL_LIFETIME).
+	useApprovalLifetime time.Duration
+
 	seq atomic.Int64
 }
 
