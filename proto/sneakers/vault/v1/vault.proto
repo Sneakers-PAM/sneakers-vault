@@ -1266,6 +1266,26 @@ message ReplaceCertificateResponse {
   repeated string aliases = 3;
 }
 
+// The machine form of ReplaceCertificate, for a personal token or a service
+// account (non-human actors only; a person is refused). Authorized as the other
+// *ForPrincipal edits are: Author on the secret's folder chain and on the
+// secret's own ruleset. The secret keeps its id, folder and ruleset, a version
+// is appended, and the derived fields are recomputed. The response secret
+// carries the computed principal view. A multi-entry container with no alias
+// returns the aliases and changes nothing.
+message ReplaceCertificateForPrincipalRequest {
+  ActorContext actor = 1;
+  string secret_id = 2;
+  bytes file_bytes = 3;
+  string passphrase = 4;
+  string alias = 5;
+}
+message ReplaceCertificateForPrincipalResponse {
+  Secret secret = 1;
+  CertMeta meta = 2;
+  repeated string aliases = 3;
+}
+
 // ---- Connections + Targets --------------------------------------------------
 
 message Connection {
@@ -1745,6 +1765,7 @@ service VaultService {
   rpc ImportCertificate(ImportCertificateRequest) returns (ImportCertificateResponse);
   rpc ExportCertificate(ExportCertificateRequest) returns (ExportCertificateResponse);
   rpc ReplaceCertificate(ReplaceCertificateRequest) returns (ReplaceCertificateResponse);
+  rpc ReplaceCertificateForPrincipal(ReplaceCertificateForPrincipalRequest) returns (ReplaceCertificateForPrincipalResponse);
 
   // Secret types
   rpc ListSecretTypes(ListSecretTypesRequest) returns (ListSecretTypesResponse) {

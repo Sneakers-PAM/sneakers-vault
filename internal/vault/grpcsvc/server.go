@@ -392,6 +392,8 @@ var mutatingMethods = map[string]bool{
 	// internal UpdateSecret path (also a plain Go call) to overwrite a cert
 	// secret's fields in place — same reasoning, must persist here too.
 	"ImportCertificate": true, "ExportCertificate": true, "ReplaceCertificate": true,
+	// ReplaceCertificateForPrincipal is the machine form, writing the same way.
+	"ReplaceCertificateForPrincipal": true,
 	// ReportHeartbeat stamps the secret's last heartbeat result and verified_at.
 	// Every write reloads committed state first, so an unpersisted
 	// in-memory change would be wiped by the next write.
