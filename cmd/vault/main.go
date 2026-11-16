@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -70,26 +71,65 @@ func kekSchedulerCheckInterval() time.Duration {
 // working keyring stays openable across restarts without operator setup.
 // Outside dev, an unset VAULT_ROOT_KEK is an error — never run prod on the
 // dev root.
-func resolveRootKEK(environment string) (crypto.KEKProvider, string, error) {
-	if b64 := env("VAULT_ROOT_KEK", ""); b64 != "" {
+//
+// VAULT_ROOT_KEK_PREVIOUS (same format) is the root key being replaced: the
+// vault then opens working keys under whichever root their root_ref names and
+// moves the ones still on the previous root to the current one at start. It
+// needs VAULT_ROOT_KEK too. The current root then carries its own ref, a name
+// derived from the key, so the two can be told apart.
+func resolveRootKEK(environment string) (*crypto.RootKEKs, string, error) {
+	return resolveRootKEKFrom(environment, func(k string) string { return env(k, "") })
+}
+
+func resolveRootKEKFrom(environment string, getenv func(string) string) (*crypto.RootKEKs, string, error) {
+	prevB64 := getenv("VAULT_ROOT_KEK_PREVIOUS")
+	if b64 := getenv("VAULT_ROOT_KEK"); b64 != "" {
 		raw, err := base64.StdEncoding.DecodeString(b64)
 		if err != nil {
-			return nil, "", fmt.Errorf("VAULT_ROOT_KEK: invalid base64: %w", err)
+			return nil, "", errors.New("VAULT_ROOT_KEK: invalid base64")
 		}
 		rootKEK, err := crypto.NewStaticKEK(raw)
 		if err != nil {
 			return nil, "", fmt.Errorf("VAULT_ROOT_KEK: %w", err)
 		}
-		return rootKEK, "root-v1", nil
+		if prevB64 == "" {
+			return crypto.NewRootKEKs(rootKEK, "root-v1", nil), "root-v1", nil
+		}
+		prev, err := previousRootKEK(prevB64, raw)
+		if err != nil {
+			return nil, "", err
+		}
+		ref := crypto.RootRef(raw)
+		return crypto.NewRootKEKs(rootKEK, ref, prev), ref, nil
+	}
+	if prevB64 != "" {
+		return nil, "", errors.New("VAULT_ROOT_KEK_PREVIOUS is set without VAULT_ROOT_KEK: set the current root key too")
 	}
 	if environment == "dev" {
 		rootKEK, err := crypto.NewStaticKEKFromSeed(env("DEV_KEK_SEED", "sneakers-pam-dev-kek-seed-v1"))
 		if err != nil {
 			return nil, "", fmt.Errorf("dev root KEK init: %w", err)
 		}
-		return rootKEK, "dev-root-v1", nil
+		return crypto.NewRootKEKs(rootKEK, "dev-root-v1", nil), "dev-root-v1", nil
 	}
 	return nil, "", errors.New("VAULT_ROOT_KEK required in non-dev environments")
+}
+
+// previousRootKEK parses VAULT_ROOT_KEK_PREVIOUS. Errors name the variable and
+// never show the key.
+func previousRootKEK(b64 string, current []byte) (*crypto.StaticKEK, error) {
+	raw, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return nil, errors.New("VAULT_ROOT_KEK_PREVIOUS: invalid base64")
+	}
+	prev, err := crypto.NewStaticKEK(raw)
+	if err != nil {
+		return nil, fmt.Errorf("VAULT_ROOT_KEK_PREVIOUS: %w", err)
+	}
+	if bytes.Equal(raw, current) {
+		return nil, errors.New("VAULT_ROOT_KEK_PREVIOUS is the same key as VAULT_ROOT_KEK: it must be the key being replaced")
+	}
+	return prev, nil
 }
 
 // buildEnvelope takes the root KEK already resolved and validated by
@@ -169,6 +209,24 @@ func dialRedis(ctx context.Context, l zerolog.Logger, url string) *bredis.Client
 		return nil
 	}
 	return rc
+}
+
+// rewrapRootKey moves the working keys still on the previous root key (when
+// VAULT_ROOT_KEK_PREVIOUS is set) under the current one and reads them all back
+// under the current root alone. The status is reported on the health check; the
+// log carries counts only. A failure leaves the stored ring as it was and the
+// vault serves on, since it still opens it with both roots; the next start
+// tries again. Nothing is deleted and the previous key is never dropped here.
+func rewrapRootKey(ctx context.Context, logger zerolog.Logger, db *postgres.DB, root *crypto.RootKEKs, status *server.RootKeyStatus) {
+	report := func(st crypto.RotationState, pending int) {
+		status.Set(st, pending)
+		ev := logger.Info()
+		if st == crypto.RotationFailed {
+			ev = logger.Error()
+		}
+		ev.Str("state", string(st)).Int("pending", pending).Msg("root key replacement")
+	}
+	grpcsvc.RewrapKeyring(ctx, grpcsvc.NewKeyringStore(db), root, report)
 }
 
 // mustMTLS builds the mutual TLS provider, nil when it is off. A half-set
@@ -264,6 +322,8 @@ func main() {
 	// the startup probe passes on a slow boot, and readiness NOT_SERVING with
 	// postgres listed down until it is reached.
 	boot := mustBootHealth(logger, healthPort, svcLog)
+	rootStatus := &server.RootKeyStatus{}
+	boot.SetRootKeyStatus(rootStatus)
 
 	migrationsDir := env("MIGRATIONS_DIR", "migrations/vault")
 	// Migrations need a direct/session Postgres connection (advisory locks,
@@ -289,6 +349,7 @@ func main() {
 	}
 	defer db.Close()
 	recordDBVersion(ctx, logger, db)
+	rewrapRootKey(ctx, logger, db, rootKEK, rootStatus)
 
 	kb := mustBootKeyring(ctx, logger, db, rootKEK, rootRef)
 	envelope, keyring, keyringStore := kb.envelope, kb.keyring, kb.store
@@ -353,7 +414,7 @@ func main() {
 	// SelfActorUnary), with or without service-to-service authentication.
 	opts := append(authOpts, grpc.ChainUnaryInterceptor(srv.PersonSessionUnary, maintUnary, srv.PersistUnary), grpc.ChainStreamInterceptor(maintStream))
 	boot.Stop()
-	if err := server.RunWithHealthTLS(ctx, cfg.GRPCPort, cfg.HealthPort, tlsProvider, svcLog, checker, srv.RegisterInto, opts...); err != nil {
+	if err := server.RunWithHealthTLS(ctx, cfg.GRPCPort, cfg.HealthPort, tlsProvider, svcLog, checker, srv.RegisterInto, append(opts, server.WithRootKeyStatus(rootStatus))...); err != nil {
 		logger.Fatal().Err(err).Msg("server exited")
 	}
 }

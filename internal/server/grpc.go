@@ -13,6 +13,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/Bugs5382/go-buildinfo/grpcbuildinfo"
 	"github.com/Bugs5382/go-buildinfo/health"
 	log "github.com/Bugs5382/go-log"
 	"github.com/Bugs5382/go-mtls"
@@ -87,9 +88,10 @@ func RunWithHealthTLS(ctx context.Context, port, healthPort string, p *mtls.Prov
 	// that later supplies its own stream interceptor composes with recovery
 	// rather than panicking (plain grpc.StreamInterceptor allows only one and
 	// panics on a second).
+	rootKey, opts := splitRootKey(opts)
 	defaults := []grpc.ServerOption{
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
-		grpc.ChainUnaryInterceptor(RecoveryUnaryInterceptor(lg), bi.UnaryServerInterceptor(), reportUnaryInterceptor(checker)),
+		grpc.ChainUnaryInterceptor(unaryChain(lg, bi, checker, rootKey)...),
 		grpc.ChainStreamInterceptor(RecoveryStreamInterceptor(lg), bi.StreamServerInterceptor()),
 	}
 	healthOpts := append([]grpc.ServerOption(nil), defaults...)
@@ -143,6 +145,17 @@ func RunWithHealthTLS(ctx context.Context, port, healthPort string, p *mtls.Prov
 		s.Stop()
 		return err
 	}
+}
+
+// unaryChain is the default unary interceptors: panic recovery outermost, then
+// the root key status when there is one (it answers its own health service
+// ahead of the build-info handler), then build info and the readiness report.
+func unaryChain(lg log.Logger, bi *grpcbuildinfo.Server, checker *health.Checker, rootKey *RootKeyStatus) []grpc.UnaryServerInterceptor {
+	chain := []grpc.UnaryServerInterceptor{RecoveryUnaryInterceptor(lg)}
+	if rootKey != nil {
+		chain = append(chain, rootKeyUnary(rootKey))
+	}
+	return append(chain, bi.UnaryServerInterceptor(), reportUnaryInterceptor(checker))
 }
 
 // gracefulStop drains s and the optional health-only server hsrv, forcing both

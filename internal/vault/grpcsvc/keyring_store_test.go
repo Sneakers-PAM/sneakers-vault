@@ -147,3 +147,50 @@ func TestKeyringStoreActiveNoRows(t *testing.T) {
 		t.Fatal("Active: expected ok=false with no rows")
 	}
 }
+
+func TestKeyringStoreMoveRoot_AllOrNothing(t *testing.T) {
+	ctx := context.Background()
+	k := newKeyringStore(keyringTestPool(t))
+	for i, ref := range []string{"kek-v1", "kek-v2"} {
+		if _, err := k.db.Querier().Exec(ctx,
+			`INSERT INTO kek_keyring (ref, wrapped_key, root_ref, active) VALUES ($1,$2,'root-v1',$3)`,
+			ref, []byte("old-"+ref), i == 1); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The second move names a row that is on neither root: the whole batch rolls back.
+	err := k.MoveRoot(ctx, []rootMove{
+		{Ref: "kek-v1", WrappedKey: []byte("new-kek-v1"), FromRoot: "root-v1", ToRoot: "root-cur"},
+		{Ref: "kek-v9", WrappedKey: []byte("new"), FromRoot: "root-v1", ToRoot: "root-cur"},
+	})
+	if err == nil {
+		t.Fatal("a move of a missing row succeeded")
+	}
+	rows, err := k.Load(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range rows {
+		if r.RootRef != "root-v1" || string(r.WrappedKey) != "old-"+r.Ref {
+			t.Fatalf("%s changed although the batch failed: root=%s", r.Ref, r.RootRef)
+		}
+	}
+
+	// A good batch moves both; repeating it is a no-op that succeeds.
+	good := []rootMove{
+		{Ref: "kek-v1", WrappedKey: []byte("new-kek-v1"), FromRoot: "root-v1", ToRoot: "root-cur"},
+		{Ref: "kek-v2", WrappedKey: []byte("new-kek-v2"), FromRoot: "root-v1", ToRoot: "root-cur"},
+	}
+	if err := k.MoveRoot(ctx, good); err != nil {
+		t.Fatalf("MoveRoot: %v", err)
+	}
+	if err := k.MoveRoot(ctx, good); err != nil {
+		t.Fatalf("repeat MoveRoot: %v", err)
+	}
+	rows, _ = k.Load(ctx)
+	for _, r := range rows {
+		if r.RootRef != "root-cur" || string(r.WrappedKey) != "new-"+r.Ref {
+			t.Fatalf("%s not moved: root=%s", r.Ref, r.RootRef)
+		}
+	}
+}

@@ -39,7 +39,7 @@ import (
 // dsn should be the direct (session) connection used for migrations. The
 // check runs in the simple query protocol so it also works through a
 // transaction-pooling connection pooler when MIGRATE_DSN is unset.
-func preflightRootKEK(ctx context.Context, dsn, environment string) (crypto.KEKProvider, string, error) {
+func preflightRootKEK(ctx context.Context, dsn, environment string) (*crypto.RootKEKs, string, error) {
 	root, rootRef, err := resolveRootKEK(environment)
 	if err != nil {
 		return nil, "", err
@@ -106,7 +106,7 @@ func verifyKeyringUnwraps(ctx context.Context, conn postgres.Querier, root crypt
 // migrateAfterPreflight is the boot ordering main relies on: validate the
 // root KEK against the current schema first, and only then apply pending
 // migrations. On any preflight error no migration is attempted.
-func migrateAfterPreflight(ctx context.Context, migrateDSN, migrationsDir, environment string) (crypto.KEKProvider, string, error) {
+func migrateAfterPreflight(ctx context.Context, migrateDSN, migrationsDir, environment string) (*crypto.RootKEKs, string, error) {
 	root, rootRef, err := preflightRootKEK(ctx, migrateDSN, environment)
 	if err != nil {
 		return nil, "", err
